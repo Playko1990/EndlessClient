@@ -43,6 +43,7 @@ namespace EndlessClient.HUD.Panels
         private readonly IStatusLabelSetter _statusLabelSetter;
         private readonly IItemStringService _itemStringService;
         private readonly IItemNameColorService _itemNameColorService;
+        private readonly IItemStatCompareService _itemStatCompareService;
         private readonly IInventoryService _inventoryService;
         private readonly IInventorySlotRepository _inventorySlotRepository;
         private readonly IPlayerInfoProvider _playerInfoProvider;
@@ -70,6 +71,7 @@ namespace EndlessClient.HUD.Panels
                               IStatusLabelSetter statusLabelSetter,
                               IItemStringService itemStringService,
                               IItemNameColorService itemNameColorService,
+                              IItemStatCompareService itemStatCompareService,
                               IInventoryService inventoryService,
                               IInventorySlotRepository inventorySlotRepository,
                               IPlayerInfoProvider playerInfoProvider,
@@ -88,6 +90,7 @@ namespace EndlessClient.HUD.Panels
             _statusLabelSetter = statusLabelSetter;
             _itemStringService = itemStringService;
             _itemNameColorService = itemNameColorService;
+            _itemStatCompareService = itemStatCompareService;
             _inventoryService = inventoryService;
             _inventorySlotRepository = inventorySlotRepository;
             _playerInfoProvider = playerInfoProvider;
@@ -235,7 +238,7 @@ namespace EndlessClient.HUD.Panels
                     {
                         _inventoryService.SetSlots(_inventorySlotRepository.FilledSlots, slot, itemData.Size);
 
-                        var newItem = new InventoryPanelItem(_itemNameColorService, this, _activeDialogProvider, _sfxPlayer, slot, item, itemData);
+                        var newItem = new InventoryPanelItem(_itemNameColorService, this, _activeDialogProvider, _sfxPlayer, _itemStatCompareService, slot, item, itemData);
                         newItem.Initialize();
                         newItem.SetParentControl(this);
                         newItem.Text = _itemStringService.GetStringForInventoryDisplay(itemData, item.Amount);

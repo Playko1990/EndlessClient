@@ -56,6 +56,7 @@ namespace EndlessClient.HUD.Controls
         TPStatusBar,
         SPStatusBar,
         TNLStatusBar,
+        BossHealthBar,
 
         //mid stuff
         ChatModePictureBox,

@@ -1,6 +1,7 @@
 ﻿using AutomaticTypeMapper;
 using EndlessClient.Audio;
 using EndlessClient.ControlSets;
+using EndlessClient.HUD.Boss;
 using EndlessClient.HUD.Chat;
 using EndlessClient.HUD.Controls;
 using EndlessClient.Rendering.Character;
@@ -27,6 +28,7 @@ namespace EndlessClient.Rendering.NPC
         private readonly IEIFFileProvider _eifFileProvider;
         private readonly IESFFileProvider _esfFileProvider;
         private readonly ISfxPlayer _sfxPlayer;
+        private readonly IBossHealthRepository _bossHealthRepository;
 
         public NPCActions(IHudControlProvider hudControlProvider,
                           INPCStateCache npcStateCache,
@@ -37,7 +39,8 @@ namespace EndlessClient.Rendering.NPC
                           ILocalizedStringFinder localizedStringFinder,
                           IEIFFileProvider eifFileProvider,
                           IESFFileProvider esfFileProvider,
-                          ISfxPlayer sfxPlayer)
+                          ISfxPlayer sfxPlayer,
+                          IBossHealthRepository bossHealthRepository)
         {
             _hudControlProvider = hudControlProvider;
             _npcStateCache = npcStateCache;
@@ -49,6 +52,7 @@ namespace EndlessClient.Rendering.NPC
             _eifFileProvider = eifFileProvider;
             _esfFileProvider = esfFileProvider;
             _sfxPlayer = sfxPlayer;
+            _bossHealthRepository = bossHealthRepository;
         }
 
         public void StartNPCWalkAnimation(int npcIndex, MapCoordinate coords, EODirection direction)
@@ -78,6 +82,7 @@ namespace EndlessClient.Rendering.NPC
             var hasRenderer = _npcRendererRepository.NPCRenderers.ContainsKey(npcIndex);
 
             _npcStateCache.RemoveStateByIndex(npcIndex);
+            _bossHealthRepository.Remove(npcIndex);
 
             if (hasRenderer)
             {
@@ -116,6 +121,8 @@ namespace EndlessClient.Rendering.NPC
 
         public void NPCTakeDamage(int npcIndex, int fromPlayerId, int damageToNpc, int npcPctHealth, Option<int> spellId)
         {
+            _bossHealthRepository.SetPercentHealth(npcIndex, npcPctHealth);
+
             var hasRenderer = _npcRendererRepository.NPCRenderers.ContainsKey(npcIndex);
 
             if (hasRenderer)

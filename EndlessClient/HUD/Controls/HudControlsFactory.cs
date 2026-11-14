@@ -7,6 +7,7 @@ using EndlessClient.Content;
 using EndlessClient.Controllers;
 using EndlessClient.ControlSets;
 using EndlessClient.GameExecution;
+using EndlessClient.HUD.Boss;
 using EndlessClient.HUD.Chat;
 using EndlessClient.HUD.Panels;
 using EndlessClient.HUD.Spells;
@@ -28,6 +29,7 @@ using EOLib.Domain.Login;
 using EOLib.Domain.Map;
 using EOLib.Domain.Pathing;
 using EOLib.Graphics;
+using EOLib.IO.Repositories;
 using EOLib.Localization;
 using EOLib.Shared;
 using Microsoft.Xna.Framework;
@@ -76,6 +78,8 @@ namespace EndlessClient.HUD.Controls
         private readonly ILocalizedStringFinder _localizedStringFinder;
         private readonly ICharacterRendererProvider _characterRendererProvider;
         private readonly INPCRendererProvider _npcRendererProvider;
+        private readonly IENFFileProvider _enfFileProvider;
+        private readonly IBossHealthProvider _bossHealthProvider;
         private IChatController _chatController;
         private IMainButtonController _mainButtonController;
 
@@ -113,7 +117,9 @@ namespace EndlessClient.HUD.Controls
                                   IMetadataProvider<WeaponMetadata> weaponMetadataProvider,
                                   ILocalizedStringFinder localizedStringFinder,
                                   ICharacterRendererProvider characterRendererProvider,
-                                  INPCRendererProvider npcRendererProvider)
+                                  INPCRendererProvider npcRendererProvider,
+                                  IENFFileProvider enfFileProvider,
+                                  IBossHealthProvider bossHealthProvider)
         {
             _hudButtonController = hudButtonController;
             _hudPanelFactory = hudPanelFactory;
@@ -150,6 +156,8 @@ namespace EndlessClient.HUD.Controls
             _localizedStringFinder = localizedStringFinder;
             _characterRendererProvider = characterRendererProvider;
             _npcRendererProvider = npcRendererProvider;
+            _enfFileProvider = enfFileProvider;
+            _bossHealthProvider = bossHealthProvider;
         }
 
         public void InjectChatController(IChatController chatController,
@@ -212,6 +220,7 @@ namespace EndlessClient.HUD.Controls
                 {HudControlIdentifier.TPStatusBar, CreateTPStatusBar()},
                 {HudControlIdentifier.SPStatusBar, CreateSPStatusBar()},
                 {HudControlIdentifier.TNLStatusBar, CreateTNLStatusBar()},
+                {HudControlIdentifier.BossHealthBar, CreateBossHealthBar()},
 
                 {HudControlIdentifier.ChatModePictureBox, CreateChatModePictureBox()},
                 {HudControlIdentifier.ChatTextBox, CreateChatTextBox()},
@@ -512,6 +521,20 @@ namespace EndlessClient.HUD.Controls
             var statusBar = new SPStatusBar(_nativeGraphicsManager, _clientWindowSizeRepository, (ICharacterProvider)_characterRepository) { DrawOrder = HUD_CONTROL_LAYER };
             statusBar.StatusBarClicked += () => _sfxPlayer.PlaySfx(SoundEffectID.HudStatusBarClick);
             return statusBar;
+        }
+
+        private IGameComponent CreateBossHealthBar()
+        {
+            return new BossHealthBar(
+                _graphicsDeviceProvider.GraphicsDevice,
+                (ICharacterProvider)_characterRepository,
+                (ICurrentMapStateProvider)_currentMapStateRepository,
+                _enfFileProvider,
+                _bossHealthProvider,
+                _clientWindowSizeRepository)
+            {
+                DrawOrder = HUD_CONTROL_LAYER + 10
+            };
         }
 
         private IGameComponent CreateTNLStatusBar()

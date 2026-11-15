@@ -290,14 +290,30 @@ namespace EndlessClient.HUD.Controls
             }
             else
             {
-                var yIndex = buttonIndex % 6 - 3;
+                // Dock left/right HUD strips to the flanks of the bottom panel (same attachment
+                // as classic 640x480), instead of floating mid-screen on the window edges.
+                Vector2 GetDockedButtonPosition()
+                {
+                    var panelTexture = _nativeGraphicsManager.TextureFromResource(GFXTypes.PostLoginUI, 44);
+                    var panelWidth = panelTexture.Width;
+                    var panelHeight = panelTexture.Height;
+                    var panelX = (_clientWindowSizeRepository.Width - panelWidth) / 2;
+                    var panelY = _clientWindowSizeRepository.Height - 45 - panelHeight;
 
-                var xPosition = buttonIndex < 6 ? 0 : _clientWindowSizeRepository.Width - widthDelta;
-                var yPosition = (_clientWindowSizeRepository.Height / 2 + heightDelta * yIndex);
+                    // Classic EO: left strip at panelX-40 (62 vs panel 102), right strip at panel right edge.
+                    var xPosition = buttonIndex < 6
+                        ? panelX - 40
+                        : panelX + panelWidth;
+                    var yPosition = panelY
+                        + (buttonIndex < 6 ? 0 : 20)
+                        + (buttonIndex < 6 ? buttonIndex : buttonIndex - 6) * 20;
+
+                    return new Vector2(xPosition, yPosition);
+                }
 
                 retButton = new XNAButton(
                     mainButtonTexture,
-                    new Vector2(xPosition, yPosition),
+                    GetDockedButtonPosition(),
                     new Rectangle(0, heightDelta * buttonIndex, widthDelta, heightDelta),
                     new Rectangle(widthDelta, heightDelta * buttonIndex, widthDelta, heightDelta))
                 {
@@ -306,9 +322,7 @@ namespace EndlessClient.HUD.Controls
 
                 _clientWindowSizeRepository.GameWindowSizeChanged += (_, _) =>
                 {
-                    var capturedXPos = buttonIndex < 6 ? 0 : _clientWindowSizeRepository.Width - widthDelta;
-                    var capturedYPos = (_clientWindowSizeRepository.Height / 2 + heightDelta * yIndex);
-                    retButton.DrawPosition = new Vector2(capturedXPos, capturedYPos);
+                    retButton.DrawPosition = GetDockedButtonPosition();
                 };
             }
 

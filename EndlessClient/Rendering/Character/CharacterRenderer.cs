@@ -62,6 +62,12 @@ namespace EndlessClient.Rendering.Character
 
         private Color[] _rtColorData;
 
+        // Cached standing skin cell size for DrawArea. Must stay stable across walk/attack
+        // frames or the paperdoll anchor bounces every animation tick.
+        private int _standingSkinWidth = 18;
+        private int _standingSkinHeight = 58;
+        private bool _standingSkinSizeCached;
+
         public EOLib.Domain.Character.Character Character
         {
             get { return _character; }
@@ -69,6 +75,11 @@ namespace EndlessClient.Rendering.Character
             {
                 if (_character == value) return;
                 _textureUpdateRequired = _character.RenderProperties.GetHashCode() != value.RenderProperties.GetHashCode();
+                if (_character.RenderProperties.Race != value.RenderProperties.Race
+                    || _character.RenderProperties.Gender != value.RenderProperties.Gender)
+                {
+                    _standingSkinSizeCached = false;
+                }
                 _character = value;
             }
         }
@@ -324,13 +335,34 @@ namespace EndlessClient.Rendering.Character
 
         private void SetScreenCoordinates(int xPosition, int yPosition)
         {
-            if (DrawArea.X != xPosition || DrawArea.Y != yPosition)
+            TryCacheStandingSkinSize();
+
+            if (DrawArea.X != xPosition || DrawArea.Y != yPosition
+                || DrawArea.Width != _standingSkinWidth || DrawArea.Height != _standingSkinHeight)
             {
-                // size of standing still skin texture
-                DrawArea = new Rectangle(xPosition, yPosition, 18, 58);
-                HorizontalCenter = xPosition + 9;
+                DrawArea = new Rectangle(xPosition, yPosition, _standingSkinWidth, _standingSkinHeight);
+                HorizontalCenter = xPosition + _standingSkinWidth / 2;
                 _textureUpdateRequired = true;
             }
+        }
+
+        private void TryCacheStandingSkinSize()
+        {
+            if (_standingSkinSizeCached || _characterTextures?.Skin == null)
+                return;
+
+            // Only learn size from the standing pose so walk/attack sheet cells don't resize DrawArea
+            if (Character.RenderProperties.CurrentAction != CharacterActionState.Standing
+                || Character.RenderProperties.SitState != SitState.Standing)
+                return;
+
+            var src = _characterTextures.Skin.SourceRectangle;
+            if (src.Width < 8 || src.Height < 16)
+                return;
+
+            _standingSkinWidth = src.Width;
+            _standingSkinHeight = src.Height;
+            _standingSkinSizeCached = true;
         }
 
         private int GetMainCharacterOffsetX()

@@ -10,9 +10,6 @@ namespace EndlessClient.UIControls
 {
     public class CreateCharacterControl : CharacterControl
     {
-        private Vector2 _lastPosition;
-
-
         public event EventHandler Clicked;
 
         // default properties
@@ -24,23 +21,12 @@ namespace EndlessClient.UIControls
             : base(Character.Default.WithRenderProperties(renderProperties.WithDirection(EODirection.Down)), characterRendererFactory)
         {
             SetSize(99, 123);
-            _lastPosition = Vector2.Zero;
         }
 
-        protected override void OnUpdateControl(GameTime gameTime)
+        protected override Vector2 GetRendererScreenPosition()
         {
-            if (!ShouldUpdate())
-                return;
-
-            var actualDrawPosition = new Vector2(DrawPositionWithParentOffset.X + 40,
-                                                 DrawPositionWithParentOffset.Y + 36);
-
-            if (_lastPosition != actualDrawPosition)
-                _characterRenderer.SetAbsoluteScreenPosition((int)actualDrawPosition.X, (int)actualDrawPosition.Y);
-
-            base.OnUpdateControl(gameTime);
-
-            _lastPosition = actualDrawPosition;
+            return new Vector2(DrawPositionWithParentOffset.X + 40,
+                               DrawPositionWithParentOffset.Y + 36);
         }
 
         protected override bool HandleMouseDown(IXNAControl control, MouseEventArgs eventArgs)
@@ -61,7 +47,8 @@ namespace EndlessClient.UIControls
 
         public void NextRace()
         {
-            RenderProperties = RenderProperties.WithRace((RenderProperties.Race + 1) % 6);
+            // EO skins are 0-6 (7 rows on the skin sheet)
+            RenderProperties = RenderProperties.WithRace((RenderProperties.Race + 1) % 7);
         }
 
         public void NextHairStyle()

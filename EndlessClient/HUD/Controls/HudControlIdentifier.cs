@@ -65,6 +65,10 @@ namespace EndlessClient.HUD.Controls
         FriendList,
         IgnoreList,
 
+        // HUD chrome (resizable dock)
+        HudMinimizeButton,
+        HudRestoreButton,
+
         //lower stuff
         StatusLabel,
         ClockLabel,

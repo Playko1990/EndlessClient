@@ -43,11 +43,14 @@ namespace EndlessClient.HUD
             if (newState != InGameStates.News)
                 _hudControlProvider.GetComponent<IHudPanel>(Controls.HudControlIdentifier.NewsPanel).Visible = false;
 
-            foreach (var panel in _hudControlProvider.HudPanels.Where(x => x.Visible))
-                panel.Visible = _clientWindowSizeProvider.Resizable;
-
             var targetPanel = _hudControlProvider.HudPanels.Single(x => IsPanelForRequestedState(x, newState));
-            targetPanel.Visible = !targetPanel.Visible;
+            var wasVisible = targetPanel.Visible;
+
+            // Always exclusive: never stack multiple HUD panels (resizable used to leave others open).
+            foreach (var panel in _hudControlProvider.HudPanels)
+                panel.Visible = false;
+
+            targetPanel.Visible = !wasVisible;
 
             if (targetPanel.Visible && _clientWindowSizeProvider.Resizable)
                 targetPanel.DrawOrder = _hudControlProvider.HudPanels.Select(x => x.DrawOrder).Max() + 1;

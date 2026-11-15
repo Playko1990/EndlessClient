@@ -8,6 +8,7 @@ using EndlessClient.Rendering.Chat;
 using EndlessClient.Rendering.Effects;
 using EndlessClient.Rendering.Metadata;
 using EndlessClient.Rendering.Metadata.Models;
+using EndlessClient.Rendering.Sprites;
 using EOLib.Domain.Character;
 using EOLib.Domain.Map;
 using Microsoft.Xna.Framework;
@@ -24,7 +25,7 @@ namespace EndlessClient.Rendering.Factories
         private readonly ICharacterProvider _characterProvider;
         private readonly IRenderOffsetCalculator _renderOffsetCalculator;
         private readonly ICharacterPropertyRendererBuilder _characterPropertyRendererBuilder;
-        private readonly ICharacterTextures _characterTextures;
+        private readonly ICharacterSpriteCalculator _characterSpriteCalculator;
         private readonly ICurrentMapProvider _currentMapProvider;
         private readonly IUserInputProvider _userInputProvider;
         private readonly IEffectRendererFactory _effectRendererFactory;
@@ -40,7 +41,7 @@ namespace EndlessClient.Rendering.Factories
                                         ICharacterProvider characterProvider,
                                         IRenderOffsetCalculator renderOffsetCalculator,
                                         ICharacterPropertyRendererBuilder characterPropertyRendererBuilder,
-                                        ICharacterTextures characterTextures,
+                                        ICharacterSpriteCalculator characterSpriteCalculator,
                                         ICurrentMapProvider currentMapProvider,
                                         IUserInputProvider userInputProvider,
                                         IEffectRendererFactory effectRendererFactory,
@@ -56,7 +57,7 @@ namespace EndlessClient.Rendering.Factories
             _characterProvider = characterProvider;
             _renderOffsetCalculator = renderOffsetCalculator;
             _characterPropertyRendererBuilder = characterPropertyRendererBuilder;
-            _characterTextures = characterTextures;
+            _characterSpriteCalculator = characterSpriteCalculator;
             _currentMapProvider = currentMapProvider;
             _userInputProvider = userInputProvider;
             _effectRendererFactory = effectRendererFactory;
@@ -68,6 +69,10 @@ namespace EndlessClient.Rendering.Factories
 
         public ICharacterRenderer CreateCharacterRenderer(EOLib.Domain.Character.Character character, bool isUiControl)
         {
+            // Each renderer needs its own texture cache. Sharing one instance across login-slot
+            // previews made slots fight over Refresh() and caused flickering/bouncing sprites.
+            var characterTextures = new CharacterTextures(_characterSpriteCalculator);
+
             return new CharacterRenderer(
                 (Game)_gameProvider.Game,
                 _renderTargetFactory,
@@ -76,7 +81,7 @@ namespace EndlessClient.Rendering.Factories
                 _characterProvider,
                 _renderOffsetCalculator,
                 _characterPropertyRendererBuilder,
-                _characterTextures,
+                characterTextures,
                 _currentMapProvider,
                 _userInputProvider,
                 _effectRendererFactory,

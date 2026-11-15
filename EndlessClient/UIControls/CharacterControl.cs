@@ -19,6 +19,7 @@ namespace EndlessClient.UIControls
         }
 
         protected readonly ICharacterRenderer _characterRenderer;
+        private Vector2 _lastRendererPosition = new Vector2(float.MinValue);
 
         public CharacterControl(Character character,
                                 ICharacterRendererFactory characterRendererFactory)
@@ -29,7 +30,7 @@ namespace EndlessClient.UIControls
         public override void Initialize()
         {
             _characterRenderer.Initialize();
-            SyncRendererPosition();
+            SyncRendererPosition(force: true);
 
             base.Initialize();
         }
@@ -39,9 +40,13 @@ namespace EndlessClient.UIControls
             return new Vector2(DrawAreaWithParentOffset.X, DrawAreaWithParentOffset.Y);
         }
 
-        protected void SyncRendererPosition()
+        protected void SyncRendererPosition(bool force = false)
         {
             var pos = GetRendererScreenPosition();
+            if (!force && pos == _lastRendererPosition)
+                return;
+
+            _lastRendererPosition = pos;
             _characterRenderer.SetAbsoluteScreenPosition((int)pos.X, (int)pos.Y);
         }
 
@@ -52,10 +57,7 @@ namespace EndlessClient.UIControls
 
         protected override void OnUpdateControl(GameTime gameTime)
         {
-            // Keep the preview locked to the panel so parent layout changes don't leave
-            // the sprite floating / bouncing above the slot on the login screen.
             SyncRendererPosition();
-
             _characterRenderer.Update(gameTime);
             base.OnUpdateControl(gameTime);
         }

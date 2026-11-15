@@ -168,8 +168,17 @@ namespace EndlessClient.Rendering.Character
                 _healthBarRenderer = _healthBarRendererFactory.CreateHealthBarRenderer(this);
                 Game.Components.Add(_healthBarRenderer);
             }
-
             base.Initialize();
+
+            if (_isUiControl)
+            {
+                // Login/create previews are updated/drawn by CharacterControl only.
+                // Staying in Game.Components caused a second update/draw pass that
+                // flickered/bounced the character-select sprites.
+                Enabled = false;
+                if (Game?.Components != null && Game.Components.Contains(this))
+                    Game.Components.Remove(this);
+            }
         }
 
         protected override void LoadContent()
@@ -348,7 +357,8 @@ namespace EndlessClient.Rendering.Character
 
         private void TryCacheStandingSkinSize()
         {
-            if (_standingSkinSizeCached || _characterTextures?.Skin == null)
+            // Login UI previews stay on the vanilla 18x58 anchor so slot layout doesn't jump.
+            if (_isUiControl || _standingSkinSizeCached || _characterTextures?.Skin == null)
                 return;
 
             // Only learn size from the standing pose so walk/attack sheet cells don't resize DrawArea
@@ -358,6 +368,11 @@ namespace EndlessClient.Rendering.Character
 
             var src = _characterTextures.Skin.SourceRectangle;
             if (src.Width < 8 || src.Height < 16)
+                return;
+
+            // Ignore multi-race sheet accidents (full column height) — that is what made
+            // login/previews bounce and stacked race parts appear under/above the body.
+            if (src.Height > 96 || src.Width > 48)
                 return;
 
             _standingSkinWidth = src.Width;

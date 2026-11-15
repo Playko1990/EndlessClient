@@ -104,13 +104,13 @@ namespace EndlessClient.ControlSets
         {
             var rnd = new Random();
             var texture = _backgroundImages[rnd.Next(7)];
+            // Always pin to the fixed client viewport. Oversized custom backdrops + 
+            // KeepInClientWindowBounds previously made the whole startup screen bounce.
             return new XNAPictureBox
             {
                 Texture = texture,
-                DrawArea = new Rectangle(0, 0, texture.Width, texture.Height),
+                DrawArea = new Rectangle(0, 0, 640, 480),
                 DrawOrder = 0,
-                // XNAControls KeepInClientWindowBounds oscillates Y when Height >= window height
-                // (ClientBounds can be 479 vs a 480px backdrop) — that bounces the whole login screen.
                 KeepInClientWindowBounds = false
             };
         }

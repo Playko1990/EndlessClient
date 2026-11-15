@@ -43,11 +43,16 @@ namespace EndlessClient.Rendering
                 if (value < DEFAULT_BACKBUFFER_WIDTH)
                     value = DEFAULT_BACKBUFFER_WIDTH;
 
-                _graphicsDeviceRepository.GraphicsDeviceManager.PreferredBackBufferWidth = value;
-                _graphicsDeviceRepository.GraphicsDeviceManager.ApplyChanges();
+                var gdm = _graphicsDeviceRepository.GraphicsDeviceManager;
+                // No-op when already set — ApplyChanges every frame (or on every ClientSizeChanged)
+                // thrash-resizes the window and looks like the client bouncing on startup.
+                if (gdm.PreferredBackBufferWidth == value)
+                    return;
 
-                foreach (var evnt in _resizeEvents)
-                    evnt(this, EventArgs.Empty);
+                gdm.PreferredBackBufferWidth = value;
+                gdm.ApplyChanges();
+                // ClientSizeChanged already notifies GameWindowSizeChanged subscribers; do not
+                // invoke _resizeEvents again here (that double-fired the same handlers).
             }
         }
 
@@ -59,11 +64,12 @@ namespace EndlessClient.Rendering
                 if (value < DEFAULT_BACKBUFFER_HEIGHT)
                     value = DEFAULT_BACKBUFFER_HEIGHT;
 
-                _graphicsDeviceRepository.GraphicsDeviceManager.PreferredBackBufferHeight = value;
-                _graphicsDeviceRepository.GraphicsDeviceManager.ApplyChanges();
+                var gdm = _graphicsDeviceRepository.GraphicsDeviceManager;
+                if (gdm.PreferredBackBufferHeight == value)
+                    return;
 
-                foreach (var evnt in _resizeEvents)
-                    evnt(this, EventArgs.Empty);
+                gdm.PreferredBackBufferHeight = value;
+                gdm.ApplyChanges();
             }
         }
 

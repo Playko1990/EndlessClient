@@ -124,15 +124,23 @@ namespace EndlessClient.GameExecution
 
             _previousKeyState = Keyboard.GetState();
 
-            // setting Width/Height in window size repository applies the change to disable vsync
+            // Disable vsync then apply once. Avoid Width/Height setter thrash — those used to
+            // ApplyChanges every time and re-enter GameWindowSizeChanged on startup.
             _graphicsDeviceManager.SynchronizeWithVerticalRetrace = false;
             _graphicsDeviceManager.IsFullScreen = false;
-            _windowSizeRepository.Width = ClientWindowSizeRepository.DEFAULT_BACKBUFFER_WIDTH;
-            _windowSizeRepository.Height = ClientWindowSizeRepository.DEFAULT_BACKBUFFER_HEIGHT;
+            _graphicsDeviceManager.PreferredBackBufferWidth = ClientWindowSizeRepository.DEFAULT_BACKBUFFER_WIDTH;
+            _graphicsDeviceManager.PreferredBackBufferHeight = ClientWindowSizeRepository.DEFAULT_BACKBUFFER_HEIGHT;
+            _graphicsDeviceManager.ApplyChanges();
 
             _windowSizeRepository.GameWindowSizeChanged += (_, _) =>
             {
-                if (_windowSizeRepository.Width < ClientWindowSizeRepository.DEFAULT_BACKBUFFER_HEIGHT)
+                // Only enforce the minimum when the player can resize. Comparing ClientBounds
+                // (often 1px short of Preferred) and re-applying 640x480 caused a startup
+                // resize feedback loop that bounced the whole window.
+                if (!_windowSizeRepository.Resizable)
+                    return;
+
+                if (_windowSizeRepository.Width < ClientWindowSizeRepository.DEFAULT_BACKBUFFER_WIDTH)
                     _windowSizeRepository.Width = ClientWindowSizeRepository.DEFAULT_BACKBUFFER_WIDTH;
 
                 if (_windowSizeRepository.Height < ClientWindowSizeRepository.DEFAULT_BACKBUFFER_HEIGHT)

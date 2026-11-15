@@ -76,6 +76,8 @@ namespace EndlessClient.HUD.Controls
         private readonly ILocalizedStringFinder _localizedStringFinder;
         private readonly ICharacterRendererProvider _characterRendererProvider;
         private readonly INPCRendererProvider _npcRendererProvider;
+        private readonly ISkillTreeActions _skillTreeActions;
+        private readonly ISkillTreeProvider _skillTreeProvider;
         private IChatController _chatController;
         private IMainButtonController _mainButtonController;
 
@@ -113,7 +115,9 @@ namespace EndlessClient.HUD.Controls
                                   IMetadataProvider<WeaponMetadata> weaponMetadataProvider,
                                   ILocalizedStringFinder localizedStringFinder,
                                   ICharacterRendererProvider characterRendererProvider,
-                                  INPCRendererProvider npcRendererProvider)
+                                  INPCRendererProvider npcRendererProvider,
+                                  ISkillTreeActions skillTreeActions,
+                                  ISkillTreeProvider skillTreeProvider)
         {
             _hudButtonController = hudButtonController;
             _hudPanelFactory = hudPanelFactory;
@@ -150,6 +154,8 @@ namespace EndlessClient.HUD.Controls
             _localizedStringFinder = localizedStringFinder;
             _characterRendererProvider = characterRendererProvider;
             _npcRendererProvider = npcRendererProvider;
+            _skillTreeActions = skillTreeActions;
+            _skillTreeProvider = skillTreeProvider;
         }
 
         public void InjectChatController(IChatController chatController,
@@ -495,7 +501,7 @@ namespace EndlessClient.HUD.Controls
 
         private IGameComponent CreateHPStatusBar()
         {
-            var statusBar = new HPStatusBar(_nativeGraphicsManager, _clientWindowSizeRepository, (ICharacterProvider)_characterRepository) { DrawOrder = HUD_CONTROL_LAYER };
+            var statusBar = new HPStatusBar(_nativeGraphicsManager, _clientWindowSizeRepository, (ICharacterProvider)_characterRepository, _skillTreeActions, _skillTreeProvider) { DrawOrder = HUD_CONTROL_LAYER };
             statusBar.StatusBarClicked += () => _sfxPlayer.PlaySfx(SoundEffectID.HudStatusBarClick);
             return statusBar;
         }
@@ -586,7 +592,7 @@ namespace EndlessClient.HUD.Controls
                 _endlessGameProvider, _characterRepository, _playerInfoProvider, _currentMapStateRepository,
                 _currentMapProvider, _spellSlotDataRepository, _characterActions,
                 _walkValidationActions, _pathFinder, _fixedTimeStepRepository,
-                _weaponMetadataProvider);
+                _weaponMetadataProvider, _skillTreeActions, _skillTreeProvider);
         }
 
         private INPCAnimator CreateNPCAnimator()

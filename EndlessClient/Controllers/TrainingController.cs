@@ -8,12 +8,15 @@ namespace EndlessClient.Controllers
     public class TrainingController : ITrainingController
     {
         private readonly ITrainingActions _trainingActions;
+        private readonly ISkillTreeActions _skillTreeActions;
         private readonly ISfxPlayer _sfxPlayer;
 
         public TrainingController(ITrainingActions trainingActions,
+                                  ISkillTreeActions skillTreeActions,
                                   ISfxPlayer sfxPlayer)
         {
             _trainingActions = trainingActions;
+            _skillTreeActions = skillTreeActions;
             _sfxPlayer = sfxPlayer;
         }
 
@@ -26,10 +29,10 @@ namespace EndlessClient.Controllers
             _sfxPlayer.PlaySfx(SoundEffectID.InventoryPickup);
         }
 
-        public void AddSkillPoint(int spellId)
+        public void AddSkillTreePoint(SkillTreeStat whichStat)
         {
-            _trainingActions.LevelUpSkill(spellId);
-            _sfxPlayer.PlaySfx(SoundEffectID.InventoryPickup);
+            if (_skillTreeActions.TrySpendPoint(whichStat))
+                _sfxPlayer.PlaySfx(SoundEffectID.InventoryPickup);
         }
 
         private static bool InvalidStat(CharacterStat whichStat)
@@ -51,6 +54,6 @@ namespace EndlessClient.Controllers
     {
         void AddStatPoint(CharacterStat whichStat);
 
-        void AddSkillPoint(int spellId);
+        void AddSkillTreePoint(SkillTreeStat whichStat);
     }
 }

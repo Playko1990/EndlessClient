@@ -65,6 +65,9 @@ namespace EndlessClient.UIControls
 
             _backgroundImage = _gfxManager.TextureFromResource(GFXTypes.PreLoginUI, 11);
             SetSize(_backgroundImage.Width, _backgroundImage.Height);
+            // Slot panels sit near the bottom; KeepInClientWindowBounds can oscillate Y when
+            // ClientBounds is 1px short of the preferred backbuffer (whole UI bounces).
+            KeepInClientWindowBounds = false;
         }
 
         public CharacterInfoPanel(int characterIndex,
@@ -169,7 +172,8 @@ namespace EndlessClient.UIControls
 
         protected virtual void DoUpdateLogic(GameTime gameTime)
         {
-            _characterControl.Update(gameTime);
+            // CharacterControl is a child (SetParentControl) — XNAControls already Update/Draws it.
+            // Calling Update/Draw again here double-processed the preview every frame.
 
             var previousKeyState = _userInputProvider.PreviousKeyState;
             var currentKeyState = _userInputProvider.CurrentKeyState;
@@ -183,8 +187,6 @@ namespace EndlessClient.UIControls
 
         protected virtual void DoDrawLogic(GameTime gameTime)
         {
-            _characterControl.Draw(gameTime);
-
             if (_adminGraphic.HasTexture && !_spriteBatch.IsDisposed)
             {
                 _spriteBatch.Begin();

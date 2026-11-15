@@ -108,7 +108,10 @@ namespace EndlessClient.ControlSets
             {
                 Texture = texture,
                 DrawArea = new Rectangle(0, 0, texture.Width, texture.Height),
-                DrawOrder = 0
+                DrawOrder = 0,
+                // XNAControls KeepInClientWindowBounds oscillates Y when Height >= window height
+                // (ClientBounds can be 479 vs a 480px backdrop) — that bounces the whole login screen.
+                KeepInClientWindowBounds = false
             };
         }
 

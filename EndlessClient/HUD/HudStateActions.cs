@@ -44,15 +44,15 @@ namespace EndlessClient.HUD
                 _hudControlProvider.GetComponent<IHudPanel>(Controls.HudControlIdentifier.NewsPanel).Visible = false;
 
             var targetPanel = _hudControlProvider.HudPanels.Single(x => IsPanelForRequestedState(x, newState));
-            var wasVisible = targetPanel.Visible;
 
-            // Always exclusive: never stack multiple HUD panels (resizable used to leave others open).
+            // Exclusive panels: show only the clicked tab. Do NOT toggle off on re-click —
+            // the big panel stays open unless the player uses Minimize.
             foreach (var panel in _hudControlProvider.HudPanels)
                 panel.Visible = false;
 
-            targetPanel.Visible = !wasVisible;
+            targetPanel.Visible = true;
 
-            if (targetPanel.Visible && _clientWindowSizeProvider.Resizable)
+            if (_clientWindowSizeProvider.Resizable)
                 targetPanel.DrawOrder = _hudControlProvider.HudPanels.Select(x => x.DrawOrder).Max() + 1;
 
             return targetPanel;

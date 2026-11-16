@@ -90,6 +90,7 @@ namespace EndlessClient.HUD.Controls
         private bool _hudChromeMinimized;
         private XNAButton _hudMinimizeButton;
         private XNAButton _hudRestoreButton;
+        private DraggableHudPanel _lastVisibleDockPanel;
 
         public HudControlsFactory(IHudButtonController hudButtonController,
                                   IHudPanelFactory hudPanelFactory,
@@ -549,6 +550,14 @@ namespace EndlessClient.HUD.Controls
             }
         }
 
+        private Vector2 GetHudRestoreButtonPosition()
+        {
+            // Sit just above the Friend List button (Width-48, Height-37), not on the chat line.
+            return new Vector2(
+                _clientWindowSizeRepository.Width - 48,
+                _clientWindowSizeRepository.Height - 58);
+        }
+
         private void ApplyDockPositionToChrome()
         {
             foreach (var panel in _dockPanels)
@@ -627,7 +636,7 @@ namespace EndlessClient.HUD.Controls
             var sheet = _nativeGraphicsManager.TextureFromResource(GFXTypes.PostLoginUI, 27, false);
             _hudRestoreButton = new XNAButton(
                 sheet,
-                new Vector2(_clientWindowSizeRepository.Width - 28, _clientWindowSizeRepository.Height - 40),
+                GetHudRestoreButtonPosition(),
                 new Rectangle(17, 260, 17, 15),
                 new Rectangle(17, 276, 17, 15))
             {
@@ -637,9 +646,7 @@ namespace EndlessClient.HUD.Controls
 
             _clientWindowSizeRepository.GameWindowSizeChanged += (_, _) =>
             {
-                _hudRestoreButton.DrawPosition = new Vector2(
-                    _clientWindowSizeRepository.Width - 28,
-                    _clientWindowSizeRepository.Height - 40);
+                _hudRestoreButton.DrawPosition = GetHudRestoreButtonPosition();
             };
 
             _hudRestoreButton.OnMouseDown += (_, _) =>
@@ -662,16 +669,28 @@ namespace EndlessClient.HUD.Controls
                 _hudMinimizeButton.Visible = !minimized && _clientWindowSizeRepository.Resizable;
 
             if (_hudRestoreButton != null)
+            {
                 _hudRestoreButton.Visible = minimized;
+                if (minimized)
+                    _hudRestoreButton.DrawPosition = GetHudRestoreButtonPosition();
+            }
 
             if (minimized)
             {
+                _lastVisibleDockPanel = _dockPanels.FirstOrDefault(p => p.Visible);
                 foreach (var panel in _dockPanels)
                     panel.Visible = false;
             }
             else
             {
                 ApplyDockPositionToChrome();
+                var panelToShow = _lastVisibleDockPanel ?? _dockPanels.FirstOrDefault();
+                if (panelToShow != null)
+                {
+                    foreach (var panel in _dockPanels)
+                        panel.Visible = false;
+                    panelToShow.Visible = true;
+                }
             }
         }
 

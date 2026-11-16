@@ -190,6 +190,9 @@ namespace EndlessClient.GameExecution
 
         protected override void Update(GameTime gameTime)
         {
+            // Catch maximize/restore even when MonoGame skips ClientSizeChanged.
+            _windowSizeRepository.MaintainFrame();
+
             // Force updates to wait every 12ms
             // Some game components rely on slower update times. 60FPS was the original, but 12ms factors nicely in 120ms "ticks"
             // See: https://github.com/ethanmoffat/EndlessClient/issues/199

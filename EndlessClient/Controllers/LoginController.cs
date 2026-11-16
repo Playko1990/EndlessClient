@@ -227,12 +227,11 @@ namespace EndlessClient.Controllers
                 gameLoadingDialog?.CloseDialog();
             }
 
+            var useResizable = _configurationProvider.InGameWidth != 0
+                               && _configurationProvider.InGameHeight != 0;
+
             await DispatcherGameComponent.InvokeAsync(() =>
             {
-                // Always enter resizable in-game when custom size is configured, build HUD,
-                // then fill the Windows working area (title bar + taskbar stay visible).
-                var useResizable = _configurationProvider.InGameWidth != 0
-                                   && _configurationProvider.InGameHeight != 0;
                 if (useResizable)
                     _clientWindowSizeRepository.Resizable = true;
 
@@ -242,13 +241,22 @@ namespace EndlessClient.Controllers
                                                   EOResourceID.LOADING_GAME_HINT_FIRST);
                 _firstTimePlayerActions.WarnFirstTimePlayers();
                 _mapChangedActions.ActiveCharacterEnterMapForLogin();
-
-                if (useResizable)
-                {
-                    _clientWindowSizeRepository.MaximizeWindowed();
-                    _clientWindowSizeRepository.SyncBackBufferWithWindow();
-                }
             });
+
+            if (useResizable)
+            {
+                // HUD/controls must exist first. Then fill the working area and retry a few
+                // times — MonoGame ApplyChanges routinely undoes the first maximize.
+                foreach (var delayMs in new[] { 50, 200, 500 })
+                {
+                    await Task.Delay(delayMs).ConfigureAwait(false);
+                    await DispatcherGameComponent.InvokeAsync(() =>
+                    {
+                        _clientWindowSizeRepository.MaximizeWindowed();
+                        _clientWindowSizeRepository.SyncBackBufferWithWindow();
+                    });
+                }
+            }
         }
 
         private void SetInitialStateAndShowError(NoDataSentException ex)

@@ -300,10 +300,15 @@ namespace EndlessClient.Rendering
                 _pendingMaximizeFrames--;
                 ApplyMaximizePass();
             }
+#if !LINUX && !OSX
             else if (_keepMaximized)
             {
-                ReassertMaximizedIfNeeded();
+                // User restored via the title bar — stop forcing maximize.
+                var form = TryGetForm();
+                if (form != null && form.WindowState == FormWindowState.Normal)
+                    _keepMaximized = false;
             }
+#endif
 
             if (!TryGetRealClientSize(out var clientW, out var clientH))
                 return;

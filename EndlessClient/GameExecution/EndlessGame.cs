@@ -126,11 +126,13 @@ namespace EndlessClient.GameExecution
 
             // Disable vsync then apply once. Avoid Width/Height setter thrash — those used to
             // ApplyChanges every time and re-enter GameWindowSizeChanged on startup.
+            // Never start exclusive/borderless fullscreen — keep OS min/max/close + taskbar.
             _graphicsDeviceManager.SynchronizeWithVerticalRetrace = false;
             _graphicsDeviceManager.IsFullScreen = false;
             _graphicsDeviceManager.PreferredBackBufferWidth = ClientWindowSizeRepository.DEFAULT_BACKBUFFER_WIDTH;
             _graphicsDeviceManager.PreferredBackBufferHeight = ClientWindowSizeRepository.DEFAULT_BACKBUFFER_HEIGHT;
             _graphicsDeviceManager.ApplyChanges();
+            Window.IsBorderless = false;
 
             _windowSizeRepository.GameWindowSizeChanged += (_, _) =>
             {

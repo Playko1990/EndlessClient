@@ -231,15 +231,10 @@ namespace EndlessClient.Controllers
             {
                 await DispatcherGameComponent.InvokeAsync(() =>
                 {
-                    // Enter the game filling the monitor (fullscreen-sized window), but keep
-                    // AllowUserResizing so the player can shrink the window afterward.
-                    var display = Microsoft.Xna.Framework.Graphics.GraphicsAdapter.DefaultAdapter.CurrentDisplayMode;
-                    var width = Math.Max(_configurationProvider.InGameWidth, display.Width);
-                    var height = Math.Max(_configurationProvider.InGameHeight, display.Height);
-
-                    _clientWindowSizeRepository.Width = width;
-                    _clientWindowSizeRepository.Height = height;
+                    // Maximize as a normal window: keep the Windows title bar (X / minimize /
+                    // restore) and leave the taskbar visible — not exclusive/borderless fullscreen.
                     _clientWindowSizeRepository.Resizable = true;
+                    _clientWindowSizeRepository.MaximizeWindowed();
                 });
             }
 

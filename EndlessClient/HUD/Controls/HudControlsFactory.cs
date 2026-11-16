@@ -670,26 +670,20 @@ namespace EndlessClient.HUD.Controls
             if (!_clientWindowSizeRepository.Resizable)
                 return;
 
-            var display = Microsoft.Xna.Framework.Graphics.GraphicsAdapter.DefaultAdapter.CurrentDisplayMode;
             var windowedW = Math.Max(ClientWindowSizeRepository.DEFAULT_BACKBUFFER_WIDTH,
                 _configurationProvider.InGameWidth > 0 ? _configurationProvider.InGameWidth : 1280);
             var windowedH = Math.Max(ClientWindowSizeRepository.DEFAULT_BACKBUFFER_HEIGHT,
                 _configurationProvider.InGameHeight > 0 ? _configurationProvider.InGameHeight : 720);
 
-            // If already near monitor size, shrink to InGame size; otherwise expand to fill the monitor.
-            var nearDisplay = _clientWindowSizeRepository.Width >= display.Width - 32
-                              && _clientWindowSizeRepository.Height >= display.Height - 32;
-
-            if (nearDisplay || _windowIsDisplaySized)
+            // Toggle between maximized-windowed (taskbar + title bar) and a smaller window.
+            if (_clientWindowSizeRepository.IsMaximizedWindowed || _windowIsDisplaySized)
             {
-                _clientWindowSizeRepository.Width = windowedW;
-                _clientWindowSizeRepository.Height = windowedH;
+                _clientWindowSizeRepository.RestoreWindowed(windowedW, windowedH);
                 _windowIsDisplaySized = false;
             }
             else
             {
-                _clientWindowSizeRepository.Width = Math.Max(windowedW, display.Width);
-                _clientWindowSizeRepository.Height = Math.Max(windowedH, display.Height);
+                _clientWindowSizeRepository.MaximizeWindowed();
                 _windowIsDisplaySized = true;
             }
 

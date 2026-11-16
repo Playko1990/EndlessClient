@@ -227,25 +227,26 @@ namespace EndlessClient.Controllers
                 gameLoadingDialog?.CloseDialog();
             }
 
-            if (_configurationProvider.InGameWidth != 0 && _configurationProvider.InGameHeight != 0)
-            {
-                await DispatcherGameComponent.InvokeAsync(() =>
-                {
-                    // Maximize as a normal window: keep the Windows title bar (X / minimize /
-                    // restore) and leave the taskbar visible — not exclusive/borderless fullscreen.
-                    _clientWindowSizeRepository.Resizable = true;
-                    _clientWindowSizeRepository.MaximizeWindowed();
-                });
-            }
-
             await DispatcherGameComponent.InvokeAsync(() =>
             {
+                // Enable resizing first, enter the game (HUD builds), THEN maximize so the
+                // backbuffer + HUD lay out against the real client size (avoids black void).
+                if (_configurationProvider.InGameWidth != 0 && _configurationProvider.InGameHeight != 0)
+                    _clientWindowSizeRepository.Resizable = true;
+
                 _gameStateActions.ChangeToState(GameStates.PlayingTheGame);
                 _chatTextBoxActions.FocusChatTextBox();
                 _statusLabelSetter.SetStatusLabel(EOResourceID.STATUS_LABEL_TYPE_WARNING,
                                                   EOResourceID.LOADING_GAME_HINT_FIRST);
                 _firstTimePlayerActions.WarnFirstTimePlayers();
                 _mapChangedActions.ActiveCharacterEnterMapForLogin();
+
+                if (_configurationProvider.InGameWidth != 0 && _configurationProvider.InGameHeight != 0)
+                {
+                    // Maximize as a normal window: title bar (X / min / max) + taskbar stay visible.
+                    _clientWindowSizeRepository.MaximizeWindowed();
+                    _clientWindowSizeRepository.SyncBackBufferWithWindow();
+                }
             });
         }
 

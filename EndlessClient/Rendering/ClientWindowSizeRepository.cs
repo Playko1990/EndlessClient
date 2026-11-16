@@ -168,16 +168,18 @@ namespace EndlessClient.Rendering
             {
                 // Maximized fills the working area: taskbar stays, title bar keeps X / min / max.
                 form.WindowState = FormWindowState.Maximized;
-                SyncBackBufferWithWindow();
+                // Form.ClientSize is current after maximize; GameWindow.ClientBounds can lag a
+                // frame and leave the backbuffer small (game stuck in the top-left black void).
+                ApplyBackBufferSize(form.ClientSize.Width, form.ClientSize.Height);
                 return;
             }
 #endif
 
             // Fallback (non-Windows): size to a typical working area, not raw DisplayMode.
             var display = GraphicsAdapter.DefaultAdapter.CurrentDisplayMode;
-            Width = Math.Max(DEFAULT_BACKBUFFER_WIDTH, display.Width - 16);
-            Height = Math.Max(DEFAULT_BACKBUFFER_HEIGHT, display.Height - 80);
-            SyncBackBufferWithWindow();
+            ApplyBackBufferSize(
+                Math.Max(DEFAULT_BACKBUFFER_WIDTH, display.Width - 16),
+                Math.Max(DEFAULT_BACKBUFFER_HEIGHT, display.Height - 80));
         }
 
         public void RestoreWindowed(int width, int height)
@@ -207,14 +209,12 @@ namespace EndlessClient.Rendering
             {
                 form.WindowState = FormWindowState.Normal;
                 form.ClientSize = new System.Drawing.Size(width, height);
-                SyncBackBufferWithWindow();
+                ApplyBackBufferSize(form.ClientSize.Width, form.ClientSize.Height);
                 return;
             }
 #endif
 
-            Width = width;
-            Height = height;
-            SyncBackBufferWithWindow();
+            ApplyBackBufferSize(width, height);
         }
 
         public void SyncBackBufferWithWindow()
@@ -227,40 +227,65 @@ namespace EndlessClient.Rendering
             if (window == null || gdm == null)
                 return;
 
-            _syncing = true;
-            try
-            {
-                int targetW;
-                int targetH;
+            int targetW;
+            int targetH;
 
-                if (!Resizable)
+            if (!Resizable)
+            {
+                // Pre-game / fixed mode must stay 640x480. Alt-tab can inflate ClientBounds
+                // while the backbuffer stays small — black bars + dead clicks.
+                targetW = DEFAULT_BACKBUFFER_WIDTH;
+                targetH = DEFAULT_BACKBUFFER_HEIGHT;
+            }
+            else
+            {
+#if !LINUX && !OSX
+                // Prefer WinForms client size — it tracks maximize/restore immediately.
+                var form = TryGetForm();
+                if (form != null && form.ClientSize.Width > 0 && form.ClientSize.Height > 0)
                 {
-                    // Pre-game / fixed mode must stay 640x480. Alt-tab can inflate ClientBounds
-                    // while the backbuffer stays small — black bars + dead clicks.
-                    targetW = DEFAULT_BACKBUFFER_WIDTH;
-                    targetH = DEFAULT_BACKBUFFER_HEIGHT;
+                    targetW = Math.Max(DEFAULT_BACKBUFFER_WIDTH, form.ClientSize.Width);
+                    targetH = Math.Max(DEFAULT_BACKBUFFER_HEIGHT, form.ClientSize.Height);
                 }
                 else
+#endif
                 {
                     targetW = Math.Max(DEFAULT_BACKBUFFER_WIDTH, window.ClientBounds.Width);
                     targetH = Math.Max(DEFAULT_BACKBUFFER_HEIGHT, window.ClientBounds.Height);
                 }
+            }
 
+            ApplyBackBufferSize(targetW, targetH);
+        }
+
+        private void ApplyBackBufferSize(int targetW, int targetH)
+        {
+            if (_syncing)
+                return;
+
+            var gdm = _graphicsDeviceRepository.GraphicsDeviceManager;
+            if (gdm == null)
+                return;
+
+            targetW = Math.Max(DEFAULT_BACKBUFFER_WIDTH, targetW);
+            targetH = Math.Max(DEFAULT_BACKBUFFER_HEIGHT, targetH);
+
+            _syncing = true;
+            try
+            {
                 var presentationMismatch = !PresentationMatches(targetW, targetH);
                 var preferredMismatch =
                     gdm.PreferredBackBufferWidth != targetW ||
                     gdm.PreferredBackBufferHeight != targetH;
-                var clientMismatch =
-                    window.ClientBounds.Width != targetW ||
-                    window.ClientBounds.Height != targetH;
 
-                if (!presentationMismatch && !preferredMismatch && (!clientMismatch || Resizable))
+                if (!presentationMismatch && !preferredMismatch)
                     return;
 
                 gdm.PreferredBackBufferWidth = targetW;
                 gdm.PreferredBackBufferHeight = targetH;
                 gdm.ApplyChanges();
 
+                // Always notify HUD/map render targets so they recreate at the new size.
                 foreach (var evnt in _resizeEvents)
                     evnt(this, EventArgs.Empty);
             }

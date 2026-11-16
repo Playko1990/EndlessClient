@@ -44,6 +44,10 @@ namespace EndlessClient.UIControls
                 _background = new Rectangle(22, 308, 560, 20);
                 _rightSide = new Rectangle(578, 308, 11, 20);
 
+                // Bottom chrome must stay pinned; clamping to window bounds caused a stray
+                // short bar segment that covered the chat-mode sword.
+                KeepInClientWindowBounds = false;
+
                 ApplyResizableLayout();
                 _clientWindowSizeProvider.GameWindowSizeChanged += (o, e) => ApplyResizableLayout();
             }
@@ -91,13 +95,22 @@ namespace EndlessClient.UIControls
         {
             if (_clientWindowSizeProvider.Resizable && _background != null)
             {
+                // Always draw from DrawArea (one bar only) — never a second Y via stale DrawPosition.
+                var area = DrawAreaWithParentOffset;
+                var texture = _nativeGraphicsManager.TextureFromResource(GFXTypes.PostLoginUI, 1, true);
+                var capTexture = _nativeGraphicsManager.TextureFromResource(GFXTypes.PostLoginUI, 1, false);
+
                 _spriteBatch.Begin(samplerState: SamplerState.LinearWrap);
-                _spriteBatch.Draw(_nativeGraphicsManager.TextureFromResource(GFXTypes.PostLoginUI, 1, true), DrawArea, _background, Color.White);
+                _spriteBatch.Draw(texture, area, _background, Color.White);
                 _spriteBatch.End();
 
                 _spriteBatch.Begin();
-                _spriteBatch.Draw(_nativeGraphicsManager.TextureFromResource(GFXTypes.PostLoginUI, 1, false), DrawPosition, _leftSide, Color.White);
-                _spriteBatch.Draw(_nativeGraphicsManager.TextureFromResource(GFXTypes.PostLoginUI, 1, false), new Vector2(DrawArea.X + DrawArea.Width - _rightSide.Value.Width, DrawPosition.Y), _rightSide, Color.White);
+                _spriteBatch.Draw(capTexture, area.Location.ToVector2(), _leftSide, Color.White);
+                _spriteBatch.Draw(
+                    capTexture,
+                    new Vector2(area.Right - _rightSide.Value.Width, area.Y),
+                    _rightSide,
+                    Color.White);
                 _spriteBatch.End();
             }
 
@@ -117,7 +130,7 @@ namespace EndlessClient.UIControls
 
         private void ApplyResizableLayout()
         {
-            // Match the status/bottom bar: edge-to-edge across the window.
+            // Match the status/bottom bar length: edge-to-edge. Sword sits above this row.
             DrawArea = new Rectangle(0, _clientWindowSizeProvider.Height - 40, _clientWindowSizeProvider.Width, 20);
             LeftPadding = ResizableLeftCapPad;
             MaxWidth = Math.Max(40, DrawArea.Width - ResizableLeftCapPad - ResizableRightIconReserve);

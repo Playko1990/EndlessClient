@@ -286,11 +286,20 @@ namespace EndlessClient.HUD.Controls
 
         private HudBackgroundFrame CreateHudBackground()
         {
-            return new HudBackgroundFrame(_nativeGraphicsManager, _graphicsDeviceProvider)
+            var frame = new HudBackgroundFrame(_nativeGraphicsManager, _graphicsDeviceProvider)
             {
                 DrawOrder = HUD_BASE_LAYER,
                 Visible = !_clientWindowSizeRepository.Resizable,
             };
+
+            // Keep classic frame off once the window is resizable so it cannot leave a
+            // stray chat strip covering the chat-mode sword.
+            _clientWindowSizeRepository.GameWindowSizeChanged += (_, _) =>
+            {
+                frame.Visible = !_clientWindowSizeRepository.Resizable;
+            };
+
+            return frame;
         }
 
         private IXNAButton CreateStateChangeButton(InGameStates whichState)
@@ -774,7 +783,8 @@ namespace EndlessClient.HUD.Controls
         {
             return new ChatModePictureBox(_nativeGraphicsManager, _clientWindowSizeRepository, _chatModeCalculator, _hudControlProvider)
             {
-                DrawOrder = HUD_CONTROL_LAYER + 1
+                // Above chat bar chrome so the sword is never covered by a stray bar segment.
+                DrawOrder = HUD_CONTROL_LAYER + 25
             };
         }
 

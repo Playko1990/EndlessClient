@@ -14,6 +14,7 @@ namespace EndlessClient.UIControls
     {
         private readonly IChatModeCalculator _chatModeCalculator;
         private readonly IHudControlProvider _hudControlProvider;
+        private readonly IClientWindowSizeProvider _clientWindowSizeProvider;
 
         public enum ChatMode
         {
@@ -37,26 +38,25 @@ namespace EndlessClient.UIControls
         {
             _chatModeCalculator = chatModeCalculator;
             _hudControlProvider = hudControlProvider;
+            _clientWindowSizeProvider = clientWindowSizeProvider;
 
             _lastChat = "";
             _endMuteTime = Option.None<DateTime>();
 
             Texture = nativeGraphicsManager.TextureFromResource(GFXTypes.PostLoginUI, 31);
 
-            DrawArea = new Rectangle(16, 309, Texture.Width, Texture.Height / 8 - 2);
-            SourceRectangle = new Rectangle(0, 0, Texture.Width, Texture.Height / 8 - 2);
+            var iconHeight = Texture.Height / 8 - 2;
+            SourceRectangle = new Rectangle(0, 0, Texture.Width, iconHeight);
 
             if (clientWindowSizeProvider.Resizable)
             {
-                // Sit just above the full-width chat bar (chat row is Height-40).
-                void PlaceAboveChatBar()
-                {
-                    var iconHeight = Texture.Height / 8 - 2;
-                    DrawPosition = new Vector2(2, clientWindowSizeProvider.Height - 40 - iconHeight - 2);
-                }
-
+                KeepInClientWindowBounds = false;
                 PlaceAboveChatBar();
                 clientWindowSizeProvider.GameWindowSizeChanged += (_, _) => PlaceAboveChatBar();
+            }
+            else
+            {
+                DrawArea = new Rectangle(16, 309, Texture.Width, iconHeight);
             }
         }
 
@@ -88,6 +88,13 @@ namespace EndlessClient.UIControls
                 });
 
             base.OnUpdateControl(gameTime);
+        }
+
+        private void PlaceAboveChatBar()
+        {
+            var iconHeight = Texture.Height / 8 - 2;
+            // Clear of the single chat bar at Height-40; high enough that no chrome covers it.
+            DrawArea = new Rectangle(4, _clientWindowSizeProvider.Height - 40 - iconHeight - 4, Texture.Width, iconHeight);
         }
 
         private bool AtLeastOneCharTypedOrDeleted()

@@ -147,6 +147,11 @@ namespace EndlessClient.GameExecution
                     _windowSizeRepository.Height = ClientWindowSizeRepository.DEFAULT_BACKBUFFER_HEIGHT;
             };
 
+            // Alt-tab / minimize can desync ClientBounds from the backbuffer (game stuck in a
+            // corner with black bars, clicks miss UI). Resync whenever we regain focus.
+            Activated += (_, _) => _windowSizeRepository.SyncBackBufferWithWindow();
+            Window.ClientSizeChanged += (_, _) => _windowSizeRepository.SyncBackBufferWithWindow();
+
             Exiting += (_, _) => _mfxPlayer.StopBackgroundMusic();
         }
 

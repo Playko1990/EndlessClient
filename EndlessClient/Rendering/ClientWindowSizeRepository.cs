@@ -22,6 +22,11 @@ namespace EndlessClient.Rendering
         new int Height { get; set; }
 
         new bool Resizable { get; set; }
+
+        /// <summary>
+        /// Force the backbuffer (and fixed-size window) back in sync after alt-tab / minimize.
+        /// </summary>
+        void SyncBackBufferWithWindow();
     }
 
     [AutoMappedType(IsSingleton = true)]
@@ -34,6 +39,7 @@ namespace EndlessClient.Rendering
         private readonly IGraphicsDeviceRepository _graphicsDeviceRepository;
 
         private readonly List<EventHandler<EventArgs>> _resizeEvents;
+        private bool _syncing;
 
         public int Width
         {
@@ -46,7 +52,8 @@ namespace EndlessClient.Rendering
                 var gdm = _graphicsDeviceRepository.GraphicsDeviceManager;
                 // No-op when already set — ApplyChanges every frame (or on every ClientSizeChanged)
                 // thrash-resizes the window and looks like the client bouncing on startup.
-                if (gdm.PreferredBackBufferWidth == value)
+                if (gdm.PreferredBackBufferWidth == value
+                    && PresentationMatches(value, gdm.PreferredBackBufferHeight))
                     return;
 
                 gdm.PreferredBackBufferWidth = value;
@@ -65,7 +72,8 @@ namespace EndlessClient.Rendering
                     value = DEFAULT_BACKBUFFER_HEIGHT;
 
                 var gdm = _graphicsDeviceRepository.GraphicsDeviceManager;
-                if (gdm.PreferredBackBufferHeight == value)
+                if (gdm.PreferredBackBufferHeight == value
+                    && PresentationMatches(gdm.PreferredBackBufferWidth, value))
                     return;
 
                 gdm.PreferredBackBufferHeight = value;
@@ -99,6 +107,69 @@ namespace EndlessClient.Rendering
             _gameWindowRepository = gameWindowRepository;
             _graphicsDeviceRepository = graphicsDeviceRepository;
             _resizeEvents = new List<EventHandler<EventArgs>>();
+        }
+
+        public void SyncBackBufferWithWindow()
+        {
+            if (_syncing)
+                return;
+
+            var window = _gameWindowRepository.Window;
+            var gdm = _graphicsDeviceRepository.GraphicsDeviceManager;
+            if (window == null || gdm == null)
+                return;
+
+            _syncing = true;
+            try
+            {
+                int targetW;
+                int targetH;
+
+                if (!Resizable)
+                {
+                    // Pre-game / fixed mode must stay 640x480. Alt-tab can inflate ClientBounds
+                    // while the backbuffer stays small — black bars + dead clicks.
+                    targetW = DEFAULT_BACKBUFFER_WIDTH;
+                    targetH = DEFAULT_BACKBUFFER_HEIGHT;
+                }
+                else
+                {
+                    targetW = Math.Max(DEFAULT_BACKBUFFER_WIDTH, window.ClientBounds.Width);
+                    targetH = Math.Max(DEFAULT_BACKBUFFER_HEIGHT, window.ClientBounds.Height);
+                }
+
+                var presentationMismatch = !PresentationMatches(targetW, targetH);
+                var preferredMismatch =
+                    gdm.PreferredBackBufferWidth != targetW ||
+                    gdm.PreferredBackBufferHeight != targetH;
+                var clientMismatch =
+                    window.ClientBounds.Width != targetW ||
+                    window.ClientBounds.Height != targetH;
+
+                if (!presentationMismatch && !preferredMismatch && (!clientMismatch || Resizable))
+                    return;
+
+                gdm.PreferredBackBufferWidth = targetW;
+                gdm.PreferredBackBufferHeight = targetH;
+                gdm.ApplyChanges();
+
+                foreach (var evnt in _resizeEvents)
+                    evnt(this, EventArgs.Empty);
+            }
+            finally
+            {
+                _syncing = false;
+            }
+        }
+
+        private bool PresentationMatches(int width, int height)
+        {
+            var gd = _graphicsDeviceRepository.GraphicsDevice;
+            if (gd == null)
+                return true;
+
+            return gd.PresentationParameters.BackBufferWidth == width
+                && gd.PresentationParameters.BackBufferHeight == height;
         }
 
         public void ResetState()

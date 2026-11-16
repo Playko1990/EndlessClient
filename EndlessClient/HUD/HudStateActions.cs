@@ -45,10 +45,10 @@ namespace EndlessClient.HUD
 
             var targetPanel = _hudControlProvider.HudPanels.Single(x => IsPanelForRequestedState(x, newState));
 
-            // Exclusive panels: show only the clicked tab. Do NOT toggle off on re-click —
-            // the big panel stays open unless the player uses Minimize.
+            // Exclusive panels: always show the clicked tab.
+            // Re-clicking the same icon must NOT hide the big panel — only Minimize does that.
             foreach (var panel in _hudControlProvider.HudPanels)
-                panel.Visible = false;
+                panel.Visible = ReferenceEquals(panel, targetPanel);
 
             targetPanel.Visible = true;
 

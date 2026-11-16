@@ -24,6 +24,10 @@ namespace EndlessClient.UIControls
 
         private readonly Rectangle? _leftSide, _background, _rightSide;
 
+        // Friend/ignore icons sit on the right end of the chat row in resizable mode.
+        private const int ResizableRightIconReserve = 52;
+        private const int ResizableLeftCapPad = 12;
+
         public ChatTextBox(INativeGraphicsManager nativeGraphicsManager,
                            IClientWindowSizeProvider clientWindowSizeProvider,
                            IContentProvider contentManagerProvider)
@@ -40,18 +44,8 @@ namespace EndlessClient.UIControls
                 _background = new Rectangle(22, 308, 560, 20);
                 _rightSide = new Rectangle(578, 308, 11, 20);
 
-                DrawArea = new Rectangle(124, _clientWindowSizeProvider.Height - 40, _clientWindowSizeProvider.Width - 116, 20);
-
-                // original X coordinate accounting for the width of chat mode picture
-                LeftPadding = 124;
-
-                _clientWindowSizeProvider.GameWindowSizeChanged += (o, e) =>
-                {
-                    // status icons:      124 width
-                    // friend/ignore:     40 width
-                    DrawArea = new Rectangle(124, _clientWindowSizeProvider.Height - 40, _clientWindowSizeProvider.Width - 116, 20);
-                    MaxWidth = DrawArea.Width - 184;
-                };
+                ApplyResizableLayout();
+                _clientWindowSizeProvider.GameWindowSizeChanged += (o, e) => ApplyResizableLayout();
             }
             else
             {
@@ -68,7 +62,9 @@ namespace EndlessClient.UIControls
 
             // This must be done after Initialize because MaxWidth uses the sprite font.
             // SpriteFont is loaded in LoadContent which is called by Initialize.
-            MaxWidth = _clientWindowSizeProvider.Resizable ? DrawArea.Width - 184 : 440;
+            MaxWidth = _clientWindowSizeProvider.Resizable
+                ? Math.Max(40, DrawArea.Width - ResizableLeftCapPad - ResizableRightIconReserve)
+                : 440;
         }
 
         public void SetMuted(DateTime endMuteTime)
@@ -117,6 +113,14 @@ namespace EndlessClient.UIControls
                 base.HandleTextInput(eventArgs);
 
             return true;
+        }
+
+        private void ApplyResizableLayout()
+        {
+            // Match the status/bottom bar: edge-to-edge across the window.
+            DrawArea = new Rectangle(0, _clientWindowSizeProvider.Height - 40, _clientWindowSizeProvider.Width, 20);
+            LeftPadding = ResizableLeftCapPad;
+            MaxWidth = Math.Max(40, DrawArea.Width - ResizableLeftCapPad - ResizableRightIconReserve);
         }
 
         private bool IsSpecialInput(Keys k, KeyboardModifiers modifiers)

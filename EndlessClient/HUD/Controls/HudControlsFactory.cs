@@ -417,6 +417,10 @@ namespace EndlessClient.HUD.Controls
 
         private void DoHudStateChangeClick(InGameStates whichState)
         {
+            // Tab clicks always open/switch panels — never leave the chrome minimized.
+            if (_hudChromeMinimized)
+                SetHudChromeMinimized(false);
+
             switch (whichState)
             {
                 case InGameStates.Inventory: _hudButtonController.ClickInventory(); break;
@@ -552,7 +556,7 @@ namespace EndlessClient.HUD.Controls
 
         private Vector2 GetHudRestoreButtonPosition()
         {
-            // Sit just above the Friend List button (Width-48, Height-37), not on the chat line.
+            // Just above the chat bar on the right (chat row is Height-40), above Add Friend.
             return new Vector2(
                 _clientWindowSizeRepository.Width - 48,
                 _clientWindowSizeRepository.Height - 58);

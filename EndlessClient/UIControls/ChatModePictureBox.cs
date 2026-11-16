@@ -48,8 +48,15 @@ namespace EndlessClient.UIControls
 
             if (clientWindowSizeProvider.Resizable)
             {
-                DrawPosition = new Vector2(122, clientWindowSizeProvider.Height - 39);
-                clientWindowSizeProvider.GameWindowSizeChanged += (_, _) => DrawPosition = new Vector2(122, clientWindowSizeProvider.Height - 39);
+                // Sit just above the full-width chat bar (chat row is Height-40).
+                void PlaceAboveChatBar()
+                {
+                    var iconHeight = Texture.Height / 8 - 2;
+                    DrawPosition = new Vector2(2, clientWindowSizeProvider.Height - 40 - iconHeight - 2);
+                }
+
+                PlaceAboveChatBar();
+                clientWindowSizeProvider.GameWindowSizeChanged += (_, _) => PlaceAboveChatBar();
             }
         }
 

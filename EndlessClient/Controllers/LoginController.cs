@@ -229,16 +229,16 @@ namespace EndlessClient.Controllers
 
             if (_configurationProvider.InGameWidth != 0 && _configurationProvider.InGameHeight != 0)
             {
-                var layoutConfig = new IniReader(Constants.PanelLayoutFile);
-
-                int width = _configurationProvider.InGameWidth;
-                int height = _configurationProvider.InGameHeight;
-                var loaded = layoutConfig.Load() && layoutConfig.GetValue("DISPLAY", "Width", out width) && layoutConfig.GetValue("DISPLAY", "Height", out height);
-
                 await DispatcherGameComponent.InvokeAsync(() =>
                 {
-                    _clientWindowSizeRepository.Width = loaded ? width : _configurationProvider.InGameWidth;
-                    _clientWindowSizeRepository.Height = loaded ? height : _configurationProvider.InGameHeight;
+                    // Enter the game filling the monitor (fullscreen-sized window), but keep
+                    // AllowUserResizing so the player can shrink the window afterward.
+                    var display = Microsoft.Xna.Framework.Graphics.GraphicsAdapter.DefaultAdapter.CurrentDisplayMode;
+                    var width = Math.Max(_configurationProvider.InGameWidth, display.Width);
+                    var height = Math.Max(_configurationProvider.InGameHeight, display.Height);
+
+                    _clientWindowSizeRepository.Width = width;
+                    _clientWindowSizeRepository.Height = height;
                     _clientWindowSizeRepository.Resizable = true;
                 });
             }

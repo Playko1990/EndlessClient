@@ -5,10 +5,7 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
 using EndlessClient.Audio;
-using EndlessClient.Controllers;
 using EndlessClient.ControlSets;
-using EndlessClient.Dialogs;
-using EndlessClient.Dialogs.Factories;
 using EndlessClient.HUD.Controls;
 using EndlessClient.HUD.Spells;
 using EndlessClient.Rendering;
@@ -37,8 +34,6 @@ namespace EndlessClient.HUD.Panels
         public const int SpellRows = 4;
         public const int SpellRowLength = 8;
 
-        private readonly ITrainingController _trainingController;
-        private readonly IEOMessageBoxFactory _messageBoxFactory;
         private readonly IStatusLabelSetter _statusLabelSetter;
         private readonly IPlayerInfoProvider _playerInfoProvider;
         private readonly ICharacterProvider _characterProvider;
@@ -48,6 +43,7 @@ namespace EndlessClient.HUD.Panels
         private readonly IHudControlProvider _hudControlProvider;
         private readonly ISfxPlayer _sfxPlayer;
         private readonly IConfigurationProvider _configProvider;
+        private readonly ISkillTreeActions _skillTreeActions;
 
         private readonly Dictionary<int, int> _spellSlotMap;
         private readonly List<SpellPanelItem> _childItems;
@@ -56,22 +52,18 @@ namespace EndlessClient.HUD.Panels
         private Rectangle _functionKeyRow1Source, _functionKeyRow2Source;
 
         private readonly XNALabel _selectedSpellName, _selectedSpellLevel, _totalSkillPoints;
-        private readonly XNAButton _levelUpButton1, _levelUpButton2;
         private readonly ScrollBar _scrollBar;
 
         private HashSet<InventorySpell> _cachedSpells;
-        private CharacterStats _cachedStats;
+        private int _cachedAvailableSkillPoints = int.MinValue;
         private Option<int> _cachedSelectedSpell;
 
-        private bool _confirmedTraining;
         private int _lastScrollOffset;
         private Texture2D _activeSpellIcon;
 
         public INativeGraphicsManager NativeGraphicsManager { get; }
 
         public ActiveSpellsPanel(INativeGraphicsManager nativeGraphicsManager,
-                                 ITrainingController trainingController,
-                                 IEOMessageBoxFactory messageBoxFactory,
                                  IStatusLabelSetter statusLabelSetter,
                                  IPlayerInfoProvider playerInfoProvider,
                                  ICharacterProvider characterProvider,
@@ -81,12 +73,11 @@ namespace EndlessClient.HUD.Panels
                                  IHudControlProvider hudControlProvider,
                                  ISfxPlayer sfxPlayer,
                                  IConfigurationProvider configProvider,
+                                 ISkillTreeActions skillTreeActions,
                                  IClientWindowSizeProvider clientWindowSizeProvider)
             : base(clientWindowSizeProvider.Resizable)
         {
             NativeGraphicsManager = nativeGraphicsManager;
-            _trainingController = trainingController;
-            _messageBoxFactory = messageBoxFactory;
             _statusLabelSetter = statusLabelSetter;
             _playerInfoProvider = playerInfoProvider;
             _characterProvider = characterProvider;
@@ -96,6 +87,7 @@ namespace EndlessClient.HUD.Panels
             _hudControlProvider = hudControlProvider;
             _sfxPlayer = sfxPlayer;
             _configProvider = configProvider;
+            _skillTreeActions = skillTreeActions;
 
             _spellSlotMap = GetSpellSlotMap(_playerInfoProvider.LoggedInAccountName, _characterProvider.MainCharacter.Name, _configProvider.Host);
             _childItems = new List<SpellPanelItem>();
@@ -126,30 +118,16 @@ namespace EndlessClient.HUD.Panels
                 ForeColor = ColorConstants.LightGrayText,
             };
 
+            _skillTreeActions.EnsureLoaded();
             _totalSkillPoints = new XNALabel(Constants.FontSize08pt5)
             {
                 DrawArea = new Rectangle(32, 96, 42, 15),
                 Visible = true,
-                Text = _characterProvider.MainCharacter.Stats[CharacterStat.SkillPoints].ToString(),
+                Text = _skillTreeActions.GetAvailablePoints().ToString(),
                 AutoSize = false,
                 TextAlign = LabelAlignment.MiddleLeft,
                 ForeColor = ColorConstants.LightGrayText,
             };
-
-            var buttonSheet = NativeGraphicsManager.TextureFromResource(GFXTypes.PostLoginUI, 27, true);
-            _levelUpButton1 = new XNAButton(buttonSheet, new Vector2(71, 77), new Rectangle(215, 386, 19, 15), new Rectangle(234, 386, 19, 15))
-            {
-                FlashSpeed = 500,
-                Visible = false
-            };
-            _levelUpButton1.OnMouseDown += LevelUp_Click;
-
-            _levelUpButton2 = new XNAButton(buttonSheet, new Vector2(71, 95), new Rectangle(215, 386, 19, 15), new Rectangle(234, 386, 19, 15))
-            {
-                FlashSpeed = 500,
-                Visible = false
-            };
-            _levelUpButton2.OnMouseDown += LevelUp_Click;
 
             _scrollBar = new ScrollBar(new Vector2(467, 2), new Vector2(16, 115), ScrollBarColors.LightOnMed, NativeGraphicsManager)
             {
@@ -176,12 +154,6 @@ namespace EndlessClient.HUD.Panels
 
             _totalSkillPoints.Initialize();
             _totalSkillPoints.SetParentControl(this);
-
-            _levelUpButton1.Initialize();
-            _levelUpButton1.SetParentControl(this);
-
-            _levelUpButton2.Initialize();
-            _levelUpButton2.SetParentControl(this);
 
             _scrollBar.Initialize();
             _scrollBar.SetParentControl(this);
@@ -280,14 +252,12 @@ namespace EndlessClient.HUD.Panels
                 UpdateSpellItemsForScroll();
             }
 
-            if (_cachedStats != _characterProvider.MainCharacter.Stats && _activeSpellIcon != null)
+            _skillTreeActions.EnsureLoaded();
+            var availableSkillPoints = _skillTreeActions.GetAvailablePoints();
+            if (availableSkillPoints != _cachedAvailableSkillPoints)
             {
-                _cachedStats = _characterProvider.MainCharacter.Stats;
-                var skillPoints = _cachedStats[CharacterStat.SkillPoints];
-                _totalSkillPoints.Text = skillPoints.ToString();
-
-                _levelUpButton1.Visible = skillPoints > 0;
-                _levelUpButton2.Visible = skillPoints > 0;
+                _cachedAvailableSkillPoints = availableSkillPoints;
+                _totalSkillPoints.Text = availableSkillPoints.ToString();
             }
 
             _cachedSelectedSpell.Match(
@@ -365,32 +335,6 @@ namespace EndlessClient.HUD.Panels
             _spriteBatch.Draw(_activeSpellIcon, dstRect, srcRect, Color.White);
         }
 
-        private void LevelUp_Click(object sender, EventArgs args)
-        {
-            if (!_confirmedTraining)
-            {
-                //apparently this is NOT stored in the edf files...
-                //NOTE: copy-pasted from EOCharacterStats button event handler. Should probably be in some shared function somewhere.
-                var dialog = _messageBoxFactory.CreateMessageBox("Do you want to train?",
-                    "Skill training",
-                    EODialogButtons.OkCancel);
-                dialog.DialogClosing += (_, e) =>
-                {
-                    if (e.Result == XNADialogResult.OK)
-                        _confirmedTraining = true;
-                };
-                dialog.ShowDialog();
-            }
-            else
-            {
-                _cachedSelectedSpell.MatchSome(slot =>
-                {
-                    _childItems.SingleOrNone(x => x.Slot == slot)
-                        .MatchSome(x => _trainingController.AddSkillPoint(x.Data.ID));
-                });
-            }
-        }
-
         private void SetSelectedSpell(int slot)
         {
             _childItems.OfType<SpellPanelItem>().SingleOrNone(x => x.Slot == slot)
@@ -404,8 +348,6 @@ namespace EndlessClient.HUD.Panels
                     _selectedSpellName.Visible = true;
 
                     _selectedSpellLevel.Text = spell.InventorySpell.Level.ToString();
-
-                    _levelUpButton1.Visible = _levelUpButton2.Visible = _characterProvider.MainCharacter.Stats[CharacterStat.SkillPoints] > 0;
                 });
         }
 
@@ -417,8 +359,6 @@ namespace EndlessClient.HUD.Panels
             _selectedSpellName.Visible = false;
 
             _selectedSpellLevel.Text = "0";
-
-            _levelUpButton1.Visible = _levelUpButton2.Visible = false;
         }
 
         private void SetSpellStatusLabelHover(object sender, MouseStateExtended e)

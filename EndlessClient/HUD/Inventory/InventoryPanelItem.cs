@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using EndlessClient.Audio;
 using EndlessClient.Dialogs;
 using EndlessClient.HUD.Controls;
@@ -19,15 +20,21 @@ namespace EndlessClient.HUD.Inventory
 {
     public class InventoryPanelItem : DraggablePanelItem<EIFRecord>
     {
+        private const int MaxStatLines = 12;
+        private const int StatLineHeight = 12;
+
         private readonly IActiveDialogProvider _activeDialogProvider;
         private readonly ISfxPlayer _sfxPlayer;
+        private readonly IItemStatCompareService _itemStatCompareService;
         private readonly Texture2D _itemGraphic;
         private readonly Texture2D _highlightBackground;
+        private readonly Texture2D _tooltipBackground;
         private readonly XNALabel _nameLabel;
+        private readonly List<XNALabel> _statLabels = new List<XNALabel>();
 
         private int _slot;
-
         private Option<Vector2> _highlightDrawPosition;
+        private bool _tooltipVisible;
 
         public int Slot
         {
@@ -66,6 +73,7 @@ namespace EndlessClient.HUD.Inventory
                                   InventoryPanel inventoryPanel,
                                   IActiveDialogProvider activeDialogProvider,
                                   ISfxPlayer sfxPlayer,
+                                  IItemStatCompareService itemStatCompareService,
                                   int slot,
                                   InventoryItem inventoryItem,
                                   EIFRecord data)
@@ -73,6 +81,7 @@ namespace EndlessClient.HUD.Inventory
         {
             _activeDialogProvider = activeDialogProvider;
             _sfxPlayer = sfxPlayer;
+            _itemStatCompareService = itemStatCompareService;
 
             Slot = slot;
             InventoryItem = inventoryItem;
@@ -81,28 +90,45 @@ namespace EndlessClient.HUD.Inventory
             _itemGraphic = inventoryPanel.NativeGraphicsManager.TextureFromResource(GFXTypes.Items, 2 * data.Graphic, transparent: true);
             _highlightBackground = new Texture2D(Game.GraphicsDevice, 1, 1);
             _highlightBackground.SetData(new[] { Color.FromNonPremultiplied(200, 200, 200, 60) });
+            _tooltipBackground = new Texture2D(Game.GraphicsDevice, 1, 1);
+            _tooltipBackground.SetData(new[] { Color.FromNonPremultiplied(20, 20, 20, 200) });
 
             _nameLabel = new XNALabel(Constants.FontSize08)
             {
                 Visible = false,
                 AutoSize = false,
-                TextAlign = LabelAlignment.MiddleCenter,
+                TextAlign = LabelAlignment.MiddleLeft,
                 ForeColor = itemNameColorService.GetColorForInventoryDisplay(Data),
-                BackColor = Color.FromNonPremultiplied(30, 30, 30, 160),
+                BackColor = Color.Transparent,
                 Text = string.Empty
             };
 
-            OnMouseEnter += (_, _) => _nameLabel.Visible = _parentContainer.NoItemsDragging() && _activeDialogProvider.PaperdollDialog.Match(d => d.NoItemsDragging(), () => true);
-            OnMouseOver += InventoryPanelItem_OnMouseOver;
-            OnMouseLeave += (_, _) =>
+            for (int i = 0; i < MaxStatLines; i++)
             {
-                _nameLabel.Visible = false;
-                _highlightDrawPosition = Option.None<Vector2>();
+                _statLabels.Add(new XNALabel(Constants.FontSize08)
+                {
+                    Visible = false,
+                    AutoSize = false,
+                    TextAlign = LabelAlignment.MiddleLeft,
+                    ForeColor = Color.White,
+                    BackColor = Color.Transparent,
+                    Text = string.Empty
+                });
+            }
+
+            OnMouseEnter += (_, _) =>
+            {
+                if (!_parentContainer.NoItemsDragging() || !_activeDialogProvider.PaperdollDialog.Match(d => d.NoItemsDragging(), () => true))
+                    return;
+
+                ShowTooltip();
             };
+            OnMouseOver += InventoryPanelItem_OnMouseOver;
+            OnMouseLeave += (_, _) => HideTooltip();
 
             DraggingStarted += (_, _) =>
             {
-                _nameLabel.Visible = false;
+                HideTooltip();
                 _sfxPlayer.PlaySfx(SoundEffectID.InventoryPickup);
             };
 
@@ -123,10 +149,12 @@ namespace EndlessClient.HUD.Inventory
             _nameLabel.Initialize();
             _nameLabel.SetParentControl(_parentContainer);
             _nameLabel.ResizeBasedOnText(16, 9);
-            //_nameLabel.DrawOrderChanged += (_, e) =>
-            //{
-            //    _nameLabel.DrawOrder = _parentContainer.DrawOrder + 200
-            //};
+
+            foreach (var label in _statLabels)
+            {
+                label.Initialize();
+                label.SetParentControl(_parentContainer);
+            }
 
             base.Initialize();
         }
@@ -148,6 +176,12 @@ namespace EndlessClient.HUD.Inventory
             else
             {
                 _spriteBatch.Draw(_itemGraphic, DrawPositionWithParentOffset, Color.FromNonPremultiplied(255, 255, 255, 255));
+            }
+
+            if (_tooltipVisible)
+            {
+                var tooltipArea = GetTooltipBackgroundArea();
+                _spriteBatch.Draw(_tooltipBackground, tooltipArea, Color.White);
             }
 
             _spriteBatch.End();
@@ -181,10 +215,70 @@ namespace EndlessClient.HUD.Inventory
             if (disposing)
             {
                 _nameLabel.Dispose();
+                foreach (var label in _statLabels)
+                    label.Dispose();
                 _highlightBackground.Dispose();
+                _tooltipBackground.Dispose();
             }
 
             base.Dispose(disposing);
+        }
+
+        private void ShowTooltip()
+        {
+            var lines = _itemStatCompareService.GetInventoryHoverLines(Data);
+            _nameLabel.Visible = true;
+            _tooltipVisible = true;
+
+            for (int i = 0; i < _statLabels.Count; i++)
+            {
+                if (i < lines.Count)
+                {
+                    _statLabels[i].Text = lines[i].Text;
+                    _statLabels[i].ForeColor = lines[i].Color;
+                    _statLabels[i].Visible = true;
+                    _statLabels[i].ResizeBasedOnText(16, 9);
+                }
+                else
+                {
+                    _statLabels[i].Visible = false;
+                    _statLabels[i].Text = string.Empty;
+                }
+            }
+
+            UpdateNameLabelPosition();
+        }
+
+        private void HideTooltip()
+        {
+            _nameLabel.Visible = false;
+            _tooltipVisible = false;
+            _highlightDrawPosition = Option.None<Vector2>();
+
+            foreach (var label in _statLabels)
+            {
+                label.Visible = false;
+            }
+        }
+
+        private Rectangle GetTooltipBackgroundArea()
+        {
+            var visibleStats = 0;
+            var maxWidth = _nameLabel.DrawArea.Width;
+
+            foreach (var label in _statLabels)
+            {
+                if (!label.Visible)
+                    continue;
+
+                visibleStats++;
+                if (label.DrawArea.Width > maxWidth)
+                    maxWidth = label.DrawArea.Width;
+            }
+
+            var height = 16 + visibleStats * StatLineHeight + 6;
+            var pos = _nameLabel.DrawPositionWithParentOffset;
+            return new Rectangle((int)pos.X - 3, (int)pos.Y - 2, maxWidth + 10, height);
         }
 
         private void UpdateNameLabelPosition()
@@ -192,21 +286,41 @@ namespace EndlessClient.HUD.Inventory
             if (_nameLabel == null)
                 return;
 
-            // the name label is parented to the inventory panel so that all name labels draw over all items (see draw orders below)
-            // the actual position of the name label needs to be set to this control's draw position
+            // the name label is parented to the inventory panel so that all name labels draw over all items
             var actualPosition = DrawPosition;
 
-            if (actualPosition.X + _nameLabel.DrawAreaWithParentOffset.Width + DrawArea.Width > GridArea.Width)
+            var tooltipWidth = Math.Max(_nameLabel.DrawArea.Width, GetVisibleStatWidth());
+            if (actualPosition.X + tooltipWidth + DrawArea.Width > GridArea.Width)
             {
-                _nameLabel.DrawPosition = new Vector2(actualPosition.X - _nameLabel.DrawArea.Width, actualPosition.Y);
+                _nameLabel.DrawPosition = new Vector2(actualPosition.X - tooltipWidth - 4, actualPosition.Y);
             }
             else
             {
-                _nameLabel.DrawPosition = new Vector2(actualPosition.X + DrawArea.Width, actualPosition.Y);
+                _nameLabel.DrawPosition = new Vector2(actualPosition.X + DrawArea.Width + 4, actualPosition.Y);
             }
 
             DrawOrder = _parentContainer.DrawOrder + 2;
             _nameLabel.DrawOrder = _parentContainer.DrawOrder + 200;
+
+            var lineIndex = 0;
+            foreach (var label in _statLabels)
+            {
+                label.DrawPosition = new Vector2(_nameLabel.DrawPosition.X, _nameLabel.DrawPosition.Y + 14 + lineIndex * StatLineHeight);
+                label.DrawOrder = _parentContainer.DrawOrder + 201;
+                if (label.Visible)
+                    lineIndex++;
+            }
+        }
+
+        private int GetVisibleStatWidth()
+        {
+            var width = 0;
+            foreach (var label in _statLabels)
+            {
+                if (label.Visible && label.DrawArea.Width > width)
+                    width = label.DrawArea.Width;
+            }
+            return width;
         }
 
         protected override void OnDraggingFinished(DragCompletedEventArgs<EIFRecord> args)
@@ -223,7 +337,7 @@ namespace EndlessClient.HUD.Inventory
             else
                 DrawPosition = GetPosition(Slot);
 
-            _nameLabel.Visible = false;
+            HideTooltip();
             UpdateNameLabelPosition();
         }
 

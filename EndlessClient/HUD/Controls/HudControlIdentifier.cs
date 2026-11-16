@@ -56,6 +56,7 @@ namespace EndlessClient.HUD.Controls
         TPStatusBar,
         SPStatusBar,
         TNLStatusBar,
+        BossHealthBar,
 
         //mid stuff
         ChatModePictureBox,
@@ -63,6 +64,13 @@ namespace EndlessClient.HUD.Controls
 
         FriendList,
         IgnoreList,
+
+        // HUD chrome (resizable dock)
+        HudMinimizeButton,
+        HudRestoreButton,
+
+        // Top-right: shrink/expand the game window after fullscreen login
+        WindowSizeButton,
 
         //lower stuff
         StatusLabel,

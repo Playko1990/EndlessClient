@@ -83,7 +83,8 @@ namespace EndlessClient.ControlSets
             {
                 Texture = _loginBackgroundTexture,
                 DrawArea = new Rectangle(266, 291, _loginBackgroundTexture.Width, _loginBackgroundTexture.Height),
-                DrawOrder = _personPicture.DrawOrder + 1
+                DrawOrder = _personPicture.DrawOrder + 1,
+                KeepInClientWindowBounds = false
             };
         }
 

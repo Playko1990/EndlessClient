@@ -9,6 +9,7 @@ namespace EndlessClient.HUD.Panels
     {
         public event Action Activated;
         public event Action DragCompleted;
+        public event Action DragMoved;
 
         private static Option<DraggableHudPanel> _dragging;
         private bool _enableDragging;
@@ -46,6 +47,7 @@ namespace EndlessClient.HUD.Panels
                 {
                     _dragging = Option.Some(this);
                     DrawPosition = DrawPositionWithParentOffset + eventArgs.DistanceMoved;
+                    DragMoved?.Invoke();
                 });
 
             return true;

@@ -76,7 +76,8 @@ namespace EndlessClient.ControlSets
             return new XNAPictureBox
             {
                 Texture = texture,
-                DrawArea = new Rectangle(43, 140, texture.Width, texture.Height)
+                DrawArea = new Rectangle(43, 140, texture.Width, texture.Height),
+                KeepInClientWindowBounds = false
             };
         }
     }

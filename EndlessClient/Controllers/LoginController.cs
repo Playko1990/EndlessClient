@@ -227,24 +227,14 @@ namespace EndlessClient.Controllers
                 gameLoadingDialog?.CloseDialog();
             }
 
-            if (_configurationProvider.InGameWidth != 0 && _configurationProvider.InGameHeight != 0)
-            {
-                var layoutConfig = new IniReader(Constants.PanelLayoutFile);
-
-                int width = _configurationProvider.InGameWidth;
-                int height = _configurationProvider.InGameHeight;
-                var loaded = layoutConfig.Load() && layoutConfig.GetValue("DISPLAY", "Width", out width) && layoutConfig.GetValue("DISPLAY", "Height", out height);
-
-                await DispatcherGameComponent.InvokeAsync(() =>
-                {
-                    _clientWindowSizeRepository.Width = loaded ? width : _configurationProvider.InGameWidth;
-                    _clientWindowSizeRepository.Height = loaded ? height : _configurationProvider.InGameHeight;
-                    _clientWindowSizeRepository.Resizable = true;
-                });
-            }
+            var useResizable = _configurationProvider.InGameWidth != 0
+                               && _configurationProvider.InGameHeight != 0;
 
             await DispatcherGameComponent.InvokeAsync(() =>
             {
+                if (useResizable)
+                    _clientWindowSizeRepository.Resizable = true;
+
                 _gameStateActions.ChangeToState(GameStates.PlayingTheGame);
                 _chatTextBoxActions.FocusChatTextBox();
                 _statusLabelSetter.SetStatusLabel(EOResourceID.STATUS_LABEL_TYPE_WARNING,
@@ -252,6 +242,21 @@ namespace EndlessClient.Controllers
                 _firstTimePlayerActions.WarnFirstTimePlayers();
                 _mapChangedActions.ActiveCharacterEnterMapForLogin();
             });
+
+            if (useResizable)
+            {
+                // HUD/controls must exist first. Then fill the working area and retry a few
+                // times — MonoGame ApplyChanges routinely undoes the first maximize.
+                foreach (var delayMs in new[] { 50, 200, 500 })
+                {
+                    await Task.Delay(delayMs).ConfigureAwait(false);
+                    await DispatcherGameComponent.InvokeAsync(() =>
+                    {
+                        _clientWindowSizeRepository.MaximizeWindowed();
+                        _clientWindowSizeRepository.SyncBackBufferWithWindow();
+                    });
+                }
+            }
         }
 
         private void SetInitialStateAndShowError(NoDataSentException ex)

@@ -7,6 +7,7 @@ using EndlessClient.Content;
 using EndlessClient.Controllers;
 using EndlessClient.ControlSets;
 using EndlessClient.GameExecution;
+using EndlessClient.HUD.Boss;
 using EndlessClient.HUD.Chat;
 using EndlessClient.HUD.Panels;
 using EndlessClient.HUD.Spells;
@@ -28,6 +29,7 @@ using EOLib.Domain.Login;
 using EOLib.Domain.Map;
 using EOLib.Domain.Pathing;
 using EOLib.Graphics;
+using EOLib.IO.Repositories;
 using EOLib.Localization;
 using EOLib.Shared;
 using Microsoft.Xna.Framework;
@@ -76,8 +78,24 @@ namespace EndlessClient.HUD.Controls
         private readonly ILocalizedStringFinder _localizedStringFinder;
         private readonly ICharacterRendererProvider _characterRendererProvider;
         private readonly INPCRendererProvider _npcRendererProvider;
+        private readonly ISkillTreeActions _skillTreeActions;
+        private readonly ISkillTreeProvider _skillTreeProvider;
+        private readonly IENFFileProvider _enfFileProvider;
+        private readonly IBossHealthProvider _bossHealthProvider;
+        private readonly IConfigurationProvider _configurationProvider;
         private IChatController _chatController;
         private IMainButtonController _mainButtonController;
+
+        // Resizable HUD chrome: side buttons + panels move as one docked unit.
+        private readonly List<(InGameStates State, XNAButton Button)> _stateButtons = new();
+        private readonly List<DraggableHudPanel> _dockPanels = new();
+        private Vector2 _dockPanelPosition;
+        private bool _hudChromeMinimized;
+        private XNAButton _hudMinimizeButton;
+        private XNAButton _hudRestoreButton;
+        private XNAButton _windowSizeButton;
+        private DraggableHudPanel _lastVisibleDockPanel;
+        private bool _windowIsDisplaySized = true;
 
         public HudControlsFactory(IHudButtonController hudButtonController,
                                   IHudPanelFactory hudPanelFactory,
@@ -113,7 +131,12 @@ namespace EndlessClient.HUD.Controls
                                   IMetadataProvider<WeaponMetadata> weaponMetadataProvider,
                                   ILocalizedStringFinder localizedStringFinder,
                                   ICharacterRendererProvider characterRendererProvider,
-                                  INPCRendererProvider npcRendererProvider)
+                                  INPCRendererProvider npcRendererProvider,
+                                  ISkillTreeActions skillTreeActions,
+                                  ISkillTreeProvider skillTreeProvider,
+                                  IENFFileProvider enfFileProvider,
+                                  IBossHealthProvider bossHealthProvider,
+                                  IConfigurationProvider configurationProvider)
         {
             _hudButtonController = hudButtonController;
             _hudPanelFactory = hudPanelFactory;
@@ -150,6 +173,11 @@ namespace EndlessClient.HUD.Controls
             _localizedStringFinder = localizedStringFinder;
             _characterRendererProvider = characterRendererProvider;
             _npcRendererProvider = npcRendererProvider;
+            _skillTreeActions = skillTreeActions;
+            _skillTreeProvider = skillTreeProvider;
+            _enfFileProvider = enfFileProvider;
+            _bossHealthProvider = bossHealthProvider;
+            _configurationProvider = configurationProvider;
         }
 
         public void InjectChatController(IChatController chatController,
@@ -163,6 +191,21 @@ namespace EndlessClient.HUD.Controls
         {
             var characterAnimator = CreateCharacterAnimator();
             var mapRenderer = _mapRendererFactory.CreateMapRenderer();
+
+            _stateButtons.Clear();
+            _dockPanels.Clear();
+            _hudChromeMinimized = false;
+            if (_clientWindowSizeRepository.Resizable)
+            {
+                _dockPanelPosition = GetDefaultDockPanelPosition();
+                var panelConfig = new IniReader(Constants.PanelLayoutFile);
+                if (panelConfig.Load() &&
+                    panelConfig.GetValue("PANELS", "Dock:X", out int dockX) &&
+                    panelConfig.GetValue("PANELS", "Dock:Y", out int dockY))
+                {
+                    _dockPanelPosition = new Vector2(dockX, dockY);
+                }
+            }
 
             var controls = new Dictionary<HudControlIdentifier, IGameComponent>
             {
@@ -205,6 +248,10 @@ namespace EndlessClient.HUD.Controls
                 {HudControlIdentifier.SettingsPanel, CreateStatePanel(InGameStates.Settings)},
                 {HudControlIdentifier.HelpPanel, CreateStatePanel(InGameStates.Help)},
 
+                {HudControlIdentifier.HudMinimizeButton, CreateHudMinimizeButton()},
+                {HudControlIdentifier.HudRestoreButton, CreateHudRestoreButton()},
+                {HudControlIdentifier.WindowSizeButton, CreateWindowSizeButton()},
+
                 {HudControlIdentifier.SessionExpButton, CreateSessionExpButton()},
                 {HudControlIdentifier.QuestsButton, CreateQuestButton()},
 
@@ -212,6 +259,7 @@ namespace EndlessClient.HUD.Controls
                 {HudControlIdentifier.TPStatusBar, CreateTPStatusBar()},
                 {HudControlIdentifier.SPStatusBar, CreateSPStatusBar()},
                 {HudControlIdentifier.TNLStatusBar, CreateTNLStatusBar()},
+                {HudControlIdentifier.BossHealthBar, CreateBossHealthBar()},
 
                 {HudControlIdentifier.ChatModePictureBox, CreateChatModePictureBox()},
                 {HudControlIdentifier.ChatTextBox, CreateChatTextBox()},
@@ -225,6 +273,9 @@ namespace EndlessClient.HUD.Controls
 
                 {HudControlIdentifier.PreviousUserInputTracker, CreatePreviousUserInputTracker()}
             };
+
+            if (_clientWindowSizeRepository.Resizable)
+                WireHudChromeDocking();
 
             return controls;
         }
@@ -247,11 +298,20 @@ namespace EndlessClient.HUD.Controls
 
         private HudBackgroundFrame CreateHudBackground()
         {
-            return new HudBackgroundFrame(_nativeGraphicsManager, _graphicsDeviceProvider)
+            var frame = new HudBackgroundFrame(_nativeGraphicsManager, _graphicsDeviceProvider)
             {
                 DrawOrder = HUD_BASE_LAYER,
                 Visible = !_clientWindowSizeRepository.Resizable,
             };
+
+            // Keep classic frame off once the window is resizable so it cannot leave a
+            // stray chat strip covering the chat-mode sword.
+            _clientWindowSizeRepository.GameWindowSizeChanged += (_, _) =>
+            {
+                frame.Visible = !_clientWindowSizeRepository.Resizable;
+            };
+
+            return frame;
         }
 
         private IXNAButton CreateStateChangeButton(InGameStates whichState)
@@ -264,7 +324,7 @@ namespace EndlessClient.HUD.Controls
             var widthDelta = mainButtonTexture.Width / 2;
             var heightDelta = mainButtonTexture.Height / 11;
 
-            IXNAButton retButton;
+            XNAButton retButton;
             if (!_clientWindowSizeRepository.Resizable)
             {
                 var xPosition = buttonIndex < 6 ? 62 : 590;
@@ -281,14 +341,9 @@ namespace EndlessClient.HUD.Controls
             }
             else
             {
-                var yIndex = buttonIndex % 6 - 3;
-
-                var xPosition = buttonIndex < 6 ? 0 : _clientWindowSizeRepository.Width - widthDelta;
-                var yPosition = (_clientWindowSizeRepository.Height / 2 + heightDelta * yIndex);
-
                 retButton = new XNAButton(
                     mainButtonTexture,
-                    new Vector2(xPosition, yPosition),
+                    GetDockedButtonPosition(buttonIndex),
                     new Rectangle(0, heightDelta * buttonIndex, widthDelta, heightDelta),
                     new Rectangle(widthDelta, heightDelta * buttonIndex, widthDelta, heightDelta))
                 {
@@ -297,9 +352,8 @@ namespace EndlessClient.HUD.Controls
 
                 _clientWindowSizeRepository.GameWindowSizeChanged += (_, _) =>
                 {
-                    var capturedXPos = buttonIndex < 6 ? 0 : _clientWindowSizeRepository.Width - widthDelta;
-                    var capturedYPos = (_clientWindowSizeRepository.Height / 2 + heightDelta * yIndex);
-                    retButton.DrawPosition = new Vector2(capturedXPos, capturedYPos);
+                    if (!_hudChromeMinimized)
+                        retButton.DrawPosition = GetDockedButtonPosition(buttonIndex);
                 };
             }
 
@@ -307,7 +361,33 @@ namespace EndlessClient.HUD.Controls
             retButton.OnMouseEnter += (_, _) => _statusLabelSetter.SetStatusLabel(
                 EOResourceID.STATUS_LABEL_TYPE_BUTTON,
                 EOResourceID.STATUS_LABEL_HUD_BUTTON_HOVER_FIRST + buttonIndex);
+
+            _stateButtons.Add((whichState, retButton));
             return retButton;
+        }
+
+        private Vector2 GetDockedButtonPosition(int buttonIndex)
+        {
+            var panelTexture = _nativeGraphicsManager.TextureFromResource(GFXTypes.PostLoginUI, 44);
+            var panelWidth = panelTexture.Width;
+            var panelPos = _dockPanelPosition;
+
+            var xPosition = buttonIndex < 6
+                ? panelPos.X - 40
+                : panelPos.X + panelWidth;
+            var yPosition = panelPos.Y
+                + (buttonIndex < 6 ? 0 : 20)
+                + (buttonIndex < 6 ? buttonIndex : buttonIndex - 6) * 20;
+
+            return new Vector2(xPosition, yPosition);
+        }
+
+        private Vector2 GetDefaultDockPanelPosition()
+        {
+            var panelTexture = _nativeGraphicsManager.TextureFromResource(GFXTypes.PostLoginUI, 44);
+            return new Vector2(
+                (_clientWindowSizeRepository.Width - panelTexture.Width) / 2f,
+                _clientWindowSizeRepository.Height - 45 - panelTexture.Height);
         }
 
         private IXNAButton CreateFriendListButton()
@@ -358,6 +438,10 @@ namespace EndlessClient.HUD.Controls
 
         private void DoHudStateChangeClick(InGameStates whichState)
         {
+            // Tab clicks always open/switch panels — never leave the chrome minimized.
+            if (_hudChromeMinimized)
+                SetHudChromeMinimized(false);
+
             switch (whichState)
             {
                 case InGameStates.Inventory: _hudButtonController.ClickInventory(); break;
@@ -417,48 +501,286 @@ namespace EndlessClient.HUD.Controls
             if (_clientWindowSizeRepository.Resizable)
             {
                 retPanel.UpdateOrder = -1;
+                _dockPanels.Add(retPanel);
 
-                UpdatePanelDrawPosition(initialPosition: true);
-                _clientWindowSizeRepository.GameWindowSizeChanged += (_, _) => UpdatePanelDrawPosition(initialPosition: false);
+                if (_dockPanels.Count == 1)
+                    _dockPanelPosition = GetDefaultDockPanelPosition();
 
+                retPanel.DrawArea = retPanel.DrawArea.WithPosition(_dockPanelPosition);
+
+                _clientWindowSizeRepository.GameWindowSizeChanged += (_, _) =>
+                {
+                    if (_hudChromeMinimized)
+                        return;
+
+                    // Keep the dock on-screen after resize; panels share one position.
+                    if (_clientWindowSizeRepository.Width < _dockPanelPosition.X + retPanel.DrawArea.Width)
+                        _dockPanelPosition = new Vector2(_clientWindowSizeRepository.Width - retPanel.DrawArea.Width, _dockPanelPosition.Y);
+                    if (_clientWindowSizeRepository.Height < _dockPanelPosition.Y + retPanel.DrawArea.Height)
+                        _dockPanelPosition = new Vector2(_dockPanelPosition.X, _clientWindowSizeRepository.Height - retPanel.DrawArea.Height);
+
+                    ApplyDockPositionToChrome();
+                };
+
+                // Ignore per-panel saved layouts that stack multiple windows; one shared dock.
                 var panelConfig = new IniReader(Constants.PanelLayoutFile);
                 if (panelConfig.Load())
                 {
-                    if (panelConfig.GetValue("PANELS", $"{retPanel.GetType().Name}:X", out int x) &&
-                        panelConfig.GetValue("PANELS", $"{retPanel.GetType().Name}:Y", out int y))
+                    if (panelConfig.GetValue("PANELS", "Dock:X", out int x) &&
+                        panelConfig.GetValue("PANELS", "Dock:Y", out int y))
                     {
-                        retPanel.DrawPosition = new Vector2(x, y);
-                    }
-
-                    if (panelConfig.GetValue("PANELS", $"{retPanel.GetType().Name}:Visible", out bool visible))
-                    {
-                        retPanel.Visible = visible;
-                    }
-
-                    if (panelConfig.GetValue("PANELS", $"{retPanel.GetType().Name}:DrawOrder", out int drawOrder))
-                    {
-                        retPanel.DrawOrder = drawOrder;
+                        _dockPanelPosition = new Vector2(x, y);
+                        retPanel.DrawPosition = _dockPanelPosition;
                     }
                 }
             }
 
             return retPanel;
+        }
 
-            void UpdatePanelDrawPosition(bool initialPosition)
+        private void WireHudChromeDocking()
+        {
+            ApplyDockPositionToChrome();
+
+            foreach (var panel in _dockPanels)
             {
-                if (initialPosition)
+                panel.DragMoved += () =>
                 {
-                    retPanel.DrawArea = retPanel.DrawArea.WithPosition(new Vector2(
-                        (_clientWindowSizeRepository.Width - retPanel.DrawArea.Width) / 2,
-                        _clientWindowSizeRepository.Height - 45 - retPanel.DrawArea.Height));
-                }
-                else
-                {
-                    if (_clientWindowSizeRepository.Width < retPanel.DrawPosition.X + retPanel.DrawArea.Width)
-                        retPanel.DrawPosition = new Vector2(_clientWindowSizeRepository.Width - retPanel.DrawArea.Width, retPanel.DrawPosition.Y);
+                    _dockPanelPosition = panel.DrawPosition;
+                    foreach (var other in _dockPanels)
+                    {
+                        if (!ReferenceEquals(other, panel))
+                            other.DrawPosition = _dockPanelPosition;
+                    }
 
-                    if (_clientWindowSizeRepository.Height < retPanel.DrawPosition.Y + retPanel.DrawArea.Height)
-                        retPanel.DrawPosition = new Vector2(retPanel.DrawPosition.X, _clientWindowSizeRepository.Height - retPanel.DrawArea.Height);
+                    RepositionStateButtons();
+                    RepositionMinimizeButton();
+                };
+
+                panel.DragCompleted += () =>
+                {
+                    _dockPanelPosition = panel.DrawPosition;
+                    ApplyDockPositionToChrome();
+                    SaveDockPosition();
+                };
+
+                panel.Activated += () =>
+                {
+                    // Keep siblings under the same dock when one panel is brought forward.
+                    foreach (var other in _dockPanels)
+                        other.DrawPosition = _dockPanelPosition;
+                    RepositionStateButtons();
+                    RepositionMinimizeButton();
+                };
+            }
+        }
+
+        private Vector2 GetHudRestoreButtonPosition()
+        {
+            // Just above the chat bar on the right (chat row is Height-40), above Add Friend.
+            return new Vector2(
+                _clientWindowSizeRepository.Width - 48,
+                _clientWindowSizeRepository.Height - 58);
+        }
+
+        private void ApplyDockPositionToChrome()
+        {
+            foreach (var panel in _dockPanels)
+                panel.DrawPosition = _dockPanelPosition;
+
+            RepositionStateButtons();
+            RepositionMinimizeButton();
+        }
+
+        private void RepositionStateButtons()
+        {
+            foreach (var (state, button) in _stateButtons)
+            {
+                var buttonIndex = (int)state;
+                button.DrawPosition = GetDockedButtonPosition(buttonIndex);
+            }
+        }
+
+        private void RepositionMinimizeButton()
+        {
+            if (_hudMinimizeButton == null)
+                return;
+
+            var panelTexture = _nativeGraphicsManager.TextureFromResource(GFXTypes.PostLoginUI, 44);
+            _hudMinimizeButton.DrawPosition = new Vector2(
+                _dockPanelPosition.X + panelTexture.Width - 22,
+                _dockPanelPosition.Y - 18);
+        }
+
+        private void SaveDockPosition()
+        {
+            try
+            {
+                var panelConfig = new IniReader(Constants.PanelLayoutFile);
+                panelConfig.Load();
+                if (!panelConfig.Sections.ContainsKey("PANELS"))
+                    panelConfig.Sections["PANELS"] = new System.Collections.Generic.SortedList<string, string>();
+
+                panelConfig.Sections["PANELS"]["Dock:X"] = ((int)_dockPanelPosition.X).ToString();
+                panelConfig.Sections["PANELS"]["Dock:Y"] = ((int)_dockPanelPosition.Y).ToString();
+                panelConfig.Save();
+            }
+            catch
+            {
+                // layout persistence is best-effort
+            }
+        }
+
+        private Vector2 GetWindowSizeButtonPosition()
+        {
+            return new Vector2(_clientWindowSizeRepository.Width - 28, 6);
+        }
+
+        private XNAButton CreateWindowSizeButton()
+        {
+            // Same sheet as HUD minimize; top-right control shrinks/expands the game window.
+            var sheet = _nativeGraphicsManager.TextureFromResource(GFXTypes.PostLoginUI, 27, false);
+            _windowSizeButton = new XNAButton(
+                sheet,
+                GetWindowSizeButtonPosition(),
+                new Rectangle(0, 260, 17, 15),
+                new Rectangle(0, 276, 17, 15))
+            {
+                DrawOrder = HUD_CONTROL_LAYER + 30,
+                Visible = _clientWindowSizeRepository.Resizable,
+                KeepInClientWindowBounds = false
+            };
+
+            _clientWindowSizeRepository.GameWindowSizeChanged += (_, _) =>
+            {
+                _windowSizeButton.DrawPosition = GetWindowSizeButtonPosition();
+                _windowSizeButton.Visible = _clientWindowSizeRepository.Resizable;
+            };
+
+            _windowSizeButton.OnMouseDown += (_, _) =>
+            {
+                _sfxPlayer.PlaySfx(SoundEffectID.ButtonClick);
+                ToggleWindowDisplaySize();
+            };
+
+            _windowSizeButton.OnMouseOver += (_, _) =>
+                _statusLabelSetter.SetStatusLabel(
+                    EOResourceID.STATUS_LABEL_TYPE_BUTTON,
+                    EOResourceID.STATUS_LABEL_HUD_BUTTON_HOVER_FIRST);
+
+            return _windowSizeButton;
+        }
+
+        private void ToggleWindowDisplaySize()
+        {
+            if (!_clientWindowSizeRepository.Resizable)
+                return;
+
+            var windowedW = Math.Max(ClientWindowSizeRepository.DEFAULT_BACKBUFFER_WIDTH,
+                _configurationProvider.InGameWidth > 0 ? _configurationProvider.InGameWidth : 1280);
+            var windowedH = Math.Max(ClientWindowSizeRepository.DEFAULT_BACKBUFFER_HEIGHT,
+                _configurationProvider.InGameHeight > 0 ? _configurationProvider.InGameHeight : 720);
+
+            // Toggle between maximized-windowed (taskbar + title bar) and a smaller window.
+            if (_clientWindowSizeRepository.IsMaximizedWindowed || _windowIsDisplaySized)
+            {
+                _clientWindowSizeRepository.RestoreWindowed(windowedW, windowedH);
+                _windowIsDisplaySized = false;
+            }
+            else
+            {
+                _clientWindowSizeRepository.MaximizeWindowed();
+                _windowIsDisplaySized = true;
+            }
+
+            if (_windowSizeButton != null)
+                _windowSizeButton.DrawPosition = GetWindowSizeButtonPosition();
+        }
+
+        private XNAButton CreateHudMinimizeButton()
+        {
+            var sheet = _nativeGraphicsManager.TextureFromResource(GFXTypes.PostLoginUI, 27, false);
+            _hudMinimizeButton = new XNAButton(
+                sheet,
+                new Vector2(0, 0),
+                new Rectangle(0, 260, 17, 15),
+                new Rectangle(0, 276, 17, 15))
+            {
+                DrawOrder = HUD_CONTROL_LAYER + 20,
+                Visible = _clientWindowSizeRepository.Resizable
+            };
+
+            if (_clientWindowSizeRepository.Resizable)
+                RepositionMinimizeButton();
+
+            _hudMinimizeButton.OnMouseDown += (_, _) =>
+            {
+                _sfxPlayer.PlaySfx(SoundEffectID.ButtonClick);
+                SetHudChromeMinimized(true);
+            };
+
+            return _hudMinimizeButton;
+        }
+
+        private XNAButton CreateHudRestoreButton()
+        {
+            var sheet = _nativeGraphicsManager.TextureFromResource(GFXTypes.PostLoginUI, 27, false);
+            _hudRestoreButton = new XNAButton(
+                sheet,
+                GetHudRestoreButtonPosition(),
+                new Rectangle(17, 260, 17, 15),
+                new Rectangle(17, 276, 17, 15))
+            {
+                DrawOrder = HUD_CONTROL_LAYER + 20,
+                Visible = false
+            };
+
+            _clientWindowSizeRepository.GameWindowSizeChanged += (_, _) =>
+            {
+                _hudRestoreButton.DrawPosition = GetHudRestoreButtonPosition();
+            };
+
+            _hudRestoreButton.OnMouseDown += (_, _) =>
+            {
+                _sfxPlayer.PlaySfx(SoundEffectID.ButtonClick);
+                SetHudChromeMinimized(false);
+            };
+
+            return _hudRestoreButton;
+        }
+
+        private void SetHudChromeMinimized(bool minimized)
+        {
+            _hudChromeMinimized = minimized;
+
+            foreach (var (_, button) in _stateButtons)
+                button.Visible = !minimized;
+
+            if (_hudMinimizeButton != null)
+                _hudMinimizeButton.Visible = !minimized && _clientWindowSizeRepository.Resizable;
+
+            if (_hudRestoreButton != null)
+            {
+                _hudRestoreButton.Visible = minimized;
+                if (minimized)
+                    _hudRestoreButton.DrawPosition = GetHudRestoreButtonPosition();
+            }
+
+            if (minimized)
+            {
+                _lastVisibleDockPanel = _dockPanels.FirstOrDefault(p => p.Visible);
+                foreach (var panel in _dockPanels)
+                    panel.Visible = false;
+            }
+            else
+            {
+                ApplyDockPositionToChrome();
+                var panelToShow = _lastVisibleDockPanel ?? _dockPanels.FirstOrDefault();
+                if (panelToShow != null)
+                {
+                    foreach (var panel in _dockPanels)
+                        panel.Visible = false;
+                    panelToShow.Visible = true;
                 }
             }
         }
@@ -495,7 +817,7 @@ namespace EndlessClient.HUD.Controls
 
         private IGameComponent CreateHPStatusBar()
         {
-            var statusBar = new HPStatusBar(_nativeGraphicsManager, _clientWindowSizeRepository, (ICharacterProvider)_characterRepository) { DrawOrder = HUD_CONTROL_LAYER };
+            var statusBar = new HPStatusBar(_nativeGraphicsManager, _clientWindowSizeRepository, (ICharacterProvider)_characterRepository, _skillTreeActions, _skillTreeProvider) { DrawOrder = HUD_CONTROL_LAYER };
             statusBar.StatusBarClicked += () => _sfxPlayer.PlaySfx(SoundEffectID.HudStatusBarClick);
             return statusBar;
         }
@@ -514,6 +836,20 @@ namespace EndlessClient.HUD.Controls
             return statusBar;
         }
 
+        private IGameComponent CreateBossHealthBar()
+        {
+            return new BossHealthBar(
+                _graphicsDeviceProvider.GraphicsDevice,
+                (ICharacterProvider)_characterRepository,
+                (ICurrentMapStateProvider)_currentMapStateRepository,
+                _enfFileProvider,
+                _bossHealthProvider,
+                _clientWindowSizeRepository)
+            {
+                DrawOrder = HUD_CONTROL_LAYER + 10
+            };
+        }
+
         private IGameComponent CreateTNLStatusBar()
         {
             var statusBar = new TNLStatusBar(_nativeGraphicsManager, _clientWindowSizeRepository, (ICharacterProvider)_characterRepository, _experienceTableProvider) { DrawOrder = HUD_CONTROL_LAYER };
@@ -525,7 +861,8 @@ namespace EndlessClient.HUD.Controls
         {
             return new ChatModePictureBox(_nativeGraphicsManager, _clientWindowSizeRepository, _chatModeCalculator, _hudControlProvider)
             {
-                DrawOrder = HUD_CONTROL_LAYER + 1
+                // Above chat bar chrome so the sword is never covered by a stray bar segment.
+                DrawOrder = HUD_CONTROL_LAYER + 25
             };
         }
 
@@ -586,7 +923,7 @@ namespace EndlessClient.HUD.Controls
                 _endlessGameProvider, _characterRepository, _playerInfoProvider, _currentMapStateRepository,
                 _currentMapProvider, _spellSlotDataRepository, _characterActions,
                 _walkValidationActions, _pathFinder, _fixedTimeStepRepository,
-                _weaponMetadataProvider);
+                _weaponMetadataProvider, _skillTreeActions, _skillTreeProvider);
         }
 
         private INPCAnimator CreateNPCAnimator()

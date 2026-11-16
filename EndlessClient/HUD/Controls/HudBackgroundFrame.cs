@@ -38,6 +38,11 @@ namespace EndlessClient.HUD.Controls
 
         protected override void OnDrawControl(GameTime gameTime)
         {
+            // Resizable / fullscreen HUD draws its own chat + status bars. Never paint the
+            // classic 640x480 frame (it leaves a short leftover chat strip over the sword).
+            if (!Visible)
+                return;
+
             _spriteBatch.Begin();
 
             _spriteBatch.Draw(_filler, new Rectangle(0, 400, 640, 80), Color.White);

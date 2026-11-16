@@ -19,6 +19,7 @@ namespace EndlessClient.UIControls
         }
 
         protected readonly ICharacterRenderer _characterRenderer;
+        private Vector2 _lastRendererPosition = new Vector2(float.MinValue);
 
         public CharacterControl(Character character,
                                 ICharacterRendererFactory characterRendererFactory)
@@ -29,9 +30,24 @@ namespace EndlessClient.UIControls
         public override void Initialize()
         {
             _characterRenderer.Initialize();
-            _characterRenderer.SetAbsoluteScreenPosition(DrawAreaWithParentOffset.X, DrawAreaWithParentOffset.Y);
+            SyncRendererPosition(force: true);
 
             base.Initialize();
+        }
+
+        protected virtual Vector2 GetRendererScreenPosition()
+        {
+            return new Vector2(DrawAreaWithParentOffset.X, DrawAreaWithParentOffset.Y);
+        }
+
+        protected void SyncRendererPosition(bool force = false)
+        {
+            var pos = GetRendererScreenPosition();
+            if (!force && pos == _lastRendererPosition)
+                return;
+
+            _lastRendererPosition = pos;
+            _characterRenderer.SetAbsoluteScreenPosition((int)pos.X, (int)pos.Y);
         }
 
         protected override bool ShouldUpdate()
@@ -41,6 +57,7 @@ namespace EndlessClient.UIControls
 
         protected override void OnUpdateControl(GameTime gameTime)
         {
+            SyncRendererPosition();
             _characterRenderer.Update(gameTime);
             base.OnUpdateControl(gameTime);
         }

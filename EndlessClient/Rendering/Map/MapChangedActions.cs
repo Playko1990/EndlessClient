@@ -4,6 +4,7 @@ using EndlessClient.Audio;
 using EndlessClient.Controllers;
 using EndlessClient.ControlSets;
 using EndlessClient.Dialogs;
+using EndlessClient.HUD.Boss;
 using EndlessClient.HUD.Controls;
 using EndlessClient.Rendering.Character;
 using EndlessClient.Rendering.Effects;
@@ -40,6 +41,7 @@ namespace EndlessClient.Rendering.Map
         private readonly IMfxPlayer _mfxPlayer;
         private readonly ISfxPlayer _sfxPlayer;
         private readonly IChatController _chatController;
+        private readonly IBossHealthRepository _bossHealthRepository;
 
         public MapChangedActions(ICharacterStateCache characterStateCache,
                                  INPCStateCache npcStateCache,
@@ -56,7 +58,8 @@ namespace EndlessClient.Rendering.Map
                                  IActiveDialogProvider dialogProvider,
                                  IMfxPlayer mfxPlayer,
                                  ISfxPlayer sfxPlayer,
-                                 IChatController chatController)
+                                 IChatController chatController,
+                                 IBossHealthRepository bossHealthRepository)
         {
             _characterStateCache = characterStateCache;
             _npcStateCache = npcStateCache;
@@ -74,6 +77,7 @@ namespace EndlessClient.Rendering.Map
             _mfxPlayer = mfxPlayer;
             _sfxPlayer = sfxPlayer;
             _chatController = chatController;
+            _bossHealthRepository = bossHealthRepository;
         }
 
         public void ActiveCharacterEnterMapForLogin()
@@ -90,6 +94,7 @@ namespace EndlessClient.Rendering.Map
             StopAllAnimations();
             ClearCharacterRenderersAndCache();
             ClearNPCRenderersAndCache();
+            _bossHealthRepository.Clear();
             ClearOpenDoors();
             ShowMapNameIfAvailable(differentMapID);
             ShowPkWarning(differentMapID);

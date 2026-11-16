@@ -48,6 +48,7 @@ namespace EndlessClient.HUD.Panels
         private readonly IStatusLabelSetter _statusLabelSetter;
         private readonly IItemStringService _itemStringService;
         private readonly IItemNameColorService _itemNameColorService;
+        private readonly IItemStatCompareService _itemStatCompareService;
         private readonly IInventoryService _inventoryService;
         private readonly IActiveDialogProvider _activeDialogProvider;
         private readonly ISpellSlotDataRepository _spellSlotDataRepository;
@@ -82,6 +83,7 @@ namespace EndlessClient.HUD.Panels
                                IStatusLabelSetter statusLabelSetter,
                                IItemStringService itemStringService,
                                IItemNameColorService itemNameColorService,
+                               IItemStatCompareService itemStatCompareService,
                                IInventoryService inventoryService,
                                IActiveDialogProvider activeDialogProvider,
                                ISpellSlotDataRepository spellSlotDataRepository,
@@ -116,6 +118,7 @@ namespace EndlessClient.HUD.Panels
             _statusLabelSetter = statusLabelSetter;
             _itemStringService = itemStringService;
             _itemNameColorService = itemNameColorService;
+            _itemStatCompareService = itemStatCompareService;
             _inventoryService = inventoryService;
             _activeDialogProvider = activeDialogProvider;
             _spellSlotDataRepository = spellSlotDataRepository;
@@ -151,6 +154,7 @@ namespace EndlessClient.HUD.Panels
                 _statusLabelSetter,
                 _itemStringService,
                 _itemNameColorService,
+                _itemStatCompareService,
                 _inventoryService,
                 _inventorySlotRepository,
                 _playerInfoProvider,

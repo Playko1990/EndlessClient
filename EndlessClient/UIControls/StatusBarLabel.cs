@@ -34,6 +34,7 @@ namespace EndlessClient.UIControls
 
             if (_clientWindowSizeProvider.Resizable)
             {
+                KeepInClientWindowBounds = false;
                 DrawArea = new Rectangle(40, _clientWindowSizeProvider.Height - 15, 1, 1);
                 _clientWindowSizeProvider.GameWindowSizeChanged += (_, _) => DrawArea = new Rectangle(40, _clientWindowSizeProvider.Height - 15, 1, 1);
 

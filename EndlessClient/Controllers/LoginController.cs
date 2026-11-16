@@ -229,9 +229,11 @@ namespace EndlessClient.Controllers
 
             await DispatcherGameComponent.InvokeAsync(() =>
             {
-                // Enable resizing first, enter the game (HUD builds), THEN maximize so the
-                // backbuffer + HUD lay out against the real client size (avoids black void).
-                if (_configurationProvider.InGameWidth != 0 && _configurationProvider.InGameHeight != 0)
+                // Always enter resizable in-game when custom size is configured, build HUD,
+                // then fill the Windows working area (title bar + taskbar stay visible).
+                var useResizable = _configurationProvider.InGameWidth != 0
+                                   && _configurationProvider.InGameHeight != 0;
+                if (useResizable)
                     _clientWindowSizeRepository.Resizable = true;
 
                 _gameStateActions.ChangeToState(GameStates.PlayingTheGame);
@@ -241,9 +243,8 @@ namespace EndlessClient.Controllers
                 _firstTimePlayerActions.WarnFirstTimePlayers();
                 _mapChangedActions.ActiveCharacterEnterMapForLogin();
 
-                if (_configurationProvider.InGameWidth != 0 && _configurationProvider.InGameHeight != 0)
+                if (useResizable)
                 {
-                    // Maximize as a normal window: title bar (X / min / max) + taskbar stay visible.
                     _clientWindowSizeRepository.MaximizeWindowed();
                     _clientWindowSizeRepository.SyncBackBufferWithWindow();
                 }

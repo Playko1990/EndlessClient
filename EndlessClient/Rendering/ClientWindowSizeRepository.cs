@@ -76,8 +76,6 @@ namespace EndlessClient.Rendering
 
                 gdm.PreferredBackBufferWidth = value;
                 gdm.ApplyChanges();
-                // ClientSizeChanged already notifies GameWindowSizeChanged subscribers; do not
-                // invoke _resizeEvents again here (that double-fired the same handlers).
             }
         }
 
@@ -148,10 +146,7 @@ namespace EndlessClient.Rendering
         {
             var gdm = _graphicsDeviceRepository.GraphicsDeviceManager;
             if (gdm != null)
-            {
                 gdm.IsFullScreen = false;
-                gdm.ApplyChanges();
-            }
 
             var window = _gameWindowRepository.Window;
             if (window != null)
@@ -166,16 +161,34 @@ namespace EndlessClient.Rendering
             var form = TryGetForm();
             if (form != null)
             {
-                // Maximized fills the working area: taskbar stays, title bar keeps X / min / max.
+                // Fill the Windows working area (monitor minus taskbar) with a normal bordered
+                // window. ApplyChanges after setting PreferredBackBuffer can undo Maximize, so
+                // we set size from WorkingArea, apply the backbuffer, then re-assert Maximized.
+                var working = Screen.FromHandle(form.Handle).WorkingArea;
+
+                form.WindowState = FormWindowState.Normal;
+                form.FormBorderStyle = FormBorderStyle.Sizable;
+                form.MaximizeBox = true;
+                form.MinimizeBox = true;
+                form.ControlBox = true;
+
+                // Place the outer window on the working area, then match the backbuffer to the
+                // resulting client size so the game fills the window (no black void).
+                form.Bounds = working;
+                ApplyBackBufferSize(form.ClientSize.Width, form.ClientSize.Height);
+
                 form.WindowState = FormWindowState.Maximized;
-                // Form.ClientSize is current after maximize; GameWindow.ClientBounds can lag a
-                // frame and leave the backbuffer small (game stuck in the top-left black void).
+                ApplyBackBufferSize(form.ClientSize.Width, form.ClientSize.Height);
+
+                // ApplyChanges can clear Maximized — put it back and sync once more.
+                if (form.WindowState != FormWindowState.Maximized)
+                    form.WindowState = FormWindowState.Maximized;
                 ApplyBackBufferSize(form.ClientSize.Width, form.ClientSize.Height);
                 return;
             }
 #endif
 
-            // Fallback (non-Windows): size to a typical working area, not raw DisplayMode.
+            // Fallback (non-Windows / no form handle): size near the display working area.
             var display = GraphicsAdapter.DefaultAdapter.CurrentDisplayMode;
             ApplyBackBufferSize(
                 Math.Max(DEFAULT_BACKBUFFER_WIDTH, display.Width - 16),
@@ -189,10 +202,7 @@ namespace EndlessClient.Rendering
 
             var gdm = _graphicsDeviceRepository.GraphicsDeviceManager;
             if (gdm != null)
-            {
                 gdm.IsFullScreen = false;
-                gdm.ApplyChanges();
-            }
 
             var window = _gameWindowRepository.Window;
             if (window != null)
@@ -208,6 +218,7 @@ namespace EndlessClient.Rendering
             if (form != null)
             {
                 form.WindowState = FormWindowState.Normal;
+                form.FormBorderStyle = FormBorderStyle.Sizable;
                 form.ClientSize = new System.Drawing.Size(width, height);
                 ApplyBackBufferSize(form.ClientSize.Width, form.ClientSize.Height);
                 return;
@@ -223,8 +234,7 @@ namespace EndlessClient.Rendering
                 return;
 
             var window = _gameWindowRepository.Window;
-            var gdm = _graphicsDeviceRepository.GraphicsDeviceManager;
-            if (window == null || gdm == null)
+            if (window == null)
                 return;
 
             int targetW;
@@ -232,15 +242,12 @@ namespace EndlessClient.Rendering
 
             if (!Resizable)
             {
-                // Pre-game / fixed mode must stay 640x480. Alt-tab can inflate ClientBounds
-                // while the backbuffer stays small — black bars + dead clicks.
                 targetW = DEFAULT_BACKBUFFER_WIDTH;
                 targetH = DEFAULT_BACKBUFFER_HEIGHT;
             }
             else
             {
 #if !LINUX && !OSX
-                // Prefer WinForms client size — it tracks maximize/restore immediately.
                 var form = TryGetForm();
                 if (form != null && form.ClientSize.Width > 0 && form.ClientSize.Height > 0)
                 {
@@ -279,13 +286,18 @@ namespace EndlessClient.Rendering
                     gdm.PreferredBackBufferHeight != targetH;
 
                 if (!presentationMismatch && !preferredMismatch)
+                {
+                    // Still notify listeners so HUD/map can catch up after a Form maximize.
+                    foreach (var evnt in _resizeEvents)
+                        evnt(this, EventArgs.Empty);
                     return;
+                }
 
+                gdm.IsFullScreen = false;
                 gdm.PreferredBackBufferWidth = targetW;
                 gdm.PreferredBackBufferHeight = targetH;
                 gdm.ApplyChanges();
 
-                // Always notify HUD/map render targets so they recreate at the new size.
                 foreach (var evnt in _resizeEvents)
                     evnt(this, EventArgs.Empty);
             }
@@ -299,13 +311,13 @@ namespace EndlessClient.Rendering
         {
 #if !LINUX && !OSX
             var form = TryGetForm();
-            if (form == null)
-                return;
-
-            form.FormBorderStyle = FormBorderStyle.Sizable;
-            form.MaximizeBox = true;
-            form.MinimizeBox = true;
-            form.ControlBox = true;
+            if (form != null)
+            {
+                form.FormBorderStyle = FormBorderStyle.Sizable;
+                form.MaximizeBox = true;
+                form.MinimizeBox = true;
+                form.ControlBox = true;
+            }
 #endif
             var window = _gameWindowRepository.Window;
             if (window != null)
@@ -319,7 +331,16 @@ namespace EndlessClient.Rendering
             if (window == null || window.Handle == IntPtr.Zero)
                 return null;
 
-            return Control.FromHandle(window.Handle) as Form;
+            if (Control.FromHandle(window.Handle) is Form fromHandle)
+                return fromHandle;
+
+            foreach (Form open in Application.OpenForms)
+            {
+                if (open.Handle == window.Handle)
+                    return open;
+            }
+
+            return null;
         }
 #endif
 

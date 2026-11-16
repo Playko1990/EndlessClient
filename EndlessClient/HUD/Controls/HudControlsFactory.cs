@@ -80,6 +80,7 @@ namespace EndlessClient.HUD.Controls
         private readonly INPCRendererProvider _npcRendererProvider;
         private readonly IENFFileProvider _enfFileProvider;
         private readonly IBossHealthProvider _bossHealthProvider;
+        private readonly IConfigurationProvider _configurationProvider;
         private IChatController _chatController;
         private IMainButtonController _mainButtonController;
 
@@ -90,7 +91,9 @@ namespace EndlessClient.HUD.Controls
         private bool _hudChromeMinimized;
         private XNAButton _hudMinimizeButton;
         private XNAButton _hudRestoreButton;
+        private XNAButton _windowSizeButton;
         private DraggableHudPanel _lastVisibleDockPanel;
+        private bool _windowIsDisplaySized = true;
 
         public HudControlsFactory(IHudButtonController hudButtonController,
                                   IHudPanelFactory hudPanelFactory,
@@ -128,7 +131,8 @@ namespace EndlessClient.HUD.Controls
                                   ICharacterRendererProvider characterRendererProvider,
                                   INPCRendererProvider npcRendererProvider,
                                   IENFFileProvider enfFileProvider,
-                                  IBossHealthProvider bossHealthProvider)
+                                  IBossHealthProvider bossHealthProvider,
+                                  IConfigurationProvider configurationProvider)
         {
             _hudButtonController = hudButtonController;
             _hudPanelFactory = hudPanelFactory;
@@ -167,6 +171,7 @@ namespace EndlessClient.HUD.Controls
             _npcRendererProvider = npcRendererProvider;
             _enfFileProvider = enfFileProvider;
             _bossHealthProvider = bossHealthProvider;
+            _configurationProvider = configurationProvider;
         }
 
         public void InjectChatController(IChatController chatController,
@@ -239,6 +244,7 @@ namespace EndlessClient.HUD.Controls
 
                 {HudControlIdentifier.HudMinimizeButton, CreateHudMinimizeButton()},
                 {HudControlIdentifier.HudRestoreButton, CreateHudRestoreButton()},
+                {HudControlIdentifier.WindowSizeButton, CreateWindowSizeButton()},
 
                 {HudControlIdentifier.SessionExpButton, CreateSessionExpButton()},
                 {HudControlIdentifier.QuestsButton, CreateQuestButton()},
@@ -617,6 +623,78 @@ namespace EndlessClient.HUD.Controls
             {
                 // layout persistence is best-effort
             }
+        }
+
+        private Vector2 GetWindowSizeButtonPosition()
+        {
+            return new Vector2(_clientWindowSizeRepository.Width - 28, 6);
+        }
+
+        private XNAButton CreateWindowSizeButton()
+        {
+            // Same sheet as HUD minimize; top-right control shrinks/expands the game window.
+            var sheet = _nativeGraphicsManager.TextureFromResource(GFXTypes.PostLoginUI, 27, false);
+            _windowSizeButton = new XNAButton(
+                sheet,
+                GetWindowSizeButtonPosition(),
+                new Rectangle(0, 260, 17, 15),
+                new Rectangle(0, 276, 17, 15))
+            {
+                DrawOrder = HUD_CONTROL_LAYER + 30,
+                Visible = _clientWindowSizeRepository.Resizable,
+                KeepInClientWindowBounds = false
+            };
+
+            _clientWindowSizeRepository.GameWindowSizeChanged += (_, _) =>
+            {
+                _windowSizeButton.DrawPosition = GetWindowSizeButtonPosition();
+                _windowSizeButton.Visible = _clientWindowSizeRepository.Resizable;
+            };
+
+            _windowSizeButton.OnMouseDown += (_, _) =>
+            {
+                _sfxPlayer.PlaySfx(SoundEffectID.ButtonClick);
+                ToggleWindowDisplaySize();
+            };
+
+            _windowSizeButton.OnMouseOver += (_, _) =>
+                _statusLabelSetter.SetStatusLabel(
+                    EOResourceID.STATUS_LABEL_TYPE_BUTTON,
+                    EOResourceID.STATUS_LABEL_HUD_BUTTON_HOVER_FIRST);
+
+            return _windowSizeButton;
+        }
+
+        private void ToggleWindowDisplaySize()
+        {
+            if (!_clientWindowSizeRepository.Resizable)
+                return;
+
+            var display = Microsoft.Xna.Framework.Graphics.GraphicsAdapter.DefaultAdapter.CurrentDisplayMode;
+            var windowedW = Math.Max(ClientWindowSizeRepository.DEFAULT_BACKBUFFER_WIDTH,
+                _configurationProvider.InGameWidth > 0 ? _configurationProvider.InGameWidth : 1280);
+            var windowedH = Math.Max(ClientWindowSizeRepository.DEFAULT_BACKBUFFER_HEIGHT,
+                _configurationProvider.InGameHeight > 0 ? _configurationProvider.InGameHeight : 720);
+
+            // If already near monitor size, shrink to InGame size; otherwise expand to fill the monitor.
+            var nearDisplay = _clientWindowSizeRepository.Width >= display.Width - 32
+                              && _clientWindowSizeRepository.Height >= display.Height - 32;
+
+            if (nearDisplay || _windowIsDisplaySized)
+            {
+                _clientWindowSizeRepository.Width = windowedW;
+                _clientWindowSizeRepository.Height = windowedH;
+                _windowIsDisplaySized = false;
+            }
+            else
+            {
+                _clientWindowSizeRepository.Width = Math.Max(windowedW, display.Width);
+                _clientWindowSizeRepository.Height = Math.Max(windowedH, display.Height);
+                _windowIsDisplaySized = true;
+            }
+
+            if (_windowSizeButton != null)
+                _windowSizeButton.DrawPosition = GetWindowSizeButtonPosition();
         }
 
         private XNAButton CreateHudMinimizeButton()

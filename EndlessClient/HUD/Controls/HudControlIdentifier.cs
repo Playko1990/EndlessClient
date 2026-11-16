@@ -69,6 +69,9 @@ namespace EndlessClient.HUD.Controls
         HudMinimizeButton,
         HudRestoreButton,
 
+        // Top-right: shrink/expand the game window after fullscreen login
+        WindowSizeButton,
+
         //lower stuff
         StatusLabel,
         ClockLabel,

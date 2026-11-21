@@ -106,22 +106,26 @@ namespace EndlessClient.Rendering
             var barW = _healthBarBackgroundSource.Width * DisplayScale;
             var barH = _healthBarBackgroundSource.Height * DisplayScale;
 
+            // Anchor just above the sprite top. NameLabelY can land mid-body on NPCs
+            // (tile-based name placement), which made the 2x bar cover the sprite.
+            var barTop = _parentReference.DrawArea.Y - barH - 4f;
+
             _healthBarPosition = new Vector2(
                 _parentReference.HorizontalCenter - barW / 2f,
-                _parentReference.NameLabelY);
+                barTop);
 
             if (_isMiss)
             {
                 var missW = _numberSourceRectangles[0].Width * DisplayScale;
                 var xPos = _parentReference.HorizontalCenter - missW / 2f;
-                var yPos = _parentReference.NameLabelY - _frameOffset * DisplayScale - barH * 2f;
+                var yPos = barTop - _frameOffset * DisplayScale - barH;
                 _damageCounterPosition = new Vector2(xPos, yPos);
             }
             else
             {
                 var digitCount = _numberSourceRectangles.Count;
                 var xPos = _parentReference.HorizontalCenter - (digitCount * DigitWidth * DisplayScale / 2f);
-                var yPos = _parentReference.NameLabelY - _frameOffset * DisplayScale - barH * 2f;
+                var yPos = barTop - _frameOffset * DisplayScale - barH;
                 _damageCounterPosition = new Vector2(xPos, yPos);
             }
         }

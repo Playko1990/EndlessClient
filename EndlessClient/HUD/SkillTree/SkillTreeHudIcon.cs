@@ -7,7 +7,7 @@ using Microsoft.Xna.Framework.Graphics;
 namespace EndlessClient.HUD.SkillTree
 {
     /// <summary>
-    /// Builds the Skill Tree HUD button by compositing the reference tree artwork
+    /// Builds the Skill Tree HUD button by compositing crisp tree artwork
     /// onto the same wood chrome fill used by the neighboring HUD icons.
     /// </summary>
     public static class SkillTreeHudIcon
@@ -17,7 +17,16 @@ namespace EndlessClient.HUD.SkillTree
         // Fallback only if chrome sampling fails (matches typical EO side-button wood).
         private static readonly Color FallbackWood = new Color(0x7a, 0x5a, 0x3a, 255);
 
-        public static Texture2D Create(GraphicsDevice graphicsDevice, Texture2D hudButtonSheet, int buttonIndex)
+        /// <param name="buttonSize">
+        /// Final on-screen hub button size. When larger than the native sheet cell,
+        /// the texture is built at that size with nearest-neighbor scaling so the
+        /// tree stays sharp instead of getting a blurry bilinear upscale later.
+        /// </param>
+        public static Texture2D Create(
+            GraphicsDevice graphicsDevice,
+            Texture2D hudButtonSheet,
+            int buttonIndex,
+            int buttonSize = 0)
         {
             var widthDelta = hudButtonSheet.Width / 2;
             var heightDelta = hudButtonSheet.Height / 11;
@@ -27,29 +36,32 @@ namespace EndlessClient.HUD.SkillTree
             var outRect = new Rectangle(0, heightDelta * chromeIndex, widthDelta, heightDelta);
             var overRect = new Rectangle(widthDelta, heightDelta * chromeIndex, widthDelta, heightDelta);
 
-            var texture = new Texture2D(graphicsDevice, widthDelta * 2, heightDelta);
+            var cellW = buttonSize > heightDelta ? buttonSize : widthDelta;
+            var cellH = buttonSize > heightDelta ? buttonSize : heightDelta;
+
+            var texture = new Texture2D(graphicsDevice, cellW * 2, cellH);
             var data = new Color[texture.Width * texture.Height];
 
-            CopyRegion(hudButtonSheet, outRect, data, texture.Width, 0, 0);
-            CopyRegion(hudButtonSheet, overRect, data, texture.Width, widthDelta, 0);
+            // Native chrome → destination cells (nearest neighbor when enlarging).
+            NearestCopyRegion(hudButtonSheet, outRect, data, texture.Width, 0, 0, cellW, cellH);
+            NearestCopyRegion(hudButtonSheet, overRect, data, texture.Width, cellW, 0, cellW, cellH);
 
-            // Match the wood fill from the copied chrome (same as other side icons),
-            // not the muddy brown from the reference art's background.
-            var woodOut = SampleWoodFill(data, texture.Width, 0, 0, widthDelta, heightDelta);
-            var woodOver = SampleWoodFill(data, texture.Width, widthDelta, 0, widthDelta, heightDelta);
+            var woodOut = SampleWoodFill(data, texture.Width, 0, 0, cellW, cellH);
+            var woodOver = SampleWoodFill(data, texture.Width, cellW, 0, cellW, cellH);
 
-            ClearIconInterior(data, texture.Width, 0, 0, widthDelta, heightDelta, woodOut);
-            ClearIconInterior(data, texture.Width, widthDelta, 0, widthDelta, heightDelta, woodOver);
+            var frame = Math.Max(2, cellH / 10);
+            ClearIconInterior(data, texture.Width, 0, 0, cellW, cellH, woodOut, frame);
+            ClearIconInterior(data, texture.Width, cellW, 0, cellW, cellH, woodOver, frame);
 
             using (var tree = LoadTreeTexture(graphicsDevice))
             {
                 var treePixels = new Color[tree.Width * tree.Height];
                 tree.GetData(treePixels);
 
-                BlitCentered(data, texture.Width, 0, 0, widthDelta, heightDelta,
-                    treePixels, tree.Width, tree.Height);
-                BlitCentered(data, texture.Width, widthDelta, 0, widthDelta, heightDelta,
-                    treePixels, tree.Width, tree.Height);
+                BlitCenteredNearest(data, texture.Width, 0, 0, cellW, cellH,
+                    treePixels, tree.Width, tree.Height, frame);
+                BlitCenteredNearest(data, texture.Width, cellW, 0, cellW, cellH,
+                    treePixels, tree.Width, tree.Height, frame);
             }
 
             texture.SetData(data);
@@ -83,16 +95,26 @@ namespace EndlessClient.HUD.SkillTree
             }
         }
 
-        private static void CopyRegion(Texture2D source, Rectangle sourceRect, Color[] dest, int destWidth, int destX, int destY)
+        private static void NearestCopyRegion(
+            Texture2D source,
+            Rectangle sourceRect,
+            Color[] dest,
+            int destStride,
+            int destX,
+            int destY,
+            int destW,
+            int destH)
         {
             var buffer = new Color[sourceRect.Width * sourceRect.Height];
             source.GetData(0, sourceRect, buffer, 0, buffer.Length);
 
-            for (int y = 0; y < sourceRect.Height; y++)
+            for (int y = 0; y < destH; y++)
             {
-                for (int x = 0; x < sourceRect.Width; x++)
+                var srcY = Math.Min(sourceRect.Height - 1, y * sourceRect.Height / destH);
+                for (int x = 0; x < destW; x++)
                 {
-                    dest[(destY + y) * destWidth + (destX + x)] = buffer[y * sourceRect.Width + x];
+                    var srcX = Math.Min(sourceRect.Width - 1, x * sourceRect.Width / destW);
+                    dest[(destY + y) * destStride + (destX + x)] = buffer[srcY * sourceRect.Width + srcX];
                 }
             }
         }
@@ -129,9 +151,8 @@ namespace EndlessClient.HUD.SkillTree
                 count++;
             }
 
-            // 4x4 patches in each interior corner of the button chrome.
-            const int inset = 2;
-            const int patch = 4;
+            var inset = Math.Max(2, width / 10);
+            var patch = Math.Max(3, width / 8);
             for (int j = 0; j < patch; j++)
             {
                 for (int i = 0; i < patch; i++)
@@ -143,7 +164,6 @@ namespace EndlessClient.HUD.SkillTree
                 }
             }
 
-            // Also sample along the top edge center (usually plain wood under the frame).
             var midX = offsetX + width / 2;
             for (int i = -3; i <= 3; i++)
             {
@@ -157,17 +177,24 @@ namespace EndlessClient.HUD.SkillTree
             return new Color((int)(sumR / count), (int)(sumG / count), (int)(sumB / count), 255);
         }
 
-        private static void ClearIconInterior(Color[] data, int stride, int offsetX, int offsetY, int width, int height, Color fill)
+        private static void ClearIconInterior(
+            Color[] data,
+            int stride,
+            int offsetX,
+            int offsetY,
+            int width,
+            int height,
+            Color fill,
+            int frame)
         {
-            // Preserve the 2px chrome frame copied from the sheet.
-            for (int y = offsetY + 2; y < offsetY + height - 2; y++)
+            for (int y = offsetY + frame; y < offsetY + height - frame; y++)
             {
-                for (int x = offsetX + 2; x < offsetX + width - 2; x++)
+                for (int x = offsetX + frame; x < offsetX + width - frame; x++)
                     data[y * stride + x] = fill;
             }
         }
 
-        private static void BlitCentered(
+        private static void BlitCenteredNearest(
             Color[] dest,
             int stride,
             int offsetX,
@@ -176,33 +203,62 @@ namespace EndlessClient.HUD.SkillTree
             int buttonHeight,
             Color[] src,
             int srcWidth,
-            int srcHeight)
+            int srcHeight,
+            int frame)
         {
-            var maxW = Math.Max(1, buttonWidth - 4);
-            var maxH = Math.Max(1, buttonHeight - 4);
-            var scale = Math.Min(maxW / (float)srcWidth, maxH / (float)srcHeight);
-            var destW = Math.Max(1, (int)Math.Round(srcWidth * scale));
-            var destH = Math.Max(1, (int)Math.Round(srcHeight * scale));
-            var destX0 = offsetX + (buttonWidth - destW) / 2;
-            var destY0 = offsetY + (buttonHeight - destH) / 2;
-
-            for (int y = 0; y < destH; y++)
+            var maxW = Math.Max(1, buttonWidth - frame * 2);
+            var maxH = Math.Max(1, buttonHeight - frame * 2);
+            // Integer scale when possible so pixels stay blocky and sharp.
+            var scale = Math.Max(1, Math.Min(maxW / srcWidth, maxH / srcHeight));
+            if (scale * srcWidth > maxW || scale * srcHeight > maxH)
             {
-                var srcY = Math.Min(srcHeight - 1, y * srcHeight / destH);
-                for (int x = 0; x < destW; x++)
+                // Fall back to fitting scale (still nearest-neighbor sampled).
+                var fit = Math.Min(maxW / (float)srcWidth, maxH / (float)srcHeight);
+                var destW = Math.Max(1, (int)Math.Round(srcWidth * fit));
+                var destH = Math.Max(1, (int)Math.Round(srcHeight * fit));
+                var destX0 = offsetX + (buttonWidth - destW) / 2;
+                var destY0 = offsetY + (buttonHeight - destH) / 2;
+
+                for (int y = 0; y < destH; y++)
                 {
-                    var srcX = Math.Min(srcWidth - 1, x * srcWidth / destW);
+                    var srcY = Math.Min(srcHeight - 1, y * srcHeight / destH);
+                    for (int x = 0; x < destW; x++)
+                    {
+                        var srcX = Math.Min(srcWidth - 1, x * srcWidth / destW);
+                        var sc = src[srcY * srcWidth + srcX];
+                        if (sc.A < 250)
+                            continue;
+
+                        var dx = destX0 + x;
+                        var dy = destY0 + y;
+                        if (dx < offsetX || dy < offsetY || dx >= offsetX + buttonWidth || dy >= offsetY + buttonHeight)
+                            continue;
+
+                        dest[dy * stride + dx] = new Color(sc.R, sc.G, sc.B, (byte)255);
+                    }
+                }
+
+                return;
+            }
+
+            var outW = srcWidth * scale;
+            var outH = srcHeight * scale;
+            var x0 = offsetX + (buttonWidth - outW) / 2;
+            var y0 = offsetY + (buttonHeight - outH) / 2;
+
+            for (int y = 0; y < outH; y++)
+            {
+                var srcY = y / scale;
+                for (int x = 0; x < outW; x++)
+                {
+                    var srcX = x / scale;
                     var sc = src[srcY * srcWidth + srcX];
-                    if (sc.A == 0)
-                        continue;
-
-                    var dx = destX0 + x;
-                    var dy = destY0 + y;
-                    if (dx < offsetX || dy < offsetY || dx >= offsetX + buttonWidth || dy >= offsetY + buttonHeight)
-                        continue;
-
-                    // Hard pixel blit only — skip fringe/AA so no whitish halo on wood chrome.
                     if (sc.A < 250)
+                        continue;
+
+                    var dx = x0 + x;
+                    var dy = y0 + y;
+                    if (dx < offsetX || dy < offsetY || dx >= offsetX + buttonWidth || dy >= offsetY + buttonHeight)
                         continue;
 
                     dest[dy * stride + dx] = new Color(sc.R, sc.G, sc.B, (byte)255);

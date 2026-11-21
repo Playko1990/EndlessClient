@@ -327,10 +327,13 @@ namespace EndlessClient.HUD.Controls
 
             if (whichState == InGameStates.PassiveSpells)
             {
+                // Build at final hub size so nearest-neighbor pixels stay sharp when enlarged.
+                var hubSize = _clientWindowSizeRepository.Resizable ? GetHubButtonStep() : 0;
                 buttonTexture = SkillTreeHudIcon.Create(
                     _graphicsDeviceProvider.GraphicsDevice,
                     mainButtonTexture,
-                    buttonIndex);
+                    buttonIndex,
+                    hubSize);
                 outSource = SkillTreeHudIcon.OutSource(buttonTexture);
                 overSource = SkillTreeHudIcon.OverSource(buttonTexture);
             }

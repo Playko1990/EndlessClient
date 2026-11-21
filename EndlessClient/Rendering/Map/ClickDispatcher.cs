@@ -90,12 +90,73 @@ namespace EndlessClient.Rendering.Map
                 _contextMenuRepository.ContextMenu = Option.None<IContextMenuRenderer>();
             });
 
+            // Dialog NPCs (quest/shop/spell/…) first — any on-screen sprite click opens them
+            // and must never fall through to click-to-walk on the tile under the art.
+            if (eventArgs.Button == MouseButton.Left && TryHandleDialogNpcClick(eventArgs.Position))
+                return true;
+
             var mapRenderer = _hudControlProvider.GetComponent<IMapRenderer>(HudControlIdentifier.MapRenderer);
             var cellState = _mapCellStateProvider.GetCellStateAt(mapRenderer.GridCoordinates);
 
             // map items should always get click priority so they can be picked up even when under a character/npc/other object
             var mapItemPickupResult = CheckForMapItemClicks(cellState, eventArgs);
             return CheckForEntityClicks(eventArgs) || CheckForTileClicks(cellState, eventArgs) || mapItemPickupResult;
+        }
+
+        private bool TryHandleDialogNpcClick(Point mousePosition)
+        {
+            // Prefer the front-most (highest Y then X) dialog NPC under the cursor.
+            DomainNPC best = null;
+            var bestKey = int.MinValue;
+            var mapWidth = Math.Max(1, _currentMapProvider.CurrentMap.Properties.Width);
+
+            foreach (var npc in _currentMapStateProvider.NPCs)
+            {
+                if (!IsDialogNpc(npc))
+                    continue;
+
+                if (!GetDialogNpcClickArea(npc).Contains(mousePosition))
+                    continue;
+
+                var key = npc.Y * mapWidth + npc.X;
+                if (best == null || key > bestKey)
+                {
+                    best = npc;
+                    bestKey = key;
+                }
+            }
+
+            if (best == null)
+                return false;
+
+            _npcInteractionController.ShowNPCDialog(best);
+            CancelPendingWalk();
+            return true;
+        }
+
+        private void CancelPendingWalk()
+        {
+            _hudControlProvider.GetComponent<ICharacterAnimator>(HudControlIdentifier.CharacterAnimator)
+                .CancelClickToWalk();
+        }
+
+        private Rectangle GetDialogNpcClickArea(DomainNPC npc)
+        {
+            if (!_npcRendererProvider.NPCRenderers.TryGetValue(npc.Index, out var renderer))
+                return Rectangle.Empty;
+
+            // Generous sprite box — visible on screen means clickable, no proximity gate.
+            var area = renderer.DrawArea;
+            area.Inflate(DialogNpcClickBoundsPad, DialogNpcClickBoundsPad);
+
+            // Union the NPC's map tile (64×32 iso diamond footprint) so a click that would
+            // otherwise start walking onto that square opens the dialog instead.
+            var tileOrigin = _gridDrawCoordinateCalculator
+                .CalculateBaseLayerDrawCoordinatesFromGridUnits(npc.X, npc.Y)
+                .ToPoint();
+            var tileBounds = new Rectangle(tileOrigin.X - 16, tileOrigin.Y - 8, 96, 48);
+
+            return Rectangle.Union(area, tileBounds);
         }
 
         private bool CheckForMapItemClicks(IMapCellState cellState, MouseEventArgs eventArgs)
@@ -146,13 +207,26 @@ namespace EndlessClient.Rendering.Map
 
         private bool CheckForTileClicks(IMapCellState cellState, MouseEventArgs eventArgs)
         {
-            if (eventArgs.Button == MouseButton.Left)
-            {
-                _mapInteractionController.LeftClick(cellState);
-                return true;
-            }
+            if (eventArgs.Button != MouseButton.Left)
+                return false;
 
-            return false;
+            // Standing on / pointing at a dialog NPC's tile: open them, never walk into them.
+            var handledDialogNpc = false;
+            cellState.NPC.MatchSome(npc =>
+            {
+                if (!IsDialogNpc(npc))
+                    return;
+
+                _npcInteractionController.ShowNPCDialog(npc);
+                CancelPendingWalk();
+                handledDialogNpc = true;
+            });
+
+            if (handledDialogNpc)
+                return true;
+
+            _mapInteractionController.LeftClick(cellState);
+            return true;
         }
 
         private bool DispatchClickToEntity(IMapEntity entity, MouseEventArgs eventArgs)
@@ -191,13 +265,18 @@ namespace EndlessClient.Rendering.Map
 
         // Extra hit padding so thin quest/shop/spell NPC sprites are easier to click.
         private const int NpcClickBoundsPad = 28;
+        private const int DialogNpcClickBoundsPad = 56;
 
         private Rectangle GetNPCRendererArea(int npcIndex)
         {
-            if (!_npcRendererProvider.NPCRenderers.ContainsKey(npcIndex))
+            if (!_npcRendererProvider.NPCRenderers.TryGetValue(npcIndex, out var renderer))
                 return Rectangle.Empty;
 
-            var area = _npcRendererProvider.NPCRenderers[npcIndex].DrawArea;
+            var npc = renderer.NPC;
+            if (IsDialogNpc(npc))
+                return GetDialogNpcClickArea(npc);
+
+            var area = renderer.DrawArea;
             area.Inflate(NpcClickBoundsPad, NpcClickBoundsPad);
             return area;
         }
@@ -227,22 +306,32 @@ namespace EndlessClient.Rendering.Map
 
         private bool HandleNPCClick(DomainNPC n, Point currentMousePosition)
         {
-            if (!_npcRendererProvider.NPCRenderers.ContainsKey(n.Index))
+            if (!_npcRendererProvider.NPCRenderers.TryGetValue(n.Index, out var renderer))
                 return false;
-
-            var renderer = _npcRendererProvider.NPCRenderers[n.Index];
 
             if (_spellSlotDataProvider.SpellIsPrepared)
             {
                 _mapInteractionController.LeftClick(n);
+                CancelPendingWalk();
                 return true;
             }
 
-            // Dialog NPCs (quest/shop/spell/etc.): any click in the padded bounds opens them.
+            // Dialog NPCs are handled earlier in TryHandleDialogNpcClick; keep a fallback here.
+            if (IsDialogNpc(n))
+            {
+                if (!GetDialogNpcClickArea(n).Contains(currentMousePosition))
+                    return false;
+
+                _npcInteractionController.ShowNPCDialog(n);
+                CancelPendingWalk();
+                return true;
+            }
+
             // Combat/other NPCs still use the forgiving pixel test.
-            if (IsDialogNpc(n) || renderer.IsClickablePixel(currentMousePosition))
+            if (renderer.IsClickablePixel(currentMousePosition))
             {
                 _npcInteractionController.ShowNPCDialog(n);
+                CancelPendingWalk();
                 return true;
             }
 

@@ -222,19 +222,22 @@ namespace EndlessClient.Rendering.Character
 
         public override void Draw(GameTime gameTime)
         {
-            if (!Visible || _sb.IsDisposed ||
-                (Character == _characterProvider.MainCharacter && !_characterProvider.HasAvatar))
+            // In-game characters are already composited by MapEntityRenderer into the map
+            // render target, which MapRenderer blits with WorldCamera zoom. Drawing again
+            // here with the zoom transform left ghost "character sheets" floating above
+            // the player while walking/attacking.
+            if (!_isUiControl)
+            {
+                base.Draw(gameTime);
+                return;
+            }
+
+            if (!Visible || _sb.IsDisposed)
                 return;
 
             if (!Character.RenderProperties.IsHidden || _characterProvider.MainCharacter.AdminLevel > 0)
             {
-                // World zoom is in-game only — never scale login/character-select UI previews.
-                if (_isUiControl)
-                    _sb.Begin();
-                else
-                    _sb.Begin(transformMatrix: WorldCamera.GetTransform(
-                        _clientWindowSizeRepository.Width,
-                        _clientWindowSizeRepository.Height));
+                _sb.Begin();
                 DrawToSpriteBatch(_sb);
 
                 if (_sb.IsDisposed)

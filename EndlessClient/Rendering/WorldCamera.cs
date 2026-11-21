@@ -8,8 +8,8 @@ namespace EndlessClient.Rendering
     /// </summary>
     public static class WorldCamera
     {
-        // Just a little zoomed out from the classic 1:1 view.
-        public const float Zoom = 0.90f;
+        // Mild zoom-out from classic 1:1 — keep close so the room does not become a tiny island.
+        public const float Zoom = 0.92f;
 
         public static Matrix GetTransform(int viewportWidth, int viewportHeight)
         {

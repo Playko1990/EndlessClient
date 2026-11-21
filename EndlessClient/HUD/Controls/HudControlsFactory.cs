@@ -927,14 +927,14 @@ namespace EndlessClient.HUD.Controls
         {
             return new ChatModePictureBox(_nativeGraphicsManager, _clientWindowSizeRepository, _chatModeCalculator, _hudControlProvider)
             {
-                // Beside (left of) the chat entry so Public/Private does not cover typed text.
+                // Fixed HUD draws the classic mode sprite; resizable HUD paints mode text inside ChatTextBox.
                 DrawOrder = HUD_CONTROL_LAYER + 25
             };
         }
 
         private ChatTextBox CreateChatTextBox()
         {
-            var chatTextBox = new ChatTextBox(_nativeGraphicsManager, _clientWindowSizeRepository, _contentProvider)
+            var chatTextBox = new ChatTextBox(_nativeGraphicsManager, _clientWindowSizeRepository, _contentProvider, _chatModeCalculator)
             {
                 Text = "",
                 Selected = true,

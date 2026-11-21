@@ -15,7 +15,7 @@ namespace EndlessClient.UIControls
     {
         private readonly IChatModeCalculator _chatModeCalculator;
         private readonly IHudControlProvider _hudControlProvider;
-        private readonly IClientWindowSizeProvider _clientWindowSizeProvider;
+        private readonly bool _resizable;
 
         public enum ChatMode
         {
@@ -32,6 +32,9 @@ namespace EndlessClient.UIControls
         private string _lastChat;
         private Option<DateTime> _endMuteTime;
 
+        /// <summary>Current mode for the in-bar label (resizable HUD draws this as text).</summary>
+        public ChatMode CurrentMode { get; private set; } = ChatMode.NoText;
+
         public ChatModePictureBox(INativeGraphicsManager nativeGraphicsManager,
                                   IClientWindowSizeProvider clientWindowSizeProvider,
                                   IChatModeCalculator chatModeCalculator,
@@ -39,7 +42,7 @@ namespace EndlessClient.UIControls
         {
             _chatModeCalculator = chatModeCalculator;
             _hudControlProvider = hudControlProvider;
-            _clientWindowSizeProvider = clientWindowSizeProvider;
+            _resizable = clientWindowSizeProvider.Resizable;
 
             _lastChat = "";
             _endMuteTime = Option.None<DateTime>();
@@ -50,11 +53,12 @@ namespace EndlessClient.UIControls
             var iconHeight = FrameHeight;
             SourceRectangle = new Rectangle(0, 0, Texture.Width, iconHeight);
 
-            if (clientWindowSizeProvider.Resizable)
+            if (_resizable)
             {
+                // Mode is painted inside the chat bar as text — hide the old separate sprite box.
                 KeepInClientWindowBounds = false;
-                PlaceBesideChatBar();
-                clientWindowSizeProvider.GameWindowSizeChanged += (_, _) => PlaceBesideChatBar();
+                Visible = false;
+                DrawArea = Rectangle.Empty;
             }
             else
             {
@@ -63,6 +67,18 @@ namespace EndlessClient.UIControls
         }
 
         private int FrameHeight => Math.Max(1, Texture.Height / 8 - 2);
+
+        public static string LabelFor(ChatMode mode) => mode switch
+        {
+            ChatMode.Private => "PRIVATE",
+            ChatMode.Global => "GLOBAL",
+            ChatMode.Group => "GROUP",
+            ChatMode.Admin => "ADMIN",
+            ChatMode.Muted => "MUTED",
+            ChatMode.Guild => "GUILD",
+            // Idle (NoText) and Public both read as PUBLIC inside the chat bar.
+            _ => "PUBLIC"
+        };
 
         public void SetMuted(DateTime endMuteTime)
         {
@@ -94,14 +110,13 @@ namespace EndlessClient.UIControls
             base.OnUpdateControl(gameTime);
         }
 
-        private void PlaceBesideChatBar()
+        protected override void OnDrawControl(GameTime gameTime)
         {
-            // Outside the text entry — left of the bar — so Public/Private never covers typed words.
-            DrawArea = HudUiMetrics.ResizableChatModeArea(
-                _clientWindowSizeProvider.Width,
-                _clientWindowSizeProvider.Height,
-                Texture.Width,
-                FrameHeight);
+            // Resizable HUD: ChatTextBox draws the mode label inside the bar.
+            if (_resizable)
+                return;
+
+            base.OnDrawControl(gameTime);
         }
 
         private bool AtLeastOneCharTypedOrDeleted()
@@ -113,6 +128,8 @@ namespace EndlessClient.UIControls
 
         private void UpdateSourceRectangleForMode(ChatMode mode)
         {
+            CurrentMode = mode;
+
             if (!SourceRectangle.HasValue)
                 throw new InvalidOperationException("SourceRectangle is expected to have a value.");
 

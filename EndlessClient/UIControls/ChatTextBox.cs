@@ -1,12 +1,14 @@
 ﻿using System;
 using EndlessClient.Content;
 using EndlessClient.HUD;
+using EndlessClient.HUD.Chat;
 using EndlessClient.Rendering;
 using EOLib.Graphics;
 using EOLib.Shared;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
+using MonoGame.Extended.BitmapFonts;
 using MonoGame.Extended.Input.InputListeners;
 using Optional;
 
@@ -19,25 +21,32 @@ namespace EndlessClient.UIControls
     {
         private readonly INativeGraphicsManager _nativeGraphicsManager;
         private readonly IClientWindowSizeProvider _clientWindowSizeProvider;
+        private readonly IChatModeCalculator _chatModeCalculator;
+        private readonly BitmapFont _modeFont;
 
         private bool _ignoreAllInput;
         private Option<DateTime> _endMuteTime;
 
         private readonly Rectangle? _leftSide, _background, _rightSide;
 
-        // Friend/ignore icons sit on the right; chat-mode sits outside to the left of this bar.
+        private string _modeLabel = string.Empty;
+
+        // Friend/ignore icons sit on the right; mode text is painted inside on the left.
         private const int ResizableRightIconReserve = 52;
         private const int ResizableLeftCapPad = 12;
 
         public ChatTextBox(INativeGraphicsManager nativeGraphicsManager,
                            IClientWindowSizeProvider clientWindowSizeProvider,
-                           IContentProvider contentManagerProvider)
+                           IContentProvider contentManagerProvider,
+                           IChatModeCalculator chatModeCalculator)
             : base(Rectangle.Empty, // (124, 308, 440, 19)
                 Constants.FontSize08,
                 caretTexture: contentManagerProvider.Textures[ContentProvider.Cursor])
         {
             _nativeGraphicsManager = nativeGraphicsManager;
             _clientWindowSizeProvider = clientWindowSizeProvider;
+            _chatModeCalculator = chatModeCalculator;
+            _modeFont = contentManagerProvider.Fonts[Constants.FontSize08];
 
             if (_clientWindowSizeProvider.Resizable)
             {
@@ -46,7 +55,7 @@ namespace EndlessClient.UIControls
                 _rightSide = new Rectangle(578, 308, 11, 20);
 
                 // Bottom chrome must stay pinned; clamping to window bounds caused a stray
-                // short bar segment that covered the chat-mode sword.
+                // short bar segment that covered the chat-mode area.
                 KeepInClientWindowBounds = false;
 
                 ApplyResizableLayout();
@@ -89,6 +98,9 @@ namespace EndlessClient.UIControls
                 }
             });
 
+            if (_clientWindowSizeProvider.Resizable)
+                RefreshModeLabelPadding();
+
             base.OnUpdateControl(gameTime);
         }
 
@@ -117,6 +129,15 @@ namespace EndlessClient.UIControls
                     new Rectangle(area.Right - _rightSide.Value.Width, area.Y, _rightSide.Value.Width, area.Height),
                     _rightSide,
                     Color.White);
+
+                if (!string.IsNullOrEmpty(_modeLabel))
+                {
+                    var labelSize = _modeFont.MeasureString(_modeLabel);
+                    var labelX = area.X + ResizableLeftCapPad;
+                    var labelY = area.Y + (area.Height - labelSize.Height) / 2f;
+                    _spriteBatch.DrawString(_modeFont, _modeLabel, new Vector2(labelX, labelY), Color.Black);
+                }
+
                 _spriteBatch.End();
             }
 
@@ -139,8 +160,27 @@ namespace EndlessClient.UIControls
             DrawArea = HudUiMetrics.ResizableChatBarArea(
                 _clientWindowSizeProvider.Width,
                 _clientWindowSizeProvider.Height);
-            // Mode icon is outside this bar; only need a small left cap pad for text.
-            LeftPadding = ResizableLeftCapPad;
+            RefreshModeLabelPadding();
+        }
+
+        private void RefreshModeLabelPadding()
+        {
+            var mode = _ignoreAllInput
+                ? ChatModePictureBox.ChatMode.Muted
+                : _chatModeCalculator.CalculateMode(Text);
+
+            _modeLabel = ChatModePictureBox.LabelFor(mode);
+
+            if (string.IsNullOrEmpty(_modeLabel))
+            {
+                LeftPadding = ResizableLeftCapPad;
+            }
+            else
+            {
+                var labelWidth = (int)Math.Ceiling(_modeFont.MeasureString(_modeLabel).Width);
+                LeftPadding = ResizableLeftCapPad + labelWidth + HudUiMetrics.ResizableChatModeLabelPad;
+            }
+
             MaxWidth = Math.Max(40, DrawArea.Width - LeftPadding - ResizableRightIconReserve);
         }
 

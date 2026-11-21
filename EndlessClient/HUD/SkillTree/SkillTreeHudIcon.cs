@@ -1,28 +1,28 @@
 using System;
+using System.IO;
+using System.Reflection;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
 namespace EndlessClient.HUD.SkillTree
 {
     /// <summary>
-    /// Builds the Skill Tree HUD button: brown chrome with a cloud-canopy tree
-    /// and a 1-2-3 node graph overlaid on the foliage (matches the reference art).
+    /// Builds the Skill Tree HUD button by compositing the reference tree artwork
+    /// onto the same wood chrome fill used by the neighboring HUD icons.
     /// </summary>
     public static class SkillTreeHudIcon
     {
-        private static readonly Color BackgroundBrown = new Color(0x7a, 0x5a, 0x3a, 255);
-        private static readonly Color CanopyGreen = new Color(0x3d, 0x7a, 0x3a, 255);
-        private static readonly Color CanopyGreenDark = new Color(0x2e, 0x5e, 0x2c, 255);
-        private static readonly Color CanopyGreenHi = new Color(0x5a, 0x96, 0x52, 255);
-        private static readonly Color TrunkTan = new Color(0xb8, 0x8a, 0x4a, 255);
-        private static readonly Color Outline = new Color(0x12, 0x10, 0x0c, 255);
+        private const string EmbeddedIconName = "SkillTreeIcon.png";
+
+        // Fallback only if chrome sampling fails (matches typical EO side-button wood).
+        private static readonly Color FallbackWood = new Color(0x7a, 0x5a, 0x3a, 255);
 
         public static Texture2D Create(GraphicsDevice graphicsDevice, Texture2D hudButtonSheet, int buttonIndex)
         {
             var widthDelta = hudButtonSheet.Width / 2;
             var heightDelta = hudButtonSheet.Height / 11;
 
-            // Use Inventory button (index 0) chrome so the frame/color matches neighboring buttons.
+            // Use Inventory button (index 0) chrome so the frame matches neighboring buttons.
             var chromeIndex = 0;
             var outRect = new Rectangle(0, heightDelta * chromeIndex, widthDelta, heightDelta);
             var overRect = new Rectangle(widthDelta, heightDelta * chromeIndex, widthDelta, heightDelta);
@@ -33,8 +33,24 @@ namespace EndlessClient.HUD.SkillTree
             CopyRegion(hudButtonSheet, outRect, data, texture.Width, 0, 0);
             CopyRegion(hudButtonSheet, overRect, data, texture.Width, widthDelta, 0);
 
-            DrawSkillTreeIcon(data, texture.Width, 0, 0, widthDelta, heightDelta);
-            DrawSkillTreeIcon(data, texture.Width, widthDelta, 0, widthDelta, heightDelta);
+            // Match the wood fill from the copied chrome (same as other side icons),
+            // not the muddy brown from the reference art's background.
+            var woodOut = SampleWoodFill(data, texture.Width, 0, 0, widthDelta, heightDelta);
+            var woodOver = SampleWoodFill(data, texture.Width, widthDelta, 0, widthDelta, heightDelta);
+
+            ClearIconInterior(data, texture.Width, 0, 0, widthDelta, heightDelta, woodOut);
+            ClearIconInterior(data, texture.Width, widthDelta, 0, widthDelta, heightDelta, woodOver);
+
+            using (var tree = LoadTreeTexture(graphicsDevice))
+            {
+                var treePixels = new Color[tree.Width * tree.Height];
+                tree.GetData(treePixels);
+
+                BlitCentered(data, texture.Width, 0, 0, widthDelta, heightDelta,
+                    treePixels, tree.Width, tree.Height);
+                BlitCentered(data, texture.Width, widthDelta, 0, widthDelta, heightDelta,
+                    treePixels, tree.Width, tree.Height);
+            }
 
             texture.SetData(data);
             return texture;
@@ -45,6 +61,24 @@ namespace EndlessClient.HUD.SkillTree
 
         public static Rectangle OverSource(Texture2D texture) =>
             new Rectangle(texture.Width / 2, 0, texture.Width / 2, texture.Height);
+
+        private static Texture2D LoadTreeTexture(GraphicsDevice graphicsDevice)
+        {
+            var assembly = typeof(SkillTreeHudIcon).Assembly;
+            using (var stream = assembly.GetManifestResourceStream(EmbeddedIconName))
+            {
+                if (stream == null)
+                    throw new InvalidOperationException($"Missing embedded resource '{EmbeddedIconName}'.");
+
+                // FromStream needs a seekable stream on some platforms.
+                using (var memory = new MemoryStream())
+                {
+                    stream.CopyTo(memory);
+                    memory.Position = 0;
+                    return Texture2D.FromStream(graphicsDevice, memory);
+                }
+            }
+        }
 
         private static void CopyRegion(Texture2D source, Rectangle sourceRect, Color[] dest, int destWidth, int destX, int destY)
         {
@@ -60,238 +94,128 @@ namespace EndlessClient.HUD.SkillTree
             }
         }
 
-        private static void DrawSkillTreeIcon(Color[] data, int stride, int offsetX, int offsetY, int width, int height)
+        /// <summary>
+        /// Average the wood-panel pixels at the chrome corners (where inventory art
+        /// does not cover) so the Skill Tree button fill matches its neighbors.
+        /// </summary>
+        private static Color SampleWoodFill(Color[] data, int stride, int offsetX, int offsetY, int width, int height)
         {
-            ClearIconInterior(data, stride, offsetX, offsetY, width, height);
+            long sumR = 0, sumG = 0, sumB = 0;
+            var count = 0;
 
-            var cx = offsetX + width / 2;
-            var canopyBottom = offsetY + (int)(height * 0.72f);
-            var canopyTop = offsetY + Math.Max(2, height / 10);
-            var canopyRadiusX = Math.Max(4, width / 2 - 3);
-            var canopyRadiusY = Math.Max(4, (canopyBottom - canopyTop) / 2);
-            var canopyCy = canopyTop + canopyRadiusY;
-
-            // Scalloped cloud canopy (overlapping circles), then edge outline.
-            FillScallopedCanopy(data, stride, cx, canopyCy, canopyRadiusX, canopyRadiusY);
-            OutlineFilledEdge(data, stride, offsetX, offsetY, width, height);
-
-            // Trunk
-            var trunkW = Math.Max(2, width / 7);
-            var trunkTop = canopyBottom - Math.Max(1, height / 16);
-            var trunkBottom = offsetY + height - Math.Max(2, height / 8);
-            FillRect(data, stride, cx - trunkW / 2, trunkTop, trunkW, trunkBottom - trunkTop, TrunkTan);
-            DrawRectOutline(data, stride, cx - trunkW / 2, trunkTop, trunkW, trunkBottom - trunkTop, Outline);
-
-            // 1-2-3 skill node graph centered on the canopy.
-            DrawNodeGraph(data, stride, cx, canopyCy, canopyRadiusX, canopyRadiusY);
-        }
-
-        private static void FillScallopedCanopy(Color[] data, int stride, int cx, int cy, int rx, int ry)
-        {
-            // Main body
-            FillEllipse(data, stride, cx, cy, rx, ry, CanopyGreen);
-
-            // Scallop lobes around the edge for the cloud-tree silhouette.
-            var lobeR = Math.Max(2, Math.Min(rx, ry) / 3);
-            FillCircle(data, stride, cx - rx + lobeR, cy - ry / 3, lobeR, CanopyGreen);
-            FillCircle(data, stride, cx + rx - lobeR, cy - ry / 3, lobeR, CanopyGreen);
-            FillCircle(data, stride, cx - rx / 2, cy - ry + lobeR / 2, lobeR, CanopyGreenHi);
-            FillCircle(data, stride, cx + rx / 2, cy - ry + lobeR / 2, lobeR, CanopyGreen);
-            FillCircle(data, stride, cx, cy - ry + lobeR / 3, lobeR + 1, CanopyGreenHi);
-            FillCircle(data, stride, cx - rx + lobeR / 2, cy + ry / 4, lobeR, CanopyGreenDark);
-            FillCircle(data, stride, cx + rx - lobeR / 2, cy + ry / 4, lobeR, CanopyGreenDark);
-
-            // Soft highlight on top-left
-            FillCircle(data, stride, cx - rx / 3, cy - ry / 2, Math.Max(1, lobeR / 2), CanopyGreenHi);
-        }
-
-        private static bool IsCanopyColor(Color c) =>
-            c.A == 255 && c.G > c.R && c.G > c.B && c.G > 40;
-
-        private static void OutlineFilledEdge(Color[] data, int stride, int offsetX, int offsetY, int width, int height)
-        {
-            // Trace canopy silhouette: any green pixel next to non-green becomes black outline.
-            var marks = new bool[data.Length];
-            for (int y = offsetY + 1; y < offsetY + height - 1; y++)
+            void Sample(int x, int y)
             {
-                for (int x = offsetX + 1; x < offsetX + width - 1; x++)
-                {
-                    var idx = y * stride + x;
-                    if (idx < 0 || idx >= data.Length || !IsCanopyColor(data[idx]))
-                        continue;
+                if (x < offsetX || y < offsetY || x >= offsetX + width || y >= offsetY + height)
+                    return;
 
-                    for (int oy = -1; oy <= 1; oy++)
-                    {
-                        for (int ox = -1; ox <= 1; ox++)
-                        {
-                            if (ox == 0 && oy == 0) continue;
-                            var n = (y + oy) * stride + (x + ox);
-                            if (n < 0 || n >= data.Length || !IsCanopyColor(data[n]))
-                            {
-                                marks[idx] = true;
-                                break;
-                            }
-                        }
-                        if (marks[idx]) break;
-                    }
+                var c = data[y * stride + x];
+                if (c.A < 200)
+                    return;
+
+                // Skip black frame / outline pixels.
+                if (c.R < 40 && c.G < 40 && c.B < 40)
+                    return;
+
+                // Skip saturated icon ink (inventory glyph) — keep muted wood browns.
+                if (c.G > c.R + 15 && c.G > c.B + 15)
+                    return;
+
+                sumR += c.R;
+                sumG += c.G;
+                sumB += c.B;
+                count++;
+            }
+
+            // 4x4 patches in each interior corner of the button chrome.
+            const int inset = 2;
+            const int patch = 4;
+            for (int j = 0; j < patch; j++)
+            {
+                for (int i = 0; i < patch; i++)
+                {
+                    Sample(offsetX + inset + i, offsetY + inset + j);
+                    Sample(offsetX + width - inset - 1 - i, offsetY + inset + j);
+                    Sample(offsetX + inset + i, offsetY + height - inset - 1 - j);
+                    Sample(offsetX + width - inset - 1 - i, offsetY + height - inset - 1 - j);
                 }
             }
 
-            for (int i = 0; i < marks.Length; i++)
+            // Also sample along the top edge center (usually plain wood under the frame).
+            var midX = offsetX + width / 2;
+            for (int i = -3; i <= 3; i++)
             {
-                if (marks[i])
-                    data[i] = Outline;
+                for (int j = 0; j < 3; j++)
+                    Sample(midX + i, offsetY + inset + j);
             }
+
+            if (count == 0)
+                return FallbackWood;
+
+            return new Color((int)(sumR / count), (int)(sumG / count), (int)(sumB / count), 255);
         }
 
-        private static void DrawNodeGraph(Color[] data, int stride, int cx, int cy, int rx, int ry)
+        private static void ClearIconInterior(Color[] data, int stride, int offsetX, int offsetY, int width, int height, Color fill)
         {
-            // Node radius scales with canopy; keep rings readable on tiny HUD buttons.
-            var nodeR = Math.Max(1, Math.Min(rx, ry) / 6);
-            if (nodeR < 1) nodeR = 1;
-
-            var topY = cy - ry / 2;
-            var midY = cy - ry / 10;
-            var botY = cy + ry / 3;
-
-            var midSpread = Math.Max(3, rx / 2);
-            var botSpread = Math.Max(4, (int)(rx * 0.72f));
-
-            // Positions: 1 top, 2 mid, 3 bottom
-            var n0 = new Point(cx, topY);
-            var n1 = new Point(cx - midSpread, midY);
-            var n2 = new Point(cx + midSpread, midY);
-            var n3 = new Point(cx - botSpread, botY);
-            var n4 = new Point(cx, botY);
-            var n5 = new Point(cx + botSpread, botY);
-
-            // Edges (pyramid): top→mids, mids→bottom neighbors + both→center
-            DrawLine(data, stride, n0.X, n0.Y, n1.X, n1.Y, Outline);
-            DrawLine(data, stride, n0.X, n0.Y, n2.X, n2.Y, Outline);
-            DrawLine(data, stride, n1.X, n1.Y, n3.X, n3.Y, Outline);
-            DrawLine(data, stride, n1.X, n1.Y, n4.X, n4.Y, Outline);
-            DrawLine(data, stride, n2.X, n2.Y, n4.X, n4.Y, Outline);
-            DrawLine(data, stride, n2.X, n2.Y, n5.X, n5.Y, Outline);
-
-            DrawHollowNode(data, stride, n0.X, n0.Y, nodeR);
-            DrawHollowNode(data, stride, n1.X, n1.Y, nodeR);
-            DrawHollowNode(data, stride, n2.X, n2.Y, nodeR);
-            DrawHollowNode(data, stride, n3.X, n3.Y, nodeR);
-            DrawHollowNode(data, stride, n4.X, n4.Y, nodeR);
-            DrawHollowNode(data, stride, n5.X, n5.Y, nodeR);
-        }
-
-        private static void DrawHollowNode(Color[] data, int stride, int x, int y, int r)
-        {
-            // Punch a green hole then stroke black so nodes stay hollow over foliage.
-            FillCircle(data, stride, x, y, r, CanopyGreen);
-            DrawCircleOutline(data, stride, x, y, r, Outline);
-            if (r >= 2)
-                DrawCircleOutline(data, stride, x, y, r - 1, Outline);
-        }
-
-        private static void ClearIconInterior(Color[] data, int stride, int offsetX, int offsetY, int width, int height)
-        {
+            // Preserve the 2px chrome frame copied from the sheet.
             for (int y = offsetY + 2; y < offsetY + height - 2; y++)
             {
                 for (int x = offsetX + 2; x < offsetX + width - 2; x++)
-                    SetPixel(data, stride, x, y, BackgroundBrown);
+                    data[y * stride + x] = fill;
             }
         }
 
-        private static void FillRect(Color[] data, int stride, int x, int y, int w, int h, Color color)
+        private static void BlitCentered(
+            Color[] dest,
+            int stride,
+            int offsetX,
+            int offsetY,
+            int buttonWidth,
+            int buttonHeight,
+            Color[] src,
+            int srcWidth,
+            int srcHeight)
         {
-            for (int yy = y; yy < y + h; yy++)
-            {
-                for (int xx = x; xx < x + w; xx++)
-                    SetPixel(data, stride, xx, yy, color);
-            }
-        }
+            var maxW = Math.Max(1, buttonWidth - 4);
+            var maxH = Math.Max(1, buttonHeight - 4);
+            var scale = Math.Min(maxW / (float)srcWidth, maxH / (float)srcHeight);
+            var destW = Math.Max(1, (int)Math.Round(srcWidth * scale));
+            var destH = Math.Max(1, (int)Math.Round(srcHeight * scale));
+            var destX0 = offsetX + (buttonWidth - destW) / 2;
+            var destY0 = offsetY + (buttonHeight - destH) / 2;
 
-        private static void DrawRectOutline(Color[] data, int stride, int x, int y, int w, int h, Color color)
-        {
-            for (int xx = x; xx < x + w; xx++)
+            for (int y = 0; y < destH; y++)
             {
-                SetPixel(data, stride, xx, y, color);
-                SetPixel(data, stride, xx, y + h - 1, color);
-            }
-            for (int yy = y; yy < y + h; yy++)
-            {
-                SetPixel(data, stride, x, yy, color);
-                SetPixel(data, stride, x + w - 1, yy, color);
-            }
-        }
-
-        private static void FillCircle(Color[] data, int stride, int cx, int cy, int r, Color color)
-        {
-            var r2 = r * r;
-            for (int y = -r; y <= r; y++)
-            {
-                for (int x = -r; x <= r; x++)
+                var srcY = Math.Min(srcHeight - 1, y * srcHeight / destH);
+                for (int x = 0; x < destW; x++)
                 {
-                    if (x * x + y * y <= r2)
-                        SetPixel(data, stride, cx + x, cy + y, color);
+                    var srcX = Math.Min(srcWidth - 1, x * srcWidth / destW);
+                    var sc = src[srcY * srcWidth + srcX];
+                    if (sc.A == 0)
+                        continue;
+
+                    var dx = destX0 + x;
+                    var dy = destY0 + y;
+                    if (dx < offsetX || dy < offsetY || dx >= offsetX + buttonWidth || dy >= offsetY + buttonHeight)
+                        continue;
+
+                    var di = dy * stride + dx;
+                    if (sc.A >= 250)
+                    {
+                        dest[di] = new Color(sc.R, sc.G, sc.B, (byte)255);
+                    }
+                    else
+                    {
+                        var dc = dest[di];
+                        var a = sc.A / 255f;
+                        var inv = 1f - a;
+                        dest[di] = new Color(
+                            (int)(sc.R * a + dc.R * inv),
+                            (int)(sc.G * a + dc.G * inv),
+                            (int)(sc.B * a + dc.B * inv),
+                            255);
+                    }
                 }
             }
-        }
-
-        private static void DrawCircleOutline(Color[] data, int stride, int cx, int cy, int r, Color color)
-        {
-            var r2 = r * r;
-            var inner = Math.Max(0, r - 1);
-            var inner2 = inner * inner;
-            for (int y = -r; y <= r; y++)
-            {
-                for (int x = -r; x <= r; x++)
-                {
-                    var d = x * x + y * y;
-                    if (d <= r2 && d >= inner2)
-                        SetPixel(data, stride, cx + x, cy + y, color);
-                }
-            }
-        }
-
-        private static void FillEllipse(Color[] data, int stride, int cx, int cy, int rx, int ry, Color color)
-        {
-            if (rx <= 0 || ry <= 0)
-                return;
-
-            for (int y = -ry; y <= ry; y++)
-            {
-                for (int x = -rx; x <= rx; x++)
-                {
-                    if ((x * x) / (float)(rx * rx) + (y * y) / (float)(ry * ry) <= 1f)
-                        SetPixel(data, stride, cx + x, cy + y, color);
-                }
-            }
-        }
-
-        private static void DrawLine(Color[] data, int stride, int x0, int y0, int x1, int y1, Color color)
-        {
-            var dx = Math.Abs(x1 - x0);
-            var dy = Math.Abs(y1 - y0);
-            var sx = x0 < x1 ? 1 : -1;
-            var sy = y0 < y1 ? 1 : -1;
-            var err = dx - dy;
-
-            while (true)
-            {
-                SetPixel(data, stride, x0, y0, color);
-                if (x0 == x1 && y0 == y1)
-                    break;
-                var e2 = 2 * err;
-                if (e2 > -dy) { err -= dy; x0 += sx; }
-                if (e2 < dx) { err += dx; y0 += sy; }
-            }
-        }
-
-        private static void SetPixel(Color[] data, int stride, int x, int y, Color color)
-        {
-            if (x < 0 || y < 0 || x >= stride)
-                return;
-            var index = y * stride + x;
-            if (index >= 0 && index < data.Length)
-                data[index] = color;
         }
     }
 }

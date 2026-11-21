@@ -62,6 +62,9 @@
     <EmbeddedResource Include="Resources\Icon.bmp">
       <LogicalName>Icon.bmp</LogicalName>
     </EmbeddedResource>
+    <EmbeddedResource Include="Resources\SkillTreeIcon.png">
+      <LogicalName>SkillTreeIcon.png</LogicalName>
+    </EmbeddedResource>
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Amadevus.RecordGenerator" Version="0.6.0" />

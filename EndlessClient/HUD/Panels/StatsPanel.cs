@@ -24,7 +24,6 @@ namespace EndlessClient.HUD.Panels
         private readonly ITrainingController _trainingController;
         private readonly ISkillTreeActions _skillTreeActions;
         private readonly ISkillTreeProvider _skillTreeProvider;
-        private readonly XNAButton _panelCycleUp, _panelCycleDown;
         private const int STR = 0, INT = 1, WIS = 2, AGI = 3, CON = 4, CHA = 5;
         private readonly HudScaledLabel[] _basicStats;
         private readonly IXNAButton[] _arrowButtons;
@@ -73,12 +72,6 @@ namespace EndlessClient.HUD.Panels
 
             BackgroundImage = nativeGraphicsManager.TextureFromResource(GFXTypes.PostLoginUI, 34);
             DrawArea = HudUiMetrics.ScaledPanelDrawArea(BackgroundImage, resizable);
-
-            var scrollPos = HudUiMetrics.ScalePoint(467, 2, resizable);
-            var scrollSize = HudUiMetrics.ScalePoint(16, 115, resizable);
-            (_panelCycleUp, _panelCycleDown) = HudPanelCycleArrows.Create(
-                nativeGraphicsManager, scrollPos, scrollSize, resizable,
-                InGameStates.Stats, hudStateActions, sfxPlayer);
 
             _basicStats = new HudScaledLabel[6];
             _arrowButtons = new IXNAButton[6];
@@ -178,9 +171,7 @@ namespace EndlessClient.HUD.Panels
                                       .Concat(_arrowButtons)
                                       .Concat(_characterInfo)
                                       .Concat(_otherInfo)
-                                      .Append(_levelValue)
-                                      .Append(_panelCycleUp)
-                                      .Append(_panelCycleDown);
+                                      .Append(_levelValue);
             foreach (var control in controls)
             {
                 control.SetParentControl(this);

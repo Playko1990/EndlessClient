@@ -56,7 +56,6 @@ namespace EndlessClient.HUD.Panels
         private readonly XNALabel _selectedSpellName;
         private readonly HudScaledLabel _selectedSpellLevel, _totalSkillPoints;
         private readonly ScrollBar _scrollBar;
-        private readonly XNAButton _scrollUp, _scrollDown;
 
         private HashSet<InventorySpell> _cachedSpells;
         private int _cachedAvailableSkillPoints = int.MinValue;
@@ -144,22 +143,16 @@ namespace EndlessClient.HUD.Panels
                 ForeColor = ColorConstants.LightGrayText,
             };
 
-            // Thumb-only scrollbar; large far-right arrows scroll the spell list.
-            var arrowSize = Math.Max(
-                HudUiMetrics.Scale(HudUiMetrics.NativeScrollArrowWidth, uiScale),
-                HudUiMetrics.HubButtonSize(ResizableHud, DrawArea.Height));
-            var scrollPos = new Vector2(DrawArea.Width - arrowSize, HudUiMetrics.Scale(2, uiScale));
-            var scrollSize = new Vector2(arrowSize, Math.Max(arrowSize * 2, DrawArea.Height - HudUiMetrics.Scale(4, uiScale)));
-            var (innerPos, innerSize) = HudPanelCycleArrows.InsetScrollBarArea(scrollPos, scrollSize, uiScale);
-            _scrollBar = new ScrollBar(innerPos, innerSize, ScrollBarColors.LightOnMed, NativeGraphicsManager, uiScale, showArrowButtons: false)
+            // Mouse-wheel scrollbar only — no in-panel up/down arrows on spells.
+            var scrollPos = HudUiMetrics.ScalePoint(467, 2, uiScale);
+            var scrollSize = HudUiMetrics.ScalePoint(16, 115, uiScale);
+            _scrollBar = new ScrollBar(scrollPos, scrollSize, ScrollBarColors.LightOnMed, NativeGraphicsManager, uiScale, showArrowButtons: false)
             {
-                LinesToRender = 2
+                LinesToRender = 2,
+                Visible = false
             };
             _scrollBar.UpdateDimensions(4);
             SetScrollWheelHandler(_scrollBar);
-
-            (_scrollUp, _scrollDown) = HudPanelContentScrollArrows.Create(
-                NativeGraphicsManager, DrawArea, uiScale, _scrollBar, _sfxPlayer);
 
             Game.Exiting += SaveSpellsFile;
         }
@@ -176,11 +169,6 @@ namespace EndlessClient.HUD.Panels
 
             _totalSkillPoints.Initialize();
             _totalSkillPoints.SetParentControl(this);
-
-            _scrollUp.Initialize();
-            _scrollUp.SetParentControl(this);
-            _scrollDown.Initialize();
-            _scrollDown.SetParentControl(this);
 
             _scrollBar.Initialize();
             _scrollBar.SetParentControl(this);

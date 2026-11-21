@@ -20,7 +20,6 @@ namespace EndlessClient.HUD.Panels
         private readonly IChatRenderableGenerator _chatRenderableGenerator;
         private readonly INewsProvider _newsProvider;
         private readonly ScrollBar _scrollBar;
-        private readonly XNAButton _scrollUp, _scrollDown;
         private readonly List<IChatRenderable> _chatRenderables;
         private readonly BitmapFont _chatFont;
         private readonly bool _resizable;
@@ -54,33 +53,21 @@ namespace EndlessClient.HUD.Panels
             BackgroundImage = _nativeGraphicsManager.TextureFromResource(GFXTypes.PostLoginUI, 48);
             DrawArea = HudUiMetrics.ScaledPanelDrawArea(BackgroundImage, _resizable);
 
-            // Thumb-only scrollbar; large far-right arrows scroll news.
+            // News scrolls with the mouse wheel only (no in-panel arrows).
             var uiScale = HudUiMetrics.ScaleFromPanel(BackgroundImage, DrawArea, _resizable);
-            var arrowSize = Math.Max(
-                HudUiMetrics.Scale(HudUiMetrics.NativeScrollArrowWidth, uiScale),
-                HudUiMetrics.HubButtonSize(_resizable, DrawArea.Height));
-            var scrollPos = new Vector2(DrawArea.Width - arrowSize, HudUiMetrics.Scale(20, uiScale));
-            var scrollSize = new Vector2(arrowSize, Math.Max(arrowSize * 2, DrawArea.Height - HudUiMetrics.Scale(24, uiScale)));
-            var (innerPos, innerSize) = HudPanelCycleArrows.InsetScrollBarArea(scrollPos, scrollSize, uiScale);
-            _scrollBar = new ScrollBar(innerPos, innerSize, ScrollBarColors.LightOnMed, _nativeGraphicsManager, uiScale, showArrowButtons: false)
+            var scrollPos = HudUiMetrics.ScalePoint(467, 20, uiScale);
+            var scrollSize = HudUiMetrics.ScalePoint(16, 97, uiScale);
+            _scrollBar = new ScrollBar(scrollPos, scrollSize, ScrollBarColors.LightOnMed, _nativeGraphicsManager, uiScale, showArrowButtons: false)
             {
                 LinesToRender = HudUiMetrics.ChatLinesToRender(_resizable),
-                Visible = true
+                Visible = false
             };
             _scrollBar.SetParentControl(this);
             SetScrollWheelHandler(_scrollBar);
-
-            (_scrollUp, _scrollDown) = HudPanelContentScrollArrows.Create(
-                _nativeGraphicsManager, DrawArea, uiScale, _scrollBar);
         }
 
         public override void Initialize()
         {
-            _scrollUp.Initialize();
-            _scrollUp.SetParentControl(this);
-            _scrollDown.Initialize();
-            _scrollDown.SetParentControl(this);
-
             _scrollBar.Initialize();
             base.Initialize();
         }
@@ -104,10 +91,7 @@ namespace EndlessClient.HUD.Panels
                 SetupRenderablesFromCachedValues(renderables);
 
                 if (_firstTime && renderables.Count > _scrollBar.LinesToRender)
-                {
-                    _scrollDown.FlashSpeed = 500;
                     _firstTime = false;
-                }
             }
 
             base.OnUpdateControl(gameTime);

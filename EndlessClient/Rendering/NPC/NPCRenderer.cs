@@ -160,19 +160,50 @@ namespace EndlessClient.Rendering.NPC
             base.Update(gameTime);
         }
 
+        // How far from an opaque pixel a click still counts (makes thin quest/shop sprites easier).
+        private const int ClickPixelRadius = 12;
+
         public bool IsClickablePixel(Point currentMousePosition)
         {
-            var cachedTexture = _npcSpriteDataCache.GetData(_enfFileProvider.ENFFile[NPC.ID].Graphic, NPC.Frame);
-            if (!_isBlankSprite && cachedTexture.Length > 0 && _npcRenderTarget.Bounds.Contains(currentMousePosition))
-            {
-                var currentFrame = _npcSpriteSheet.GetNPCTexture(_enfFileProvider.ENFFile[NPC.ID].Graphic, NPC.Frame, NPC.Direction);
+            // Whole sprite bounds (plus a little padding) — enough for dialog NPCs with sparse art.
+            var padded = DrawArea;
+            padded.Inflate(ClickPixelRadius, ClickPixelRadius);
+            if (!padded.Contains(currentMousePosition))
+                return false;
 
-                var adjustedPos = currentMousePosition - DrawArea.Location;
-                var index = adjustedPos.Y * currentFrame.Width + adjustedPos.X;
-                return index < cachedTexture.Length && cachedTexture[index].A > 0;
+            var cachedTexture = _npcSpriteDataCache.GetData(_enfFileProvider.ENFFile[NPC.ID].Graphic, NPC.Frame);
+            if (_isBlankSprite || cachedTexture.Length == 0)
+                return true;
+
+            var currentFrame = _npcSpriteSheet.GetNPCTexture(_enfFileProvider.ENFFile[NPC.ID].Graphic, NPC.Frame, NPC.Direction);
+            var frameW = currentFrame.Width;
+            var frameH = currentFrame.Height;
+            if (frameW <= 0 || frameH <= 0)
+                return true;
+
+            var local = currentMousePosition - DrawArea.Location;
+
+            // Exact pixel or any opaque neighbor within radius.
+            for (int dy = -ClickPixelRadius; dy <= ClickPixelRadius; dy++)
+            {
+                for (int dx = -ClickPixelRadius; dx <= ClickPixelRadius; dx++)
+                {
+                    if (dx * dx + dy * dy > ClickPixelRadius * ClickPixelRadius)
+                        continue;
+
+                    var x = local.X + dx;
+                    var y = local.Y + dy;
+                    if (x < 0 || y < 0 || x >= frameW || y >= frameH)
+                        continue;
+
+                    var index = y * frameW + x;
+                    if (index < cachedTexture.Length && cachedTexture[index].A > 0)
+                        return true;
+                }
             }
 
-            return true;
+            // Fallback: still allow clicks anywhere in the padded sprite box for usability.
+            return DrawArea.Contains(currentMousePosition);
         }
 
         public void DrawToSpriteBatch(SpriteBatch spriteBatch)

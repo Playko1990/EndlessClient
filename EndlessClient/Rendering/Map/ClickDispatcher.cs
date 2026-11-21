@@ -11,7 +11,9 @@ using EOLib.Domain.Character;
 using EOLib.Domain.Extensions;
 using EOLib.Domain.Interact;
 using EOLib.Domain.Map;
+using EOLib.IO;
 using EOLib.IO.Map;
+using EOLib.IO.Repositories;
 using Microsoft.Xna.Framework;
 using MonoGame.Extended.Input;
 using MonoGame.Extended.Input.InputListeners;
@@ -38,6 +40,7 @@ namespace EndlessClient.Rendering.Map
         private readonly IGridDrawCoordinateCalculator _gridDrawCoordinateCalculator;
         private readonly IMapInteractionController _mapInteractionController;
         private readonly INPCInteractionController _npcInteractionController;
+        private readonly IENFFileProvider _enfFileProvider;
 
         public override Rectangle EventArea => new(0, 0, _clientWindowSizeProvider.Width, _clientWindowSizeProvider.Height);
 
@@ -56,7 +59,8 @@ namespace EndlessClient.Rendering.Map
                                IGridDrawCoordinateCalculator gridDrawCoordinateCalculator,
 
                                IMapInteractionController mapInteractionController,
-                               INPCInteractionController npcInteractionController)
+                               INPCInteractionController npcInteractionController,
+                               IENFFileProvider enfFileProvider)
         {
             _hudControlProvider = hudControlProvider;
             _clientWindowSizeProvider = clientWindowSizeProvider;
@@ -73,6 +77,7 @@ namespace EndlessClient.Rendering.Map
 
             _mapInteractionController = mapInteractionController;
             _npcInteractionController = npcInteractionController;
+            _enfFileProvider = enfFileProvider;
         }
 
         protected override bool HandleMouseDown(IXNAControl control, MouseEventArgs eventArgs)
@@ -184,11 +189,17 @@ namespace EndlessClient.Rendering.Map
                     : Rectangle.Empty;
         }
 
+        // Extra hit padding so thin quest/shop/spell NPC sprites are easier to click.
+        private const int NpcClickBoundsPad = 28;
+
         private Rectangle GetNPCRendererArea(int npcIndex)
         {
-            return _npcRendererProvider.NPCRenderers.ContainsKey(npcIndex)
-                ? _npcRendererProvider.NPCRenderers[npcIndex].DrawArea
-                : Rectangle.Empty;
+            if (!_npcRendererProvider.NPCRenderers.ContainsKey(npcIndex))
+                return Rectangle.Empty;
+
+            var area = _npcRendererProvider.NPCRenderers[npcIndex].DrawArea;
+            area.Inflate(NpcClickBoundsPad, NpcClickBoundsPad);
+            return area;
         }
 
         private Rectangle GetObjectBounds(IMapEntity entity)
@@ -216,18 +227,54 @@ namespace EndlessClient.Rendering.Map
 
         private bool HandleNPCClick(DomainNPC n, Point currentMousePosition)
         {
+            if (!_npcRendererProvider.NPCRenderers.ContainsKey(n.Index))
+                return false;
+
             var renderer = _npcRendererProvider.NPCRenderers[n.Index];
 
             if (_spellSlotDataProvider.SpellIsPrepared)
             {
                 _mapInteractionController.LeftClick(n);
-            }
-            else if (renderer.IsClickablePixel(currentMousePosition))
-            {
-                _npcInteractionController.ShowNPCDialog(n);
+                return true;
             }
 
-            return true;
+            // Dialog NPCs (quest/shop/spell/etc.): any click in the padded bounds opens them.
+            // Combat/other NPCs still use the forgiving pixel test.
+            if (IsDialogNpc(n) || renderer.IsClickablePixel(currentMousePosition))
+            {
+                _npcInteractionController.ShowNPCDialog(n);
+                return true;
+            }
+
+            // Missed the sprite — don't swallow the click (let walk/tile handling proceed).
+            return false;
+        }
+
+        private bool IsDialogNpc(DomainNPC n)
+        {
+            if (_enfFileProvider?.ENFFile == null)
+                return false;
+
+            try
+            {
+                return _enfFileProvider.ENFFile[n.ID].Type switch
+                {
+                    NPCType.Shop or
+                    NPCType.Quest or
+                    NPCType.Skills or
+                    NPCType.Bank or
+                    NPCType.Inn or
+                    NPCType.Law or
+                    NPCType.Priest or
+                    NPCType.Barber or
+                    NPCType.Guild => true,
+                    _ => false
+                };
+            }
+            catch
+            {
+                return false;
+            }
         }
 
         private bool HandleSignClick(SignMapEntity s)

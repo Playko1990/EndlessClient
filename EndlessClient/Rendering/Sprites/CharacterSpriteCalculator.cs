@@ -304,7 +304,9 @@ namespace EndlessClient.Rendering.Sprites
 
         public ISpriteSheet GetSkinTexture(CharacterRenderProperties characterRenderProperties)
         {
-            const int SheetRows = 7;
+            // Vanilla EO uses 7 race rows. Custom packs may add rows; prefer exact cell height 58 when the sheet divides evenly.
+            const int VanillaSheetRows = 7;
+            const int PreferredStandingCellHeight = 58;
             var sheetColumns = 4;
             var gfxNum = 1;
 
@@ -340,8 +342,15 @@ namespace EndlessClient.Rendering.Sprites
             var rotated = characterRenderProperties.Direction == EODirection.Left ||
                           characterRenderProperties.Direction == EODirection.Up;
 
-            var heightDelta = texture.Height / SheetRows;
-            var widthDelta = texture.Width / sheetColumns;
+            var sheetRows = VanillaSheetRows;
+            if (gfxNum == 1 && texture.Height % PreferredStandingCellHeight == 0)
+            {
+                // Custom skin sheets that keep 58px race rows but add more races
+                sheetRows = System.Math.Max(1, texture.Height / PreferredStandingCellHeight);
+            }
+
+            var heightDelta = System.Math.Max(1, texture.Height / sheetRows);
+            var widthDelta = System.Math.Max(1, texture.Width / sheetColumns);
             var sectionDelta = texture.Width / 4;
 
             var walkExtra = characterRenderProperties.RenderWalkFrame > 0 ? widthDelta * (characterRenderProperties.RenderWalkFrame - 1) : 0;
@@ -368,9 +377,12 @@ namespace EndlessClient.Rendering.Sprites
                 }
             }
 
+            var race = System.Math.Clamp(characterRenderProperties.Race, 0, sheetRows - 1);
+            var gender = System.Math.Clamp(characterRenderProperties.Gender, 0, 1);
+
             var sourceArea = new Rectangle(
-                characterRenderProperties.Gender * widthDelta * (sheetColumns / 2) + (rotated ? sectionDelta : 0) + walkExtra,
-                characterRenderProperties.Race * heightDelta,
+                gender * widthDelta * (sheetColumns / 2) + (rotated ? sectionDelta : 0) + walkExtra,
+                race * heightDelta,
                 widthDelta,
                 heightDelta);
 
@@ -408,15 +420,17 @@ namespace EndlessClient.Rendering.Sprites
 
             var texture = _gfxManager.TextureFromResource(GFXTypes.SkinSprites, 8, true);
 
-            var widthDelta = texture.Width / COLS;
-            var heightDelta = texture.Height / ROWS;
-            var genderOffset = texture.Height / 2 * characterRenderProperties.Gender;
+            var widthDelta = System.Math.Max(1, texture.Width / COLS);
+            var heightDelta = System.Math.Max(1, texture.Height / ROWS);
+            var gender = System.Math.Clamp(characterRenderProperties.Gender, 0, 1);
+            var race = System.Math.Clamp(characterRenderProperties.Race, 0, (ROWS / 2) - 1);
+            var genderOffset = texture.Height / 2 * gender;
             //'playful' is the last face in the gfx (ndx 10), even though it has enum value of 14 (ndx 13)
             var emote = characterRenderProperties.Emote == Emote.Playful ||
                         characterRenderProperties.Emote == Emote.Drunk
                         ? 10 : (int)characterRenderProperties.Emote - 1;
 
-            var sourceRectangle = new Rectangle(widthDelta * emote, heightDelta * characterRenderProperties.Race + genderOffset, widthDelta, heightDelta);
+            var sourceRectangle = new Rectangle(widthDelta * emote, heightDelta * race + genderOffset, widthDelta, heightDelta);
 
             return new SpriteSheet(texture, sourceRectangle);
         }

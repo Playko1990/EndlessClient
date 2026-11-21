@@ -48,6 +48,7 @@ namespace EndlessClient.HUD.Panels
         private readonly IStatusLabelSetter _statusLabelSetter;
         private readonly IItemStringService _itemStringService;
         private readonly IItemNameColorService _itemNameColorService;
+        private readonly IItemStatCompareService _itemStatCompareService;
         private readonly IInventoryService _inventoryService;
         private readonly IActiveDialogProvider _activeDialogProvider;
         private readonly ISpellSlotDataRepository _spellSlotDataRepository;
@@ -60,6 +61,8 @@ namespace EndlessClient.HUD.Panels
         private readonly IPartyDataProvider _partyDataProvider;
         private readonly IConfigurationProvider _configurationProvider;
         private readonly IClientWindowSizeProvider _clientWindowSizeProvider;
+        private readonly ISkillTreeActions _skillTreeActions;
+        private readonly ISkillTreeProvider _skillTreeProvider;
 
         public HudPanelFactory(INativeGraphicsManager nativeGraphicsManager,
                                IInventoryController inventoryController,
@@ -80,6 +83,7 @@ namespace EndlessClient.HUD.Panels
                                IStatusLabelSetter statusLabelSetter,
                                IItemStringService itemStringService,
                                IItemNameColorService itemNameColorService,
+                               IItemStatCompareService itemStatCompareService,
                                IInventoryService inventoryService,
                                IActiveDialogProvider activeDialogProvider,
                                ISpellSlotDataRepository spellSlotDataRepository,
@@ -91,7 +95,9 @@ namespace EndlessClient.HUD.Panels
                                IPartyActions partyActions,
                                IPartyDataProvider partyDataProvider,
                                IConfigurationProvider configurationProvider,
-                               IClientWindowSizeProvider clientWindowSizeProvider)
+                               IClientWindowSizeProvider clientWindowSizeProvider,
+                               ISkillTreeActions skillTreeActions,
+                               ISkillTreeProvider skillTreeProvider)
         {
             _nativeGraphicsManager = nativeGraphicsManager;
             _inventoryController = inventoryController;
@@ -112,6 +118,7 @@ namespace EndlessClient.HUD.Panels
             _statusLabelSetter = statusLabelSetter;
             _itemStringService = itemStringService;
             _itemNameColorService = itemNameColorService;
+            _itemStatCompareService = itemStatCompareService;
             _inventoryService = inventoryService;
             _activeDialogProvider = activeDialogProvider;
             _spellSlotDataRepository = spellSlotDataRepository;
@@ -124,6 +131,8 @@ namespace EndlessClient.HUD.Panels
             _partyDataProvider = partyDataProvider;
             _configurationProvider = configurationProvider;
             _clientWindowSizeProvider = clientWindowSizeProvider;
+            _skillTreeActions = skillTreeActions;
+            _skillTreeProvider = skillTreeProvider;
         }
 
         public NewsPanel CreateNewsPanel()
@@ -145,6 +154,7 @@ namespace EndlessClient.HUD.Panels
                 _statusLabelSetter,
                 _itemStringService,
                 _itemNameColorService,
+                _itemStatCompareService,
                 _inventoryService,
                 _inventorySlotRepository,
                 _playerInfoProvider,
@@ -162,8 +172,6 @@ namespace EndlessClient.HUD.Panels
         public ActiveSpellsPanel CreateActiveSpellsPanel()
         {
             return new ActiveSpellsPanel(_nativeGraphicsManager,
-                _trainingController,
-                _messageBoxFactory,
                 _statusLabelSetter,
                 _playerInfoProvider,
                 _characterProvider,
@@ -173,13 +181,20 @@ namespace EndlessClient.HUD.Panels
                 _hudControlProvider,
                 _sfxPlayer,
                 _configurationProvider,
+                _skillTreeActions,
                 _clientWindowSizeProvider)
             { DrawOrder = HUD_CONTROL_LAYER };
         }
 
         public PassiveSpellsPanel CreatePassiveSpellsPanel()
         {
-            return new PassiveSpellsPanel(_nativeGraphicsManager, _clientWindowSizeProvider) { DrawOrder = HUD_CONTROL_LAYER };
+            return new PassiveSpellsPanel(_nativeGraphicsManager,
+                _trainingController,
+                _messageBoxFactory,
+                _skillTreeActions,
+                _skillTreeProvider,
+                _clientWindowSizeProvider)
+            { DrawOrder = HUD_CONTROL_LAYER };
         }
 
         public ChatPanel CreateChatPanel()
@@ -204,6 +219,8 @@ namespace EndlessClient.HUD.Panels
                                   _experienceTableProvider,
                                   _messageBoxFactory,
                                   _trainingController,
+                                  _skillTreeActions,
+                                  _skillTreeProvider,
                                   _clientWindowSizeProvider)
             { DrawOrder = HUD_CONTROL_LAYER };
         }

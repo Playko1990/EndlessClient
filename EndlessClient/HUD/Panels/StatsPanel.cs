@@ -20,6 +20,8 @@ namespace EndlessClient.HUD.Panels
         private readonly IExperienceTableProvider _experienceTableProvider;
         private readonly IEOMessageBoxFactory _messageBoxFactory;
         private readonly ITrainingController _trainingController;
+        private readonly ISkillTreeActions _skillTreeActions;
+        private readonly ISkillTreeProvider _skillTreeProvider;
         private const int STR = 0, INT = 1, WIS = 2, AGI = 3, CON = 4, CHA = 5;
         private readonly IXNALabel[] _basicStats;
         private readonly IXNAButton[] _arrowButtons;
@@ -36,6 +38,8 @@ namespace EndlessClient.HUD.Panels
 
         private CharacterStats _lastCharacterStats;
         private InventoryItem _lastCharacterGold;
+        private int _lastAvailableSkillPoints = int.MinValue;
+        private int _lastSkillTreeSpent = int.MinValue;
         private bool _confirmedTraining;
 
         public StatsPanel(INativeGraphicsManager nativeGraphicsManager,
@@ -44,6 +48,8 @@ namespace EndlessClient.HUD.Panels
                           IExperienceTableProvider experienceTableProvider,
                           IEOMessageBoxFactory messageBoxFactory,
                           ITrainingController trainingController,
+                          ISkillTreeActions skillTreeActions,
+                          ISkillTreeProvider skillTreeProvider,
                           IClientWindowSizeProvider clientWindowSizeProvider)
             : base(clientWindowSizeProvider.Resizable)
         {
@@ -52,6 +58,8 @@ namespace EndlessClient.HUD.Panels
             _experienceTableProvider = experienceTableProvider;
             _messageBoxFactory = messageBoxFactory;
             _trainingController = trainingController;
+            _skillTreeActions = skillTreeActions;
+            _skillTreeProvider = skillTreeProvider;
 
             BackgroundImage = nativeGraphicsManager.TextureFromResource(GFXTypes.PostLoginUI, 34);
             DrawArea = new Rectangle(102, 330, BackgroundImage.Width, BackgroundImage.Height);
@@ -155,11 +163,20 @@ namespace EndlessClient.HUD.Panels
 
         protected override void OnUpdateControl(GameTime gameTime)
         {
+            _skillTreeActions.EnsureLoaded();
+            var availableSkillPoints = _skillTreeActions.GetAvailablePoints();
+            var skillTreeSpent = _skillTreeProvider.TotalSpent;
+            var bonuses = _skillTreeProvider.GetBonuses();
+
             if (_lastCharacterStats != _characterProvider.MainCharacter.Stats ||
-                _lastCharacterGold != CurrentCharacterGold)
+                _lastCharacterGold != CurrentCharacterGold ||
+                availableSkillPoints != _lastAvailableSkillPoints ||
+                skillTreeSpent != _lastSkillTreeSpent)
             {
                 _lastCharacterStats = _characterProvider.MainCharacter.Stats;
                 _lastCharacterGold = CurrentCharacterGold;
+                _lastAvailableSkillPoints = availableSkillPoints;
+                _lastSkillTreeSpent = skillTreeSpent;
 
                 _basicStats[STR].Text = $"{_lastCharacterStats[CharacterStat.Strength]}";
                 _basicStats[INT].Text = $"{_lastCharacterStats[CharacterStat.Intelligence]}";
@@ -168,16 +185,19 @@ namespace EndlessClient.HUD.Panels
                 _basicStats[CON].Text = $"{_lastCharacterStats[CharacterStat.Constitution]}";
                 _basicStats[CHA].Text = $"{_lastCharacterStats[CharacterStat.Charisma]}";
 
+                var minDam = ApplyHeavyDamageBonus(_lastCharacterStats[CharacterStat.MinDam], bonuses.HeavyDamagePercent);
+                var maxDam = ApplyHeavyDamageBonus(_lastCharacterStats[CharacterStat.MaxDam], bonuses.HeavyDamagePercent);
+
                 _characterStats[HP].Text = $"{_lastCharacterStats[CharacterStat.HP]}";
                 _characterStats[TP].Text = $"{_lastCharacterStats[CharacterStat.TP]}";
-                _characterStats[DAM].Text = $"{_lastCharacterStats[CharacterStat.MinDam]} - {_lastCharacterStats[CharacterStat.MaxDam]}";
+                _characterStats[DAM].Text = $"{minDam} - {maxDam}";
                 _characterStats[ACC].Text = $"{_lastCharacterStats[CharacterStat.Accuracy]}";
                 _characterStats[EVA].Text = $"{_lastCharacterStats[CharacterStat.Evade]}";
                 _characterStats[ARM].Text = $"{_lastCharacterStats[CharacterStat.Armor]}";
 
                 _otherInfo[WEIGHT].Text = $"{_lastCharacterStats[CharacterStat.Weight]} / {_lastCharacterStats[CharacterStat.MaxWeight]}";
                 _otherInfo[STATPTS].Text = $"{_lastCharacterStats[CharacterStat.StatPoints]}";
-                _otherInfo[SKILLPTS].Text = $"{_lastCharacterStats[CharacterStat.SkillPoints]}";
+                _otherInfo[SKILLPTS].Text = $"{availableSkillPoints}";
                 _otherInfo[ELEM].Text = ""; //Elements are not supported by Endless Online :(
                 _otherInfo[GOLD].Text = $"{CurrentCharacterGold.Amount}";
                 _otherInfo[EXP].Text = $"{_lastCharacterStats[CharacterStat.Experience]}";
@@ -203,6 +223,9 @@ namespace EndlessClient.HUD.Panels
 
             base.OnUpdateControl(gameTime);
         }
+
+        private static int ApplyHeavyDamageBonus(int baseDamage, double heavyDamagePercent) =>
+            (int)Math.Round(baseDamage * (1 + heavyDamagePercent / 100.0));
 
         private void HandleArrowButtonClick(object sender, EventArgs e)
         {

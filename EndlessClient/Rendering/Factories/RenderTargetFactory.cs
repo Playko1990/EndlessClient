@@ -1,4 +1,5 @@
-﻿using AutomaticTypeMapper;
+﻿using System;
+using AutomaticTypeMapper;
 using EOLib.Graphics;
 using Microsoft.Xna.Framework.Graphics;
 
@@ -24,6 +25,10 @@ namespace EndlessClient.Rendering.Factories
 
         public RenderTarget2D CreateRenderTarget(int width, int height)
         {
+            // Guard against 0x0 (device reset) and absurd sizes during maximize races.
+            width = Math.Clamp(width, 64, 7680);
+            height = Math.Clamp(height, 64, 4320);
+
             return new RenderTarget2D(
                 _graphicsDeviceProvider.GraphicsDevice,
                 width,

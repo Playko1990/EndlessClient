@@ -14,6 +14,8 @@ namespace EndlessClient.UIControls
             : base(Constants.FontSize07)
         {
             _lastUpdateTime = DateTime.Now;
+            if (windowSizeProvider.Resizable)
+                KeepInClientWindowBounds = false;
             DrawArea = GetPositionBasedOnWindowSize(windowSizeProvider);
             windowSizeProvider.GameWindowSizeChanged += (_, _) => DrawArea = GetPositionBasedOnWindowSize(windowSizeProvider);
         }

@@ -62,6 +62,12 @@ namespace EndlessClient.Rendering.Character
 
         private Color[] _rtColorData;
 
+        // Cached standing skin cell size for DrawArea. Must stay stable across walk/attack
+        // frames or the paperdoll anchor bounces every animation tick.
+        private int _standingSkinWidth = 18;
+        private int _standingSkinHeight = 58;
+        private bool _standingSkinSizeCached;
+
         public EOLib.Domain.Character.Character Character
         {
             get { return _character; }
@@ -69,6 +75,11 @@ namespace EndlessClient.Rendering.Character
             {
                 if (_character == value) return;
                 _textureUpdateRequired = _character.RenderProperties.GetHashCode() != value.RenderProperties.GetHashCode();
+                if (_character.RenderProperties.Race != value.RenderProperties.Race
+                    || _character.RenderProperties.Gender != value.RenderProperties.Gender)
+                {
+                    _standingSkinSizeCached = false;
+                }
                 _character = value;
             }
         }
@@ -157,8 +168,17 @@ namespace EndlessClient.Rendering.Character
                 _healthBarRenderer = _healthBarRendererFactory.CreateHealthBarRenderer(this);
                 Game.Components.Add(_healthBarRenderer);
             }
-
             base.Initialize();
+
+            if (_isUiControl)
+            {
+                // Login/create previews are updated/drawn by CharacterControl only.
+                // Staying in Game.Components caused a second update/draw pass that
+                // flickered/bounced the character-select sprites.
+                Enabled = false;
+                if (Game?.Components != null && Game.Components.Contains(this))
+                    Game.Components.Remove(this);
+            }
         }
 
         protected override void LoadContent()
@@ -231,14 +251,18 @@ namespace EndlessClient.Rendering.Character
 
         public void SetToCenterScreenPosition()
         {
-            var skinRect = _characterTextures.Skin.SourceRectangle;
+            // Skin can be null briefly during login resize/device reset; never NRE here.
+            var skinWidth = _characterTextures?.Skin?.SourceRectangle.Width ?? _standingSkinWidth;
+            var skinHeight = _characterTextures?.Skin?.SourceRectangle.Height ?? _standingSkinHeight;
+            if (skinWidth <= 0) skinWidth = _standingSkinWidth;
+            if (skinHeight <= 0) skinHeight = _standingSkinHeight;
 
             var xCoord = _clientWindowSizeRepository.Resizable
-                ? (_clientWindowSizeRepository.Width - skinRect.Width) / 2
+                ? (_clientWindowSizeRepository.Width - skinWidth) / 2
                 : 310;
             var yCoord = _clientWindowSizeRepository.Resizable
-                ? (_clientWindowSizeRepository.Height - skinRect.Height) / 2 - 11
-                : (298 - skinRect.Height) / 2 - skinRect.Height / 4 - 3;
+                ? (_clientWindowSizeRepository.Height - skinHeight) / 2 - 11
+                : (298 - skinHeight) / 2 - skinHeight / 4 - 3;
 
             SetAbsoluteScreenPosition(xCoord, yCoord);
         }
@@ -324,13 +348,40 @@ namespace EndlessClient.Rendering.Character
 
         private void SetScreenCoordinates(int xPosition, int yPosition)
         {
-            if (DrawArea.X != xPosition || DrawArea.Y != yPosition)
+            TryCacheStandingSkinSize();
+
+            if (DrawArea.X != xPosition || DrawArea.Y != yPosition
+                || DrawArea.Width != _standingSkinWidth || DrawArea.Height != _standingSkinHeight)
             {
-                // size of standing still skin texture
-                DrawArea = new Rectangle(xPosition, yPosition, 18, 58);
-                HorizontalCenter = xPosition + 9;
+                DrawArea = new Rectangle(xPosition, yPosition, _standingSkinWidth, _standingSkinHeight);
+                HorizontalCenter = xPosition + _standingSkinWidth / 2;
                 _textureUpdateRequired = true;
             }
+        }
+
+        private void TryCacheStandingSkinSize()
+        {
+            // Login UI previews stay on the vanilla 18x58 anchor so slot layout doesn't jump.
+            if (_isUiControl || _standingSkinSizeCached || _characterTextures?.Skin == null)
+                return;
+
+            // Only learn size from the standing pose so walk/attack sheet cells don't resize DrawArea
+            if (Character.RenderProperties.CurrentAction != CharacterActionState.Standing
+                || Character.RenderProperties.SitState != SitState.Standing)
+                return;
+
+            var src = _characterTextures.Skin.SourceRectangle;
+            if (src.Width < 8 || src.Height < 16)
+                return;
+
+            // Ignore multi-race sheet accidents (full column height) — that is what made
+            // login/previews bounce and stacked race parts appear under/above the body.
+            if (src.Height > 96 || src.Width > 48)
+                return;
+
+            _standingSkinWidth = src.Width;
+            _standingSkinHeight = src.Height;
+            _standingSkinSizeCached = true;
         }
 
         private int GetMainCharacterOffsetX()
@@ -506,16 +557,29 @@ namespace EndlessClient.Rendering.Character
         {
             lock (_rt_locker_)
             {
-                _charRenderTarget?.Dispose();
-                _charRenderTarget = _renderTargetFactory.CreateRenderTarget();
-
-                _rtColorData = new Color[_charRenderTarget.Width * _charRenderTarget.Height];
+                try
+                {
+                    var next = _renderTargetFactory.CreateRenderTarget();
+                    var old = _charRenderTarget;
+                    _charRenderTarget = next;
+                    _rtColorData = new Color[next.Width * next.Height];
+                    old?.Dispose();
+                }
+                catch
+                {
+                    // GraphicsDevice can be mid-reset during maximize/ApplyChanges.
+                    // Keep the previous target; next resize will retry.
+                }
             }
         }
 
         private void RecreateRenderTargetEvent(object sender, EventArgs e)
         {
             RecreateRenderTarget();
+
+            // New RT is empty until the next paperdoll bake — without this flag the
+            // character stays invisible after login maximize / window sync.
+            _textureUpdateRequired = true;
 
             if (_character == _characterProvider.MainCharacter)
                 SetToCenterScreenPosition();

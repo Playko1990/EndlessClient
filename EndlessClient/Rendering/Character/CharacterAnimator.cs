@@ -36,6 +36,8 @@ namespace EndlessClient.Rendering.Character
         private readonly IPathFinder _pathFinder;
         private readonly IFixedTimeStepRepository _fixedTimeStepRepository;
         private readonly IMetadataProvider<WeaponMetadata> _weaponMetadataProvider;
+        private readonly ISkillTreeActions _skillTreeActions;
+        private readonly ISkillTreeProvider _skillTreeProvider;
 
         // todo: this state should really be managed better
         private readonly Dictionary<int, EODirection> _queuedDirections;
@@ -62,7 +64,9 @@ namespace EndlessClient.Rendering.Character
                                  IWalkValidationActions walkValidationActions,
                                  IPathFinder pathFinder,
                                  IFixedTimeStepRepository fixedTimeStepRepository,
-                                 IMetadataProvider<WeaponMetadata> weaponMetadataProvider)
+                                 IMetadataProvider<WeaponMetadata> weaponMetadataProvider,
+                                 ISkillTreeActions skillTreeActions,
+                                 ISkillTreeProvider skillTreeProvider)
             : base((Game)gameProvider.Game)
         {
             _characterRepository = characterRepository;
@@ -75,6 +79,8 @@ namespace EndlessClient.Rendering.Character
             _pathFinder = pathFinder;
             _fixedTimeStepRepository = fixedTimeStepRepository;
             _weaponMetadataProvider = weaponMetadataProvider;
+            _skillTreeActions = skillTreeActions;
+            _skillTreeProvider = skillTreeProvider;
             _queuedDirections = new Dictionary<int, EODirection>();
             _queuedPositions = new Dictionary<int, MapCoordinate>();
             _otherPlayerStartWalkingTimes = new Dictionary<int, RenderFrameActionTime>();
@@ -288,7 +294,7 @@ namespace EndlessClient.Rendering.Character
             {
                 var sendWalk = false;
 
-                if ((_fixedTimeStepRepository.TickCount - pair.ActionTick) >= TICKS_PER_WALK_FRAME)
+                if ((_fixedTimeStepRepository.TickCount - pair.ActionTick) >= GetWalkTicks(pair.UniqueID))
                 {
                     GetCurrentCharacterFromRepository(pair).Match(
                         none: () => playersDoneWalking.Add(pair.UniqueID),
@@ -438,7 +444,7 @@ namespace EndlessClient.Rendering.Character
             var playersDoneAttacking = new HashSet<int>();
             foreach (var pair in _otherPlayerStartAttackingTimes.Values)
             {
-                if ((_fixedTimeStepRepository.TickCount - pair.ActionTick) >= TICKS_PER_FRAME)
+                if ((_fixedTimeStepRepository.TickCount - pair.ActionTick) >= GetAttackTicks(pair.UniqueID))
                 {
                     GetCurrentCharacterFromRepository(pair).Match(
                         none: () => playersDoneAttacking.Add(pair.UniqueID),
@@ -582,6 +588,31 @@ namespace EndlessClient.Rendering.Character
             var renderProps = character.RenderProperties.ResetAnimationFrames();
             var newCharacter = character.WithRenderProperties(renderProps);
             _currentMapStateRepository.Characters.Update(character, newCharacter);
+        }
+
+        private ulong GetWalkTicks(int characterID)
+        {
+            if (characterID != _characterRepository.MainCharacter.ID)
+                return TICKS_PER_WALK_FRAME;
+
+            return GetMainCharacterTicks(TICKS_PER_WALK_FRAME, _skillTreeProvider.GetBonuses().MoveSpeedPercent);
+        }
+
+        private ulong GetAttackTicks(int characterID)
+        {
+            if (characterID != _characterRepository.MainCharacter.ID)
+                return TICKS_PER_FRAME;
+
+            return GetMainCharacterTicks(TICKS_PER_FRAME, _skillTreeProvider.GetBonuses().AttackSpeedPercent);
+        }
+
+        private ulong GetMainCharacterTicks(int baseTicks, double speedPercent)
+        {
+            _skillTreeActions.EnsureLoaded();
+            if (speedPercent <= 0)
+                return (ulong)baseTicks;
+
+            return (ulong)Math.Max(3, (int)Math.Round(baseTicks / (1 + speedPercent / 100.0)));
         }
     }
 

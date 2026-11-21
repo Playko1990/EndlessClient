@@ -124,20 +124,35 @@ namespace EndlessClient.GameExecution
 
             _previousKeyState = Keyboard.GetState();
 
-            // setting Width/Height in window size repository applies the change to disable vsync
+            // Disable vsync then apply once. Avoid Width/Height setter thrash — those used to
+            // ApplyChanges every time and re-enter GameWindowSizeChanged on startup.
+            // Never start exclusive/borderless fullscreen — keep OS min/max/close + taskbar.
             _graphicsDeviceManager.SynchronizeWithVerticalRetrace = false;
             _graphicsDeviceManager.IsFullScreen = false;
-            _windowSizeRepository.Width = ClientWindowSizeRepository.DEFAULT_BACKBUFFER_WIDTH;
-            _windowSizeRepository.Height = ClientWindowSizeRepository.DEFAULT_BACKBUFFER_HEIGHT;
+            _graphicsDeviceManager.PreferredBackBufferWidth = ClientWindowSizeRepository.DEFAULT_BACKBUFFER_WIDTH;
+            _graphicsDeviceManager.PreferredBackBufferHeight = ClientWindowSizeRepository.DEFAULT_BACKBUFFER_HEIGHT;
+            _graphicsDeviceManager.ApplyChanges();
+            Window.IsBorderless = false;
 
             _windowSizeRepository.GameWindowSizeChanged += (_, _) =>
             {
-                if (_windowSizeRepository.Width < ClientWindowSizeRepository.DEFAULT_BACKBUFFER_HEIGHT)
+                // Only enforce the minimum when the player can resize. Comparing ClientBounds
+                // (often 1px short of Preferred) and re-applying 640x480 caused a startup
+                // resize feedback loop that bounced the whole window.
+                if (!_windowSizeRepository.Resizable)
+                    return;
+
+                if (_windowSizeRepository.Width < ClientWindowSizeRepository.DEFAULT_BACKBUFFER_WIDTH)
                     _windowSizeRepository.Width = ClientWindowSizeRepository.DEFAULT_BACKBUFFER_WIDTH;
 
                 if (_windowSizeRepository.Height < ClientWindowSizeRepository.DEFAULT_BACKBUFFER_HEIGHT)
                     _windowSizeRepository.Height = ClientWindowSizeRepository.DEFAULT_BACKBUFFER_HEIGHT;
             };
+
+            // Alt-tab / minimize can desync ClientBounds from the backbuffer (game stuck in a
+            // corner with black bars, clicks miss UI). Resync whenever we regain focus.
+            Activated += (_, _) => _windowSizeRepository.SyncBackBufferWithWindow();
+            Window.ClientSizeChanged += (_, _) => _windowSizeRepository.SyncBackBufferWithWindow();
 
             Exiting += (_, _) => _mfxPlayer.StopBackgroundMusic();
         }
@@ -175,6 +190,9 @@ namespace EndlessClient.GameExecution
 
         protected override void Update(GameTime gameTime)
         {
+            // Catch maximize/restore even when MonoGame skips ClientSizeChanged.
+            _windowSizeRepository.MaintainFrame();
+
             // Force updates to wait every 12ms
             // Some game components rely on slower update times. 60FPS was the original, but 12ms factors nicely in 120ms "ticks"
             // See: https://github.com/ethanmoffat/EndlessClient/issues/199

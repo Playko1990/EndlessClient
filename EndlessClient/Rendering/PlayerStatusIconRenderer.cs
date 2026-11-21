@@ -48,8 +48,16 @@ namespace EndlessClient.Rendering
 
             _statusIcons = nativeGraphicsManager.TextureFromResource(GFXTypes.PostLoginUI, 46, true);
 
-            DrawPosition = new Vector2(14, clientWindowSizeProvider.Height - _statusIcons.Height - 3);
-            clientWindowSizeProvider.GameWindowSizeChanged += (o, e) => DrawPosition = new Vector2(14, clientWindowSizeProvider.Height - _statusIcons.Height - 3);
+            KeepInClientWindowBounds = false;
+            void PlaceAboveChatBar()
+            {
+                // Icon cell is half the sheet height; sit on the sword row above the chat bar.
+                var iconHeight = _statusIcons.Height / 2;
+                DrawPosition = new Vector2(28, clientWindowSizeProvider.Height - 40 - iconHeight - 4);
+            }
+
+            PlaceAboveChatBar();
+            clientWindowSizeProvider.GameWindowSizeChanged += (o, e) => PlaceAboveChatBar();
         }
 
         protected override void OnUpdateControl(GameTime gameTime)

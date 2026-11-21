@@ -110,7 +110,7 @@ namespace EndlessClient.HUD.Panels
 
             var resizable = clientWindowSizeProvider.Resizable;
 
-            _weightLabel = new XNALabel(Constants.FontSize08pt5)
+            _weightLabel = new XNALabel(HudUiMetrics.PanelLabelFont(resizable))
             {
                 DrawArea = HudUiMetrics.ScaleRectangle(new Rectangle(385, 37, 88, 18), resizable),
                 ForeColor = ColorConstants.LightGrayText,
@@ -122,7 +122,7 @@ namespace EndlessClient.HUD.Panels
             var weirdOffsetSheet = NativeGraphicsManager.TextureFromResource(GFXTypes.PostLoginUI, 27);
 
             _paperdoll = new XNAButton(weirdOffsetSheet, HudUiMetrics.ScalePoint(385, 9, resizable), new Rectangle(39, 385, 88, 19), new Rectangle(126, 385, 88, 19));
-            ScaleButton(_paperdoll, resizable);
+            HudUiMetrics.ScaleControlSize((XNAButton)_paperdoll, resizable);
             _paperdoll.OnMouseEnter += MouseOverButton;
             _paperdoll.OnMouseDown += (_, _) =>
             {
@@ -131,12 +131,12 @@ namespace EndlessClient.HUD.Panels
             };
 
             _drop = new XNAButton(weirdOffsetSheet, HudUiMetrics.ScalePoint(389, 68, resizable), new Rectangle(0, 15, 38, 37), new Rectangle(0, 52, 38, 37));
-            ScaleButton(_drop, resizable);
+            HudUiMetrics.ScaleControlSize((XNAButton)_drop, resizable);
             _drop.OnMouseEnter += MouseOverButton;
             _drop.OnMouseDown += (_, _) => _sfxPlayer.PlaySfx(SoundEffectID.InventoryPlace);
 
             _junk = new XNAButton(weirdOffsetSheet, HudUiMetrics.ScalePoint(431, 68, resizable), new Rectangle(0, 89, 38, 37), new Rectangle(0, 126, 38, 37));
-            ScaleButton(_junk, resizable);
+            HudUiMetrics.ScaleControlSize((XNAButton)_junk, resizable);
             _junk.OnMouseEnter += MouseOverButton;
             _junk.OnMouseDown += (_, _) => _sfxPlayer.PlaySfx(SoundEffectID.InventoryPlace);
 
@@ -576,13 +576,5 @@ namespace EndlessClient.HUD.Panels
             }
         }
 
-        private static void ScaleButton(IXNAButton button, bool resizable)
-        {
-            if (!resizable || button is not XNAButton xnaButton)
-                return;
-
-            xnaButton.DrawArea = HudUiMetrics.ScaleRectangle(xnaButton.DrawArea, resizable: true);
-            xnaButton.ClickArea = new Rectangle(0, 0, xnaButton.DrawArea.Width, xnaButton.DrawArea.Height);
-        }
     }
 }

@@ -62,8 +62,11 @@ namespace EndlessClient.HUD.Panels
             _skillTreeActions = skillTreeActions;
             _skillTreeProvider = skillTreeProvider;
 
+            var resizable = clientWindowSizeProvider.Resizable;
+            var font = HudUiMetrics.PanelLabelFont(resizable);
+
             BackgroundImage = nativeGraphicsManager.TextureFromResource(GFXTypes.PostLoginUI, 34);
-            DrawArea = HudUiMetrics.ScaledPanelDrawArea(BackgroundImage, clientWindowSizeProvider.Resizable);
+            DrawArea = HudUiMetrics.ScaledPanelDrawArea(BackgroundImage, resizable);
 
             _basicStats = new IXNALabel[6];
             _arrowButtons = new IXNAButton[6];
@@ -77,32 +80,33 @@ namespace EndlessClient.HUD.Panels
 
             for (int i = 0; i < _basicStats.Length; ++i)
             {
-                _basicStats[i] = new XNALabel(Constants.FontSize08pt5)
+                _basicStats[i] = new XNALabel(font)
                 {
                     ForeColor = ColorConstants.LightGrayText,
                     AutoSize = false,
                     Text = "",
-                    DrawArea = new Rectangle(50, 8 + i * 18, 73, 13)
+                    DrawArea = HudUiMetrics.ScaleRectangle(new Rectangle(50, 8 + i * 18, 73, 13), resizable)
                 };
 
                 _arrowButtons[i] = new XNAButton(buttonTexture,
-                                                 new Vector2(106, 7 + i * 18),
+                                                 HudUiMetrics.ScalePoint(106, 7 + i * 18, resizable),
                                                  outTextureArea,
                                                  overTextureArea)
                 {
                     Visible = false,
                     FlashSpeed = 500
                 };
+                HudUiMetrics.ScaleControlSize((XNAButton)_arrowButtons[i], resizable);
             }
 
             for (int i = 0; i < _characterStats.Length; ++i)
             {
-                _characterStats[i] = new XNALabel(Constants.FontSize08pt5)
+                _characterStats[i] = new XNALabel(font)
                 {
                     ForeColor = ColorConstants.LightGrayText,
                     AutoSize = false,
                     Text = "",
-                    DrawArea = new Rectangle(158, 8 + i * 18, 73, 13)
+                    DrawArea = HudUiMetrics.ScaleRectangle(new Rectangle(158, 8 + i * 18, 73, 13), resizable)
                 };
             }
 
@@ -112,35 +116,35 @@ namespace EndlessClient.HUD.Panels
                     ? new Rectangle(280, 44 + i % 4 * 18, 60, 13)
                     : new Rectangle(379, 44 + i % 4 * 18, 94, 13);
 
-                _otherInfo[i] = new XNALabel(Constants.FontSize08pt5)
+                _otherInfo[i] = new XNALabel(font)
                 {
                     ForeColor = ColorConstants.LightGrayText,
                     AutoSize = false,
                     Text = "",
-                    DrawArea = drawArea
+                    DrawArea = HudUiMetrics.ScaleRectangle(drawArea, resizable)
                 };
             }
 
-            _characterInfo[NAME] = new XNALabel(Constants.FontSize08pt5)
+            _characterInfo[NAME] = new XNALabel(font)
             {
                 ForeColor = ColorConstants.LightGrayText,
                 AutoSize = false,
                 Text = "",
-                DrawArea = new Rectangle(280, 8, 144, 13)
+                DrawArea = HudUiMetrics.ScaleRectangle(new Rectangle(280, 8, 144, 13), resizable)
             };
-            _characterInfo[GUILD] = new XNALabel(Constants.FontSize08pt5)
+            _characterInfo[GUILD] = new XNALabel(font)
             {
                 ForeColor = ColorConstants.LightGrayText,
                 AutoSize = false,
                 Text = "",
-                DrawArea = new Rectangle(280, 26, 193, 13)
+                DrawArea = HudUiMetrics.ScaleRectangle(new Rectangle(280, 26, 193, 13), resizable)
             };
-            _characterInfo[LEVEL] = new XNALabel(Constants.FontSize08pt5)
+            _characterInfo[LEVEL] = new XNALabel(font)
             {
                 ForeColor = ColorConstants.LightGrayText,
                 AutoSize = false,
                 Text = "",
-                DrawArea = new Rectangle(453, 8, 20, 13)
+                DrawArea = HudUiMetrics.ScaleRectangle(new Rectangle(453, 8, 20, 13), resizable)
             };
         }
 

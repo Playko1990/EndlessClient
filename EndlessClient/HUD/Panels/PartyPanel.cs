@@ -22,6 +22,7 @@ namespace EndlessClient.HUD.Panels
         private readonly IContentProvider _contentProvider;
         private readonly IPartyDataProvider _partyDataProvider;
         private readonly ICharacterProvider _characterProvider;
+        private readonly bool _resizable;
 
         private readonly ScrollBar _scrollBar;
         private readonly IXNALabel _numMembers;
@@ -43,7 +44,11 @@ namespace EndlessClient.HUD.Panels
             _contentProvider = contentProvider;
             _partyDataProvider = partyDataProvider;
             _characterProvider = characterProvider;
-            _scrollBar = new ScrollBar(new Vector2(467, 20), new Vector2(16, 97), ScrollBarColors.LightOnMed, _nativeGraphicsManager)
+            _resizable = clientWindowSizeProvider.Resizable;
+
+            var scrollPos = HudUiMetrics.ScalePoint(467, 20, _resizable);
+            var scrollSize = HudUiMetrics.ScalePoint(16, 97, _resizable);
+            _scrollBar = new ScrollBar(scrollPos, scrollSize, ScrollBarColors.LightOnMed, _nativeGraphicsManager)
             {
                 LinesToRender = 7,
                 Visible = true,
@@ -52,10 +57,10 @@ namespace EndlessClient.HUD.Panels
             _scrollBar.UpdateDimensions(0);
             SetScrollWheelHandler(_scrollBar);
 
-            _numMembers = new XNALabel(Constants.FontSize09)
+            _numMembers = new XNALabel(HudUiMetrics.PanelLabelFont(_resizable))
             {
                 AutoSize = false,
-                DrawArea = new Rectangle(455, 0, 27, 14),
+                DrawArea = HudUiMetrics.ScaleRectangle(new Rectangle(455, 0, 27, 14), _resizable),
                 ForeColor = ColorConstants.LightGrayText,
                 TextAlign = LabelAlignment.MiddleRight
             };
@@ -66,7 +71,7 @@ namespace EndlessClient.HUD.Panels
             _cachedParty = new HashSet<PartyMember>();
 
             BackgroundImage = _nativeGraphicsManager.TextureFromResource(GFXTypes.PostLoginUI, 42);
-            DrawArea = HudUiMetrics.ScaledPanelDrawArea(BackgroundImage, clientWindowSizeProvider.Resizable);
+            DrawArea = HudUiMetrics.ScaledPanelDrawArea(BackgroundImage, _resizable);
         }
 
         public override void Initialize()
@@ -93,7 +98,8 @@ namespace EndlessClient.HUD.Panels
                     var next = new PartyPanelMember(
                         _nativeGraphicsManager,
                         _contentProvider,
-                        mainCharacterIsLeader || member.CharacterID == _characterProvider.MainCharacter.ID)
+                        mainCharacterIsLeader || member.CharacterID == _characterProvider.MainCharacter.ID,
+                        _resizable)
                     {
                         PartyMember = member,
                     };

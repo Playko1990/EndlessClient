@@ -1,4 +1,6 @@
+using System;
 using EndlessClient.Rendering;
+using EOLib.Shared;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
@@ -18,6 +20,9 @@ namespace EndlessClient.HUD
         // Native HUD side-button stride in classic layout.
         public const int NativeSideButtonStep = 20;
 
+        // Left hub column has 6 buttons that should fill the docked panel height.
+        public const int HubButtonCount = 6;
+
         public const int NativeInventorySlotSize = 26;
 
         public static bool ShouldEnlargeHud(bool resizable, int windowWidth = 0) =>
@@ -28,6 +33,23 @@ namespace EndlessClient.HUD
 
         public static int SideButtonStep(bool resizable) =>
             ShouldEnlargeHud(resizable) ? (int)(NativeSideButtonStep * PanelScale) : NativeSideButtonStep;
+
+        /// <summary>
+        /// Hub icon size that fills the docked panel height (6 left-side buttons).
+        /// </summary>
+        public static int HubButtonSize(bool resizable, int scaledPanelHeight)
+        {
+            if (!ShouldEnlargeHud(resizable))
+                return NativeSideButtonStep;
+
+            return Math.Max(1, scaledPanelHeight / HubButtonCount);
+        }
+
+        /// <summary>
+        /// Slightly larger bitmap font so labels fill enlarged panel cells.
+        /// </summary>
+        public static string PanelLabelFont(bool resizable) =>
+            ShouldEnlargeHud(resizable) ? Constants.FontSize10 : Constants.FontSize08pt5;
 
         public static Rectangle ScaledPanelDrawArea(Texture2D background, bool resizable)
         {
@@ -59,5 +81,21 @@ namespace EndlessClient.HUD
 
         public static int Scale(int value, bool resizable) =>
             ShouldEnlargeHud(resizable) ? (int)(value * PanelScale) : value;
+
+        /// <summary>
+        /// Scale only width/height of a control whose position is already correct.
+        /// </summary>
+        public static void ScaleControlSize(XNAControls.XNAButton button, bool resizable)
+        {
+            if (!ShouldEnlargeHud(resizable) || button == null)
+                return;
+
+            button.DrawArea = new Rectangle(
+                button.DrawArea.X,
+                button.DrawArea.Y,
+                Scale(button.DrawArea.Width, resizable: true),
+                Scale(button.DrawArea.Height, resizable: true));
+            button.ClickArea = new Rectangle(0, 0, button.DrawArea.Width, button.DrawArea.Height);
+        }
     }
 }

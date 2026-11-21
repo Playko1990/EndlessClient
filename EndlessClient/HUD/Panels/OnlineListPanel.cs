@@ -44,6 +44,7 @@ namespace EndlessClient.HUD.Panels
         private readonly IPartyDataProvider _partyDataProvider;
         private readonly IFriendIgnoreListService _friendIgnoreListService;
         private readonly ISfxPlayer _sfxPlayer;
+        private readonly bool _resizable;
 
         private readonly BitmapFont _chatFont;
 
@@ -80,20 +81,24 @@ namespace EndlessClient.HUD.Panels
             _chatFont = chatFont;
             _onlineList = new List<OnlinePlayerInfo>();
 
-            BackgroundImage = _nativeGraphicsManager.TextureFromResource(GFXTypes.PostLoginUI, 36);
-            DrawArea = HudUiMetrics.ScaledPanelDrawArea(BackgroundImage, clientWindowSizeProvider.Resizable);
+            _resizable = clientWindowSizeProvider.Resizable;
 
-            _totalNumberOfPlayers = new XNALabel(Constants.FontSize09)
+            BackgroundImage = _nativeGraphicsManager.TextureFromResource(GFXTypes.PostLoginUI, 36);
+            DrawArea = HudUiMetrics.ScaledPanelDrawArea(BackgroundImage, _resizable);
+
+            _totalNumberOfPlayers = new XNALabel(HudUiMetrics.PanelLabelFont(_resizable))
             {
                 AutoSize = false,
                 ForeColor = ColorConstants.LightGrayText,
                 TextAlign = LabelAlignment.MiddleRight,
-                DrawArea = new Rectangle(454, 1, 27, 14),
+                DrawArea = HudUiMetrics.ScaleRectangle(new Rectangle(454, 1, 27, 14), _resizable),
                 BackColor = Color.Transparent,
             };
             _totalNumberOfPlayers.SetParentControl(this);
 
-            _scrollBar = new ScrollBar(new Vector2(467, 20), new Vector2(16, 97), ScrollBarColors.LightOnMed, _nativeGraphicsManager)
+            var scrollPos = HudUiMetrics.ScalePoint(467, 20, _resizable);
+            var scrollSize = HudUiMetrics.ScalePoint(16, 97, _resizable);
+            _scrollBar = new ScrollBar(scrollPos, scrollSize, ScrollBarColors.LightOnMed, _nativeGraphicsManager)
             {
                 LinesToRender = 7,
                 Visible = true
@@ -101,7 +106,7 @@ namespace EndlessClient.HUD.Panels
             _scrollBar.SetParentControl(this);
             SetScrollWheelHandler(_scrollBar);
 
-            _filterClickArea = new ClickableArea(new Rectangle(2, 2, 14, 14));
+            _filterClickArea = new ClickableArea(HudUiMetrics.ScaleRectangle(new Rectangle(2, 2, 14, 14), _resizable));
             _filterClickArea.SetParentControl(this);
             _filterClickArea.OnMouseDown += FilterClickArea_Click;
 
@@ -159,25 +164,33 @@ namespace EndlessClient.HUD.Panels
         {
             base.OnDrawControl(gameTime);
 
-            const int DRAW_ICON_X = 4,
-                      DRAW_TITLE_X = 133,
-                      DRAW_GUILD_X = 245,
-                      DRAW_CLASS_X = 359;
-
+            var rowH = HudUiMetrics.Scale(13, _resizable);
+            var iconX = HudUiMetrics.Scale(4, _resizable);
+            var nameX = HudUiMetrics.Scale(DRAW_NAME_X, _resizable);
+            var titleX = HudUiMetrics.Scale(133, _resizable);
+            var guildX = HudUiMetrics.Scale(245, _resizable);
+            var classX = HudUiMetrics.Scale(359, _resizable);
+            var offsetY = HudUiMetrics.Scale(DRAW_OFFSET_Y, _resizable);
 
             _spriteBatch.Begin();
 
-            _spriteBatch.Draw(_weirdOffsetTextureSheet, new Vector2(DrawAreaWithParentOffset.X + 4, DrawAreaWithParentOffset.Y + 2), _filterTextureSources[(int)_filter], Color.White);
+            _spriteBatch.Draw(
+                _weirdOffsetTextureSheet,
+                new Vector2(
+                    DrawAreaWithParentOffset.X + HudUiMetrics.Scale(4, _resizable),
+                    DrawAreaWithParentOffset.Y + HudUiMetrics.Scale(2, _resizable)),
+                _filterTextureSources[(int)_filter],
+                Color.White);
 
             // todo: either a) use renderable approach like Chat/News or b) remove renderable approach in favor of this simpler method
             for (int i = _scrollBar.ScrollOffset; i < _scrollBar.ScrollOffset + _scrollBar.LinesToRender && i < _filteredList.Count; ++i)
             {
-                int yCoord = DRAW_OFFSET_Y + DrawAreaWithParentOffset.Y + (i - _scrollBar.ScrollOffset) * 13;
-                _spriteBatch.Draw(_chatIconsTexture, new Vector2(DrawAreaWithParentOffset.X + DRAW_ICON_X, yCoord), GetChatIconSourceRectangle(_filteredList[i].Icon), Color.White);
-                _spriteBatch.DrawString(_chatFont, _filteredList[i].Name, new Vector2(DrawAreaWithParentOffset.X + DRAW_NAME_X, yCoord), Color.Black);
-                _spriteBatch.DrawString(_chatFont, _filteredList[i].Title, new Vector2(DrawAreaWithParentOffset.X + DRAW_TITLE_X, yCoord), Color.Black);
-                _spriteBatch.DrawString(_chatFont, _filteredList[i].Guild, new Vector2(DrawAreaWithParentOffset.X + DRAW_GUILD_X, yCoord), Color.Black);
-                _spriteBatch.DrawString(_chatFont, _filteredList[i].Class, new Vector2(DrawAreaWithParentOffset.X + DRAW_CLASS_X, yCoord), Color.Black);
+                int yCoord = offsetY + DrawAreaWithParentOffset.Y + (i - _scrollBar.ScrollOffset) * rowH;
+                _spriteBatch.Draw(_chatIconsTexture, new Vector2(DrawAreaWithParentOffset.X + iconX, yCoord), GetChatIconSourceRectangle(_filteredList[i].Icon), Color.White);
+                _spriteBatch.DrawString(_chatFont, _filteredList[i].Name, new Vector2(DrawAreaWithParentOffset.X + nameX, yCoord), Color.Black);
+                _spriteBatch.DrawString(_chatFont, _filteredList[i].Title, new Vector2(DrawAreaWithParentOffset.X + titleX, yCoord), Color.Black);
+                _spriteBatch.DrawString(_chatFont, _filteredList[i].Guild, new Vector2(DrawAreaWithParentOffset.X + guildX, yCoord), Color.Black);
+                _spriteBatch.DrawString(_chatFont, _filteredList[i].Class, new Vector2(DrawAreaWithParentOffset.X + classX, yCoord), Color.Black);
             }
 
             _spriteBatch.End();

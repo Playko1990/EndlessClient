@@ -1,5 +1,6 @@
 ﻿using System;
 using EndlessClient.Content;
+using EndlessClient.HUD;
 using EOLib.Domain.Chat;
 using EOLib.Domain.Party;
 using EOLib.Extensions;
@@ -15,6 +16,7 @@ namespace EndlessClient.HUD.Party
     {
         private readonly IContentProvider _contentProvider;
         private readonly Texture2D _chatIconsTexture;
+        private readonly bool _resizable;
 
         private readonly IXNAButton _removeButton;
         private readonly IXNALabel _nameLabel, _levelLabel, _hpLabel;
@@ -30,7 +32,9 @@ namespace EndlessClient.HUD.Party
             {
                 _displayIndex = value;
 
-                DrawArea = new Rectangle(0, 20 + _displayIndex * 13, ImmediateParent?.DrawArea.Width ?? 0, 13);
+                var rowH = HudUiMetrics.Scale(13, _resizable);
+                var top = HudUiMetrics.Scale(20, _resizable);
+                DrawArea = new Rectangle(0, top + _displayIndex * rowH, ImmediateParent?.DrawArea.Width ?? 0, rowH);
             }
         }
 
@@ -54,45 +58,50 @@ namespace EndlessClient.HUD.Party
 
         public PartyPanelMember(INativeGraphicsManager nativeGraphicsManager,
                                 IContentProvider contentProvider,
-                                bool isRemovable)
+                                bool isRemovable,
+                                bool resizable)
         {
             _contentProvider = contentProvider;
+            _resizable = resizable;
             _chatIconsTexture = nativeGraphicsManager.TextureFromResource(GFXTypes.PostLoginUI, 32, true);
 
             var removeTexture = nativeGraphicsManager.TextureFromResource(GFXTypes.PostLoginUI, 43);
             var delta = removeTexture.Height / 3;
             _removeButton = new XNAButton(removeTexture,
-                new Vector2(337, 0),
+                HudUiMetrics.ScalePoint(337, 0, resizable),
                 isRemovable
                     ? new Rectangle(0, 0, removeTexture.Width, delta)
                     : new Rectangle(0, delta, removeTexture.Width, delta),
                 isRemovable
                     ? new Rectangle(0, delta * 2, removeTexture.Width, delta)
                     : new Rectangle(0, delta, removeTexture.Width, delta));
+            HudUiMetrics.ScaleControlSize((XNAButton)_removeButton, resizable);
 
             if (isRemovable)
                 _removeButton.OnMouseDown += (o, e) => RemoveAction?.Invoke(o, e);
             _removeButton.SetParentControl(this);
 
-            _nameLabel = new XNALabel(Constants.FontSize08)
+            var font = HudUiMetrics.ShouldEnlargeHud(resizable) ? Constants.FontSize10 : Constants.FontSize08;
+
+            _nameLabel = new XNALabel(font)
             {
-                DrawPosition = new Vector2(23, 0),
+                DrawPosition = HudUiMetrics.ScalePoint(23, 0, resizable),
                 AutoSize = true,
                 ForeColor = Color.Black
             };
             _nameLabel.SetParentControl(this);
 
-            _levelLabel = new XNALabel(Constants.FontSize08)
+            _levelLabel = new XNALabel(font)
             {
-                DrawPosition = new Vector2(138, 0),
+                DrawPosition = HudUiMetrics.ScalePoint(138, 0, resizable),
                 AutoSize = true,
                 ForeColor = Color.Black
             };
             _levelLabel.SetParentControl(this);
 
-            _hpLabel = new XNALabel(Constants.FontSize08)
+            _hpLabel = new XNALabel(font)
             {
-                DrawPosition = new Vector2(205, 0),
+                DrawPosition = HudUiMetrics.ScalePoint(205, 0, resizable),
                 AutoSize = true,
                 ForeColor = Color.Black,
                 Text = "HP"
@@ -112,8 +121,8 @@ namespace EndlessClient.HUD.Party
 
         protected override void OnDrawControl(GameTime gameTime)
         {
-            var iconDrawPosition = DrawPositionWithParentOffset + new Vector2(5, 1);
-            var healthBarDrawPosition = DrawPositionWithParentOffset + new Vector2(228, 1);
+            var iconDrawPosition = DrawPositionWithParentOffset + HudUiMetrics.ScalePoint(5, 1, _resizable);
+            var healthBarDrawPosition = DrawPositionWithParentOffset + HudUiMetrics.ScalePoint(228, 1, _resizable);
 
             var barTexture = _partyMember.PercentHealth > 50
                 ? _contentProvider.Textures[ContentProvider.HPGreen]

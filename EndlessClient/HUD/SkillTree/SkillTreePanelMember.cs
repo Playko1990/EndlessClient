@@ -36,8 +36,9 @@ namespace EndlessClient.HUD.SkillTree
 
             var pad = HudUiMetrics.Scale(2, resizable);
             var innerWidth = Math.Max(8, DrawArea.Width - pad * 2);
+            var font = HudUiMetrics.ShouldEnlargeHud(resizable) ? Constants.FontSize10 : Constants.FontSize08;
 
-            _nameLabel = new XNALabel(Constants.FontSize08)
+            _nameLabel = new XNALabel(font)
             {
                 AutoSize = false,
                 DrawArea = new Rectangle(pad, pad, innerWidth, HudUiMetrics.Scale(12, resizable)),
@@ -47,7 +48,7 @@ namespace EndlessClient.HUD.SkillTree
             };
             _nameLabel.SetParentControl(this);
 
-            _rankLabel = new XNALabel(Constants.FontSize08)
+            _rankLabel = new XNALabel(font)
             {
                 AutoSize = false,
                 DrawArea = new Rectangle(pad, HudUiMetrics.Scale(14, resizable), innerWidth, HudUiMetrics.Scale(12, resizable)),
@@ -57,7 +58,7 @@ namespace EndlessClient.HUD.SkillTree
             };
             _rankLabel.SetParentControl(this);
 
-            _bonusLabel = new XNALabel(Constants.FontSize08)
+            _bonusLabel = new XNALabel(font)
             {
                 AutoSize = false,
                 DrawArea = new Rectangle(pad, HudUiMetrics.Scale(26, resizable), innerWidth, HudUiMetrics.Scale(12, resizable)),

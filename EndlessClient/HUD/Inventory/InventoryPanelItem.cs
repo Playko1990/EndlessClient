@@ -182,13 +182,22 @@ namespace EndlessClient.HUD.Inventory
                     _spriteBatch.Draw(_highlightBackground, DrawArea.WithPosition(drawPosition), Color.White);
             });
 
+            // Stretch item art to the scaled slot size so icons fill enlarged inventory cells.
             if (IsDragging)
             {
-                _spriteBatch.Draw(_itemGraphic, DrawPosition, Color.FromNonPremultiplied(255, 255, 255, 128));
+                var dest = new Rectangle(
+                    (int)DrawPosition.X,
+                    (int)DrawPosition.Y,
+                    DrawArea.Width,
+                    DrawArea.Height);
+                _spriteBatch.Draw(_itemGraphic, dest, Color.FromNonPremultiplied(255, 255, 255, 128));
             }
             else
             {
-                _spriteBatch.Draw(_itemGraphic, DrawPositionWithParentOffset, Color.FromNonPremultiplied(255, 255, 255, 255));
+                _spriteBatch.Draw(
+                    _itemGraphic,
+                    DrawAreaWithParentOffset,
+                    Color.FromNonPremultiplied(255, 255, 255, 255));
             }
 
             if (_tooltipVisible)

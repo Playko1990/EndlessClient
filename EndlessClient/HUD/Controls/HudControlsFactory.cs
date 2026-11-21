@@ -386,7 +386,7 @@ namespace EndlessClient.HUD.Controls
             if (!HudUiMetrics.ShouldEnlargeHud(_clientWindowSizeRepository.Resizable))
                 return;
 
-            var step = HudUiMetrics.SideButtonStep(resizable: true);
+            var step = GetHubButtonStep();
             button.DrawArea = new Rectangle(
                 (int)button.DrawPosition.X,
                 (int)button.DrawPosition.Y,
@@ -395,14 +395,22 @@ namespace EndlessClient.HUD.Controls
             button.ClickArea = new Rectangle(0, 0, step, step);
         }
 
+        private int GetHubButtonStep()
+        {
+            var panelTexture = _nativeGraphicsManager.TextureFromResource(GFXTypes.PostLoginUI, 44);
+            var panelHeight = HudUiMetrics.Scale(panelTexture.Height, _clientWindowSizeRepository.Resizable);
+            return HudUiMetrics.HubButtonSize(_clientWindowSizeRepository.Resizable, panelHeight);
+        }
+
         private Vector2 GetDockedButtonPosition(int buttonIndex)
         {
             var panelTexture = _nativeGraphicsManager.TextureFromResource(GFXTypes.PostLoginUI, 44);
             var panelWidth = HudUiMetrics.Scale(panelTexture.Width, _clientWindowSizeRepository.Resizable);
             var panelPos = _dockPanelPosition;
-            var step = HudUiMetrics.SideButtonStep(_clientWindowSizeRepository.Resizable);
+            var step = GetHubButtonStep();
 
-            // Left column sits flush against the panel; size matches panel scale so the stack fills its height.
+            // Left column sits flush against the panel; 6 buttons fill the panel height.
+            // Right column has 5 buttons and starts one step down so bottoms align.
             var xPosition = buttonIndex < 6
                 ? panelPos.X - step
                 : panelPos.X + panelWidth;

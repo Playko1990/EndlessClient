@@ -181,23 +181,31 @@ namespace EndlessClient.HUD.Spells
             var halfWidth = _spellGraphic.Width / 2;
             _spellGraphicSourceRect = new Rectangle(MouseOver ? halfWidth : 0, 0, halfWidth, _spellGraphic.Height);
 
+            // Scale spell glyphs to the enlarged slot while keeping aspect ratio.
+            var maxW = Math.Max(1, DrawArea.Width - HudUiMetrics.Scale(6, _resizable));
+            var maxH = Math.Max(1, DrawArea.Height - HudUiMetrics.Scale(10, _resizable));
+            var scale = Math.Min(
+                maxW / (float)_spellGraphicSourceRect.Width,
+                maxH / (float)_spellGraphicSourceRect.Height);
+            var drawW = Math.Max(1, (int)(_spellGraphicSourceRect.Width * scale));
+            var drawH = Math.Max(1, (int)(_spellGraphicSourceRect.Height * scale));
+
             Rectangle targetDrawArea;
             if (!IsDragging)
             {
                 targetDrawArea = new Rectangle(
-                    DrawAreaWithParentOffset.X + (DrawAreaWithParentOffset.Width - _spellGraphicSourceRect.Width) / 2,
-                    DrawAreaWithParentOffset.Y + (DrawAreaWithParentOffset.Height - _spellGraphicSourceRect.Height) / 2,
-                    _spellGraphicSourceRect.Width,
-                    _spellGraphicSourceRect.Height);
+                    DrawAreaWithParentOffset.X + (DrawAreaWithParentOffset.Width - drawW) / 2,
+                    DrawAreaWithParentOffset.Y + (DrawAreaWithParentOffset.Height - drawH) / 2,
+                    drawW,
+                    drawH);
             }
             else
             {
                 targetDrawArea = new Rectangle(
-                    Mouse.GetState().X - _spellGraphicSourceRect.Width / 2,
-                    Mouse.GetState().Y - _spellGraphicSourceRect.Height / 2,
-                    _spellGraphicSourceRect.Width,
-                    _spellGraphicSourceRect.Height
-                    );
+                    Mouse.GetState().X - drawW / 2,
+                    Mouse.GetState().Y - drawH / 2,
+                    drawW,
+                    drawH);
             }
 
             _spriteBatch.Draw(_spellGraphic,

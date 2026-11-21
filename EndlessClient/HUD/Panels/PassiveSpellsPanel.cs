@@ -58,8 +58,10 @@ namespace EndlessClient.HUD.Panels
             BackgroundImage = _nativeGraphicsManager.TextureFromResource(GFXTypes.PostLoginUI, 62);
             DrawArea = HudUiMetrics.ScaledPanelDrawArea(BackgroundImage, _resizable);
 
+            var font = HudUiMetrics.PanelLabelFont(_resizable);
+
             // Title + enlarged tree symbol live in the left-rail header box (not the panel corners).
-            _headerNameLabel = new XNALabel(Constants.FontSize08pt5)
+            _headerNameLabel = new XNALabel(font)
             {
                 AutoSize = false,
                 DrawArea = HudUiMetrics.ScaleRectangle(new Rectangle(9, 50, 81, 13), _resizable),
@@ -71,7 +73,7 @@ namespace EndlessClient.HUD.Panels
             _headerNameLabel.SetParentControl(this);
 
             // Same left-rail "skp" slot as Active Spells (panel art already prints the label).
-            _availablePointsLabel = new XNALabel(Constants.FontSize08pt5)
+            _availablePointsLabel = new XNALabel(font)
             {
                 AutoSize = false,
                 DrawArea = HudUiMetrics.ScaleRectangle(new Rectangle(32, 96, 42, 15), _resizable),

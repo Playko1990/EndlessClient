@@ -103,8 +103,9 @@ namespace EndlessClient.HUD.Panels
             _functionKeyRow2Source = new Rectangle(148 + 18 * 8, 51, 18, 13);
 
             var resizable = clientWindowSizeProvider.Resizable;
+            var font = HudUiMetrics.PanelLabelFont(resizable);
 
-            _selectedSpellName = new XNALabel(Constants.FontSize08pt5)
+            _selectedSpellName = new XNALabel(font)
             {
                 DrawArea = HudUiMetrics.ScaleRectangle(new Rectangle(9, 50, 81, 13), resizable),
                 Visible = false,
@@ -114,7 +115,7 @@ namespace EndlessClient.HUD.Panels
                 ForeColor = ColorConstants.LightGrayText,
             };
 
-            _selectedSpellLevel = new XNALabel(Constants.FontSize08pt5)
+            _selectedSpellLevel = new XNALabel(font)
             {
                 DrawArea = HudUiMetrics.ScaleRectangle(new Rectangle(32, 78, 42, 15), resizable),
                 Visible = true,
@@ -125,7 +126,7 @@ namespace EndlessClient.HUD.Panels
             };
 
             _skillTreeActions.EnsureLoaded();
-            _totalSkillPoints = new XNALabel(Constants.FontSize08pt5)
+            _totalSkillPoints = new XNALabel(font)
             {
                 DrawArea = HudUiMetrics.ScaleRectangle(new Rectangle(32, 96, 42, 15), resizable),
                 Visible = true,
@@ -339,7 +340,12 @@ namespace EndlessClient.HUD.Panels
                 return;
 
             var srcRect = new Rectangle(0, 0, _activeSpellIcon.Width / 2, _activeSpellIcon.Height);
-            var dstRect = new Rectangle(DrawAreaWithParentOffset.X + 32, DrawAreaWithParentOffset.Y + 14, srcRect.Width, srcRect.Height);
+            var size = HudUiMetrics.Scale(Math.Max(srcRect.Width, srcRect.Height), ResizableHud);
+            var dstRect = new Rectangle(
+                DrawAreaWithParentOffset.X + HudUiMetrics.Scale(32, ResizableHud),
+                DrawAreaWithParentOffset.Y + HudUiMetrics.Scale(14, ResizableHud),
+                size,
+                size);
             _spriteBatch.Draw(_activeSpellIcon, dstRect, srcRect, Color.White);
         }
 

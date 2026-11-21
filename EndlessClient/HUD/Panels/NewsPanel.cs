@@ -3,6 +3,7 @@ using System.Linq;
 using EndlessClient.Rendering;
 using EndlessClient.Rendering.Chat;
 using EndlessClient.UIControls;
+using EndlessClient.HUD;
 using EOLib.Domain.Login;
 using EOLib.Graphics;
 using Microsoft.Xna.Framework;
@@ -56,7 +57,7 @@ namespace EndlessClient.HUD.Panels
             _cachedLinesToRender = -1;
 
             BackgroundImage = _nativeGraphicsManager.TextureFromResource(GFXTypes.PostLoginUI, 48);
-            DrawArea = new Rectangle(102, 330, BackgroundImage.Width, BackgroundImage.Height);
+            DrawArea = HudUiMetrics.ScaledPanelDrawArea(BackgroundImage, clientWindowSizeProvider.Resizable);
         }
 
         public override void Initialize()

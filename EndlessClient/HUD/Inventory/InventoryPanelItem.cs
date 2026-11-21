@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using EndlessClient.Audio;
 using EndlessClient.Dialogs;
+using EndlessClient.HUD;
 using EndlessClient.HUD.Controls;
 using EndlessClient.HUD.Panels;
 using EOLib.Domain.Character;
@@ -23,6 +24,7 @@ namespace EndlessClient.HUD.Inventory
         private const int MaxStatLines = 12;
         private const int StatLineHeight = 12;
 
+        private readonly InventoryPanel _inventoryPanel;
         private readonly IActiveDialogProvider _activeDialogProvider;
         private readonly ISfxPlayer _sfxPlayer;
         private readonly IItemStatCompareService _itemStatCompareService;
@@ -65,9 +67,17 @@ namespace EndlessClient.HUD.Inventory
         public override Rectangle EventArea => IsDragging ? DrawArea : DrawAreaWithParentOffset;
 
         // uses absolute coordinates
-        protected override Rectangle GridArea => new Rectangle(
-            _parentContainer.DrawPositionWithParentOffset.ToPoint() + new Point(12, 8),
-            new Point(363, 102));
+        protected override Rectangle GridArea
+        {
+            get
+            {
+                var origin = HudUiMetrics.ScalePoint(12, 8, _inventoryPanel.ResizableHud).ToPoint();
+                var size = HudUiMetrics.ScalePoint(363, 102, _inventoryPanel.ResizableHud).ToPoint();
+                return new Rectangle(
+                    _parentContainer.DrawPositionWithParentOffset.ToPoint() + origin,
+                    size);
+            }
+        }
 
         public InventoryPanelItem(IItemNameColorService itemNameColorService,
                                   InventoryPanel inventoryPanel,
@@ -79,6 +89,7 @@ namespace EndlessClient.HUD.Inventory
                                   EIFRecord data)
             : base(inventoryPanel)
         {
+            _inventoryPanel = inventoryPanel;
             _activeDialogProvider = activeDialogProvider;
             _sfxPlayer = sfxPlayer;
             _itemStatCompareService = itemStatCompareService;
@@ -133,7 +144,8 @@ namespace EndlessClient.HUD.Inventory
             };
 
             var (slotWidth, slotHeight) = Data.Size.GetDimensions();
-            SetSize(slotWidth * 26 - 3, slotHeight * 26 - 3);
+            var slotPx = _inventoryPanel.SlotPixelSize;
+            SetSize(slotWidth * slotPx - 3, slotHeight * slotPx - 3);
         }
 
         public int GetCurrentSlotBasedOnPosition()
@@ -141,7 +153,8 @@ namespace EndlessClient.HUD.Inventory
             if (!IsDragging)
                 return Slot;
 
-            return (int)((DrawPosition.X - OldOffset.X) / 26) + InventoryPanel.InventoryRowSlots * (int)((DrawPosition.Y - OldOffset.Y) / 26);
+            var slotPx = _inventoryPanel.SlotPixelSize;
+            return (int)((DrawPosition.X - OldOffset.X) / slotPx) + InventoryPanel.InventoryRowSlots * (int)((DrawPosition.Y - OldOffset.Y) / slotPx);
         }
 
         public override void Initialize()
@@ -341,9 +354,13 @@ namespace EndlessClient.HUD.Inventory
             UpdateNameLabelPosition();
         }
 
-        private static Vector2 GetPosition(int slot)
+        private Vector2 GetPosition(int slot)
         {
-            return new Vector2(13 + 26 * (slot % InventoryPanel.InventoryRowSlots), 9 + 26 * (slot / InventoryPanel.InventoryRowSlots));
+            var slotPx = _inventoryPanel.SlotPixelSize;
+            var origin = HudUiMetrics.ScalePoint(13, 9, _inventoryPanel.ResizableHud);
+            return new Vector2(
+                origin.X + slotPx * (slot % InventoryPanel.InventoryRowSlots),
+                origin.Y + slotPx * (slot / InventoryPanel.InventoryRowSlots));
         }
     }
 }

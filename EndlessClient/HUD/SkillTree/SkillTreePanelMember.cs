@@ -1,4 +1,5 @@
 using System;
+using EndlessClient.HUD;
 using EOLib.Domain.Character;
 using EOLib.Graphics;
 using EOLib.Shared;
@@ -9,6 +10,7 @@ namespace EndlessClient.HUD.SkillTree
 {
     public class SkillTreePanelMember : XNAControl
     {
+        private readonly bool _resizable;
         private readonly XNALabel _nameLabel;
         private readonly XNALabel _rankLabel;
         private readonly XNALabel _bonusLabel;
@@ -24,20 +26,23 @@ namespace EndlessClient.HUD.SkillTree
             set
             {
                 _displayIndex = value;
-                DrawArea = new Rectangle(8, 22 + _displayIndex * 16, 450, 15);
+                var rowHeight = HudUiMetrics.Scale(16, _resizable);
+                DrawArea = HudUiMetrics.ScaleRectangle(new Rectangle(8, 22, 450, 15), _resizable);
+                DrawArea = new Rectangle(DrawArea.X, HudUiMetrics.Scale(22, _resizable) + _displayIndex * rowHeight, DrawArea.Width, DrawArea.Height);
             }
         }
 
         public event EventHandler TrainClicked;
 
-        public SkillTreePanelMember(INativeGraphicsManager nativeGraphicsManager, SkillTreeStat stat)
+        public SkillTreePanelMember(INativeGraphicsManager nativeGraphicsManager, SkillTreeStat stat, bool resizable = false)
         {
             Stat = stat;
+            _resizable = resizable;
 
             _nameLabel = new XNALabel(Constants.FontSize08pt5)
             {
                 AutoSize = false,
-                DrawArea = new Rectangle(0, 0, 110, 13),
+                DrawArea = HudUiMetrics.ScaleRectangle(new Rectangle(0, 0, 110, 13), resizable),
                 ForeColor = ColorConstants.LightGrayText,
                 Text = GetDisplayName(stat)
             };
@@ -46,7 +51,7 @@ namespace EndlessClient.HUD.SkillTree
             _rankLabel = new XNALabel(Constants.FontSize08pt5)
             {
                 AutoSize = false,
-                DrawArea = new Rectangle(115, 0, 50, 13),
+                DrawArea = HudUiMetrics.ScaleRectangle(new Rectangle(115, 0, 50, 13), resizable),
                 ForeColor = ColorConstants.LightGrayText,
                 Text = "Lv 0"
             };
@@ -55,7 +60,7 @@ namespace EndlessClient.HUD.SkillTree
             _bonusLabel = new XNALabel(Constants.FontSize08pt5)
             {
                 AutoSize = false,
-                DrawArea = new Rectangle(170, 0, 230, 13),
+                DrawArea = HudUiMetrics.ScaleRectangle(new Rectangle(170, 0, 230, 13), resizable),
                 ForeColor = ColorConstants.LightGrayText,
                 Text = string.Empty
             };
@@ -64,13 +69,20 @@ namespace EndlessClient.HUD.SkillTree
             var buttonTexture = nativeGraphicsManager.TextureFromResource(GFXTypes.PostLoginUI, 27, true);
             _trainButton = new XNAButton(
                 buttonTexture,
-                new Vector2(410, 0),
+                HudUiMetrics.ScalePoint(410, 0, resizable),
                 new Rectangle(215, 386, 19, 15),
                 new Rectangle(234, 386, 19, 15))
             {
                 FlashSpeed = 500,
                 Visible = false
             };
+
+            if (resizable)
+            {
+                _trainButton.DrawArea = HudUiMetrics.ScaleRectangle(_trainButton.DrawArea, resizable: true);
+                _trainButton.ClickArea = new Rectangle(0, 0, _trainButton.DrawArea.Width, _trainButton.DrawArea.Height);
+            }
+
             _trainButton.OnMouseDown += (_, _) => TrainClicked?.Invoke(this, EventArgs.Empty);
             _trainButton.SetParentControl(this);
         }
@@ -88,7 +100,9 @@ namespace EndlessClient.HUD.SkillTree
         {
             _rankLabel.Text = $"Lv {rank}";
             _bonusLabel.Text = bonusText;
+            // Show flashing arrows beside every skill while sk.pts remain; hide once spent.
             _trainButton.Visible = canTrain;
+            _trainButton.FlashSpeed = canTrain ? 500 : null;
         }
 
         public static string GetDisplayName(SkillTreeStat stat) => stat switch

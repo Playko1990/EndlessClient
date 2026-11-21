@@ -22,7 +22,6 @@ namespace EndlessClient.HUD.StatusBars
         {
             _skillTreeActions = skillTreeActions;
             _skillTreeProvider = skillTreeProvider;
-            DrawArea = new Rectangle(100, 0, _sourceRectangleArea.Width, _sourceRectangleArea.Height);
             ChangeStatusBarPosition();
         }
 
@@ -36,11 +35,7 @@ namespace EndlessClient.HUD.StatusBars
             //todo: figure out these magic numbers
             var srcWidth = 25 + (int)Math.Round(Stats[CharacterStat.HP] / (double)EffectiveMaxHp * 79);
             var maskSrc = new Rectangle(_sourceRectangleArea.X, _sourceRectangleArea.Height, srcWidth, _sourceRectangleArea.Height);
-
-            _spriteBatch.Begin();
-            _spriteBatch.Draw(_texture, DrawPositionWithParentOffset, _sourceRectangleArea, Color.White);
-            _spriteBatch.Draw(_texture, DrawPositionWithParentOffset, maskSrc, Color.White);
-            _spriteBatch.End();
+            DrawScaledStatusBar(_sourceRectangleArea, maskSrc);
         }
 
         private int EffectiveMaxHp

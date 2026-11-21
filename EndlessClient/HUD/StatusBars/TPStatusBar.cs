@@ -16,7 +16,6 @@ namespace EndlessClient.HUD.StatusBars
                            ICharacterProvider characterProvider)
             : base(nativeGraphicsManager, clientWindowSizeProvider, characterProvider)
         {
-            DrawArea = new Rectangle(210, 0, _sourceRectangleArea.Width, _sourceRectangleArea.Height);
             _sourceRectangleArea.Offset(_sourceRectangleArea.Width, 0);
             ChangeStatusBarPosition();
         }
@@ -31,11 +30,7 @@ namespace EndlessClient.HUD.StatusBars
             //todo: figure out these magic numbers
             var srcWidth = 25 + (int)Math.Round(Stats[CharacterStat.TP] / (double)Stats[CharacterStat.MaxTP] * 79);
             var maskSrc = new Rectangle(_sourceRectangleArea.X, _sourceRectangleArea.Height, srcWidth, _sourceRectangleArea.Height);
-
-            _spriteBatch.Begin();
-            _spriteBatch.Draw(_texture, DrawPositionWithParentOffset, _sourceRectangleArea, Color.White);
-            _spriteBatch.Draw(_texture, DrawPositionWithParentOffset, maskSrc, Color.White);
-            _spriteBatch.End();
+            DrawScaledStatusBar(_sourceRectangleArea, maskSrc);
         }
     }
 }

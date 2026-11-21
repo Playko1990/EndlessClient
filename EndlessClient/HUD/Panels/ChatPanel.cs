@@ -7,6 +7,7 @@ using EndlessClient.Rendering;
 using EndlessClient.Rendering.Chat;
 using EndlessClient.Rendering.Sprites;
 using EndlessClient.UIControls;
+using EndlessClient.HUD;
 using EOLib.Domain.Chat;
 using EOLib.Graphics;
 using Microsoft.Xna.Framework;
@@ -61,7 +62,7 @@ namespace EndlessClient.HUD.Panels
             var largeUnselected = new SpriteSheet(tabTexture, new Rectangle(0, 16, 132, 16));
 
             BackgroundImage = _nativeGraphicsManager.TextureFromResource(GFXTypes.PostLoginUI, 28);
-            DrawArea = new Rectangle(102, 330, BackgroundImage.Width, BackgroundImage.Height);
+            DrawArea = HudUiMetrics.ScaledPanelDrawArea(BackgroundImage, clientWindowSizeProvider.Resizable);
 
             _tabs = new Dictionary<ChatTab, ChatPanelTab>
             {

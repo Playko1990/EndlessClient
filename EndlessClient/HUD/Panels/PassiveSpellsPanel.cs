@@ -4,6 +4,7 @@ using System.Linq;
 using EndlessClient.Controllers;
 using EndlessClient.Dialogs;
 using EndlessClient.Dialogs.Factories;
+using EndlessClient.HUD;
 using EndlessClient.HUD.SkillTree;
 using EndlessClient.Rendering;
 using EndlessClient.UIControls;
@@ -48,12 +49,14 @@ namespace EndlessClient.HUD.Panels
             _skillTreeProvider = skillTreeProvider;
 
             BackgroundImage = _nativeGraphicsManager.TextureFromResource(GFXTypes.PostLoginUI, 62);
-            DrawArea = new Rectangle(102, 330, BackgroundImage.Width, BackgroundImage.Height);
+            DrawArea = HudUiMetrics.ScaledPanelDrawArea(BackgroundImage, clientWindowSizeProvider.Resizable);
+
+            var resizable = clientWindowSizeProvider.Resizable;
 
             _titleLabel = new XNALabel(Constants.FontSize08pt5)
             {
                 AutoSize = false,
-                DrawArea = new Rectangle(10, 4, 200, 13),
+                DrawArea = HudUiMetrics.ScaleRectangle(new Rectangle(10, 4, 200, 13), resizable),
                 ForeColor = ColorConstants.LightGrayText,
                 Text = "Skill Tree"
             };
@@ -62,14 +65,18 @@ namespace EndlessClient.HUD.Panels
             _availablePointsLabel = new XNALabel(Constants.FontSize08pt5)
             {
                 AutoSize = false,
-                DrawArea = new Rectangle(300, 4, 150, 13),
+                DrawArea = HudUiMetrics.ScaleRectangle(new Rectangle(300, 4, 150, 13), resizable),
                 ForeColor = ColorConstants.LightGrayText,
                 TextAlign = LabelAlignment.MiddleRight,
                 Text = "sk.pts: 0"
             };
             _availablePointsLabel.SetParentControl(this);
 
-            _scrollBar = new ScrollBar(new Vector2(467, 20), new Vector2(16, 97), ScrollBarColors.LightOnMed, _nativeGraphicsManager)
+            _scrollBar = new ScrollBar(
+                HudUiMetrics.ScalePoint(467, 20, resizable),
+                HudUiMetrics.ScalePoint(16, 97, resizable),
+                ScrollBarColors.LightOnMed,
+                _nativeGraphicsManager)
             {
                 LinesToRender = 6,
                 Visible = true
@@ -81,7 +88,7 @@ namespace EndlessClient.HUD.Panels
                 .Cast<SkillTreeStat>()
                 .Select(stat =>
                 {
-                    var member = new SkillTreePanelMember(_nativeGraphicsManager, stat);
+                    var member = new SkillTreePanelMember(_nativeGraphicsManager, stat, resizable);
                     member.TrainClicked += HandleTrainClicked;
                     member.SetParentControl(this);
                     return member;

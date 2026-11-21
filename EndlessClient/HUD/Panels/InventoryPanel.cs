@@ -8,6 +8,7 @@ using EndlessClient.Audio;
 using EndlessClient.Controllers;
 using EndlessClient.ControlSets;
 using EndlessClient.Dialogs;
+using EndlessClient.HUD;
 using EndlessClient.HUD.Controls;
 using EndlessClient.HUD.Inventory;
 using EndlessClient.Rendering;
@@ -66,6 +67,10 @@ namespace EndlessClient.HUD.Panels
 
         public INativeGraphicsManager NativeGraphicsManager { get; }
 
+        public bool ResizableHud => _clientWindowSizeProvider.Resizable;
+
+        public int SlotPixelSize => HudUiMetrics.InventorySlotSize(_clientWindowSizeProvider.Resizable);
+
         public InventoryPanel(INativeGraphicsManager nativeGraphicsManager,
                               IInventoryController inventoryController,
                               IStatusLabelSetter statusLabelSetter,
@@ -103,9 +108,11 @@ namespace EndlessClient.HUD.Panels
             _configProvider = configProvider;
             _clientWindowSizeProvider = clientWindowSizeProvider;
 
+            var resizable = clientWindowSizeProvider.Resizable;
+
             _weightLabel = new XNALabel(Constants.FontSize08pt5)
             {
-                DrawArea = new Rectangle(385, 37, 88, 18),
+                DrawArea = HudUiMetrics.ScaleRectangle(new Rectangle(385, 37, 88, 18), resizable),
                 ForeColor = ColorConstants.LightGrayText,
                 TextAlign = LabelAlignment.MiddleCenter,
                 Visible = true,
@@ -114,7 +121,8 @@ namespace EndlessClient.HUD.Panels
 
             var weirdOffsetSheet = NativeGraphicsManager.TextureFromResource(GFXTypes.PostLoginUI, 27);
 
-            _paperdoll = new XNAButton(weirdOffsetSheet, new Vector2(385, 9), new Rectangle(39, 385, 88, 19), new Rectangle(126, 385, 88, 19));
+            _paperdoll = new XNAButton(weirdOffsetSheet, HudUiMetrics.ScalePoint(385, 9, resizable), new Rectangle(39, 385, 88, 19), new Rectangle(126, 385, 88, 19));
+            ScaleButton(_paperdoll, resizable);
             _paperdoll.OnMouseEnter += MouseOverButton;
             _paperdoll.OnMouseDown += (_, _) =>
             {
@@ -122,11 +130,13 @@ namespace EndlessClient.HUD.Panels
                 _sfxPlayer.PlaySfx(SoundEffectID.ButtonClick);
             };
 
-            _drop = new XNAButton(weirdOffsetSheet, new Vector2(389, 68), new Rectangle(0, 15, 38, 37), new Rectangle(0, 52, 38, 37));
+            _drop = new XNAButton(weirdOffsetSheet, HudUiMetrics.ScalePoint(389, 68, resizable), new Rectangle(0, 15, 38, 37), new Rectangle(0, 52, 38, 37));
+            ScaleButton(_drop, resizable);
             _drop.OnMouseEnter += MouseOverButton;
             _drop.OnMouseDown += (_, _) => _sfxPlayer.PlaySfx(SoundEffectID.InventoryPlace);
 
-            _junk = new XNAButton(weirdOffsetSheet, new Vector2(431, 68), new Rectangle(0, 89, 38, 37), new Rectangle(0, 126, 38, 37));
+            _junk = new XNAButton(weirdOffsetSheet, HudUiMetrics.ScalePoint(431, 68, resizable), new Rectangle(0, 89, 38, 37), new Rectangle(0, 126, 38, 37));
+            ScaleButton(_junk, resizable);
             _junk.OnMouseEnter += MouseOverButton;
             _junk.OnMouseDown += (_, _) => _sfxPlayer.PlaySfx(SoundEffectID.InventoryPlace);
 
@@ -134,7 +144,7 @@ namespace EndlessClient.HUD.Panels
             _cachedInventory = new HashSet<InventoryItem>();
 
             BackgroundImage = NativeGraphicsManager.TextureFromResource(GFXTypes.PostLoginUI, 44);
-            DrawArea = new Rectangle(102, 330, BackgroundImage.Width, BackgroundImage.Height);
+            DrawArea = HudUiMetrics.ScaledPanelDrawArea(BackgroundImage, resizable);
 
             Game.Exiting += SaveInventoryFile;
         }
@@ -564,6 +574,15 @@ namespace EndlessClient.HUD.Panels
                     }
                 }
             }
+        }
+
+        private static void ScaleButton(IXNAButton button, bool resizable)
+        {
+            if (!resizable || button is not XNAButton xnaButton)
+                return;
+
+            xnaButton.DrawArea = HudUiMetrics.ScaleRectangle(xnaButton.DrawArea, resizable: true);
+            xnaButton.ClickArea = new Rectangle(0, 0, xnaButton.DrawArea.Width, xnaButton.DrawArea.Height);
         }
     }
 }

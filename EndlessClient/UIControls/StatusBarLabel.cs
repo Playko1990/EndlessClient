@@ -21,6 +21,9 @@ namespace EndlessClient.UIControls
         private readonly Rectangle _background = new Rectangle(70, 451, 548, 20);
         private readonly Rectangle _rightSide = new Rectangle(618, 451, 12, 20);
 
+        // Bottom status chrome (the second / lower text bar under the chat entry).
+        private const int ResizableStatusBarHeight = 14;
+
         private readonly Texture2D _hudBackground;
 
         public StatusBarLabel(INativeGraphicsManager nativeGraphicsManager,
@@ -35,8 +38,9 @@ namespace EndlessClient.UIControls
             if (_clientWindowSizeProvider.Resizable)
             {
                 KeepInClientWindowBounds = false;
-                DrawArea = new Rectangle(40, _clientWindowSizeProvider.Height - 15, 1, 1);
-                _clientWindowSizeProvider.GameWindowSizeChanged += (_, _) => DrawArea = new Rectangle(40, _clientWindowSizeProvider.Height - 15, 1, 1);
+                DrawArea = new Rectangle(40, _clientWindowSizeProvider.Height - ResizableStatusBarHeight + 2, 1, 1);
+                _clientWindowSizeProvider.GameWindowSizeChanged += (_, _) =>
+                    DrawArea = new Rectangle(40, _clientWindowSizeProvider.Height - ResizableStatusBarHeight + 2, 1, 1);
 
                 _hudBackground = _nativeGraphicsManager.TextureFromResource(GFXTypes.PostLoginUI, 1, false, true);
             }
@@ -65,15 +69,27 @@ namespace EndlessClient.UIControls
         {
             if (_clientWindowSizeProvider.Resizable)
             {
-                var bgDrawArea = new Rectangle(0, _clientWindowSizeProvider.Height - 20, _clientWindowSizeProvider.Width, 20);
+                var bgDrawArea = new Rectangle(
+                    0,
+                    _clientWindowSizeProvider.Height - ResizableStatusBarHeight,
+                    _clientWindowSizeProvider.Width,
+                    ResizableStatusBarHeight);
 
                 _spriteBatch.Begin(samplerState: SamplerState.LinearWrap);
                 _spriteBatch.Draw(_hudBackground, bgDrawArea, _background, Color.White);
                 _spriteBatch.End();
 
                 _spriteBatch.Begin();
-                _spriteBatch.Draw(_hudBackground, bgDrawArea.Location.ToVector2(), _leftSide, Color.White);
-                _spriteBatch.Draw(_hudBackground, new Vector2(_clientWindowSizeProvider.Width - _rightSide.Width, bgDrawArea.Y), _rightSide, Color.White);
+                _spriteBatch.Draw(
+                    _hudBackground,
+                    new Rectangle(bgDrawArea.X, bgDrawArea.Y, _leftSide.Width, bgDrawArea.Height),
+                    _leftSide,
+                    Color.White);
+                _spriteBatch.Draw(
+                    _hudBackground,
+                    new Rectangle(_clientWindowSizeProvider.Width - _rightSide.Width, bgDrawArea.Y, _rightSide.Width, bgDrawArea.Height),
+                    _rightSide,
+                    Color.White);
                 _spriteBatch.End();
             }
 

@@ -5,6 +5,7 @@ using EndlessClient.Audio;
 using EndlessClient.Dialogs;
 using EndlessClient.Dialogs.Factories;
 using EndlessClient.Rendering;
+using EndlessClient.HUD;
 using EOLib.Config;
 using EOLib.Domain.Chat;
 using EOLib.Graphics;
@@ -75,7 +76,7 @@ namespace EndlessClient.HUD.Panels
             _sfxPlayer = sfxPlayer;
 
             BackgroundImage = _nativeGraphicsManager.TextureFromResource(GFXTypes.PostLoginUI, 47);
-            DrawArea = new Rectangle(102, 330, BackgroundImage.Width, BackgroundImage.Height);
+            DrawArea = HudUiMetrics.ScaledPanelDrawArea(BackgroundImage, clientWindowSizeProvider.Resizable);
 
             var values = Enum.GetValues<WhichSetting>();
             _labels = values.ToDictionary(k => k,

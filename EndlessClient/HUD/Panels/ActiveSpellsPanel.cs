@@ -6,6 +6,7 @@ using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
 using EndlessClient.Audio;
 using EndlessClient.ControlSets;
+using EndlessClient.HUD;
 using EndlessClient.HUD.Controls;
 using EndlessClient.HUD.Spells;
 using EndlessClient.Rendering;
@@ -137,7 +138,7 @@ namespace EndlessClient.HUD.Panels
             SetScrollWheelHandler(_scrollBar);
 
             BackgroundImage = NativeGraphicsManager.TextureFromResource(GFXTypes.PostLoginUI, 62);
-            DrawArea = new Rectangle(102, 330, BackgroundImage.Width, BackgroundImage.Height);
+            DrawArea = HudUiMetrics.ScaledPanelDrawArea(BackgroundImage, clientWindowSizeProvider.Resizable);
 
             Game.Exiting += SaveSpellsFile;
         }

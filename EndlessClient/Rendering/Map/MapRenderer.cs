@@ -397,7 +397,9 @@ namespace EndlessClient.Rendering.Map
 
         private void DrawToSpriteBatch(SpriteBatch spriteBatch, GameTime gameTime)
         {
-            spriteBatch.Begin();
+            spriteBatch.Begin(transformMatrix: WorldCamera.GetTransform(
+                _clientWindowSizeRepository.Width,
+                _clientWindowSizeRepository.Height));
 
             var drawLoc = _gridDrawCoordinateCalculator.CalculateGroundLayerRenderTargetDrawCoordinates();
             var offset = _quakeState.Map(GetOffset).ValueOr(0);

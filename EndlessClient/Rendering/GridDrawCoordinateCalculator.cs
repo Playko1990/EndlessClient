@@ -115,8 +115,13 @@ namespace EndlessClient.Rendering
 
             if (_clientWindowSizeProvider.Resizable)
             {
-                var msX = drawLocation.X;
-                var msY = drawLocation.Y - IGridDrawCoordinateCalculator.DefaultGridHeight / 2;
+                // Mouse is in screen space; map is drawn with WorldCamera zoom.
+                var world = WorldCamera.ScreenToWorld(
+                    drawLocation,
+                    _clientWindowSizeProvider.Width,
+                    _clientWindowSizeProvider.Height);
+                var msX = world.X;
+                var msY = world.Y - IGridDrawCoordinateCalculator.DefaultGridHeight / 2;
 
                 var widthFactor = _clientWindowSizeProvider.Width / 2;
                 var heightFactor = _clientWindowSizeProvider.Height / 2;

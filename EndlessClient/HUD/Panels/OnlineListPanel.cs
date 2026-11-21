@@ -7,6 +7,7 @@ using EndlessClient.HUD.Controls;
 using EndlessClient.Rendering;
 using EndlessClient.Services;
 using EndlessClient.UIControls;
+using EndlessClient.HUD;
 using EOLib.Domain.Online;
 using EOLib.Domain.Party;
 using EOLib.Extensions;
@@ -80,7 +81,7 @@ namespace EndlessClient.HUD.Panels
             _onlineList = new List<OnlinePlayerInfo>();
 
             BackgroundImage = _nativeGraphicsManager.TextureFromResource(GFXTypes.PostLoginUI, 36);
-            DrawArea = new Rectangle(102, 330, BackgroundImage.Width, BackgroundImage.Height);
+            DrawArea = HudUiMetrics.ScaledPanelDrawArea(BackgroundImage, clientWindowSizeProvider.Resizable);
 
             _totalNumberOfPlayers = new XNALabel(Constants.FontSize09)
             {

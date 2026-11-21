@@ -2,6 +2,7 @@
 using EOLib.Graphics;
 using Microsoft.Xna.Framework;
 using XNAControls;
+using EndlessClient.HUD;
 
 namespace EndlessClient.HUD.Panels
 {
@@ -16,7 +17,7 @@ namespace EndlessClient.HUD.Panels
             _nativeGraphicsManager = nativeGraphicsManager;
 
             BackgroundImage = _nativeGraphicsManager.TextureFromResource(GFXTypes.PostLoginUI, 63);
-            DrawArea = new Rectangle(102, 330, BackgroundImage.Width, BackgroundImage.Height);
+            DrawArea = HudUiMetrics.ScaledPanelDrawArea(BackgroundImage, clientWindowSizeProvider.Resizable);
         }
     }
 }

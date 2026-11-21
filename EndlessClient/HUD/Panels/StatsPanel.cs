@@ -3,6 +3,7 @@ using System.Linq;
 using EndlessClient.Controllers;
 using EndlessClient.Dialogs;
 using EndlessClient.Dialogs.Factories;
+using EndlessClient.HUD;
 using EndlessClient.Rendering;
 using EOLib.Domain.Character;
 using EOLib.Domain.Extensions;
@@ -62,7 +63,7 @@ namespace EndlessClient.HUD.Panels
             _skillTreeProvider = skillTreeProvider;
 
             BackgroundImage = nativeGraphicsManager.TextureFromResource(GFXTypes.PostLoginUI, 34);
-            DrawArea = new Rectangle(102, 330, BackgroundImage.Width, BackgroundImage.Height);
+            DrawArea = HudUiMetrics.ScaledPanelDrawArea(BackgroundImage, clientWindowSizeProvider.Resizable);
 
             _basicStats = new IXNALabel[6];
             _arrowButtons = new IXNAButton[6];

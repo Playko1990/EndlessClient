@@ -10,8 +10,10 @@ using EndlessClient.GameExecution;
 using EndlessClient.HUD.Boss;
 using EndlessClient.HUD.Chat;
 using EndlessClient.HUD.Panels;
+using EndlessClient.HUD.SkillTree;
 using EndlessClient.HUD.Spells;
 using EndlessClient.HUD.StatusBars;
+using Microsoft.Xna.Framework.Graphics;
 using EndlessClient.Input;
 using EndlessClient.Network;
 using EndlessClient.Rendering;
@@ -324,6 +326,20 @@ namespace EndlessClient.HUD.Controls
             var widthDelta = mainButtonTexture.Width / 2;
             var heightDelta = mainButtonTexture.Height / 11;
 
+            Texture2D buttonTexture = mainButtonTexture;
+            Rectangle outSource = new Rectangle(0, heightDelta * buttonIndex, widthDelta, heightDelta);
+            Rectangle overSource = new Rectangle(widthDelta, heightDelta * buttonIndex, widthDelta, heightDelta);
+
+            if (whichState == InGameStates.PassiveSpells)
+            {
+                buttonTexture = SkillTreeHudIcon.Create(
+                    _graphicsDeviceProvider.GraphicsDevice,
+                    mainButtonTexture,
+                    buttonIndex);
+                outSource = SkillTreeHudIcon.OutSource(buttonTexture);
+                overSource = SkillTreeHudIcon.OverSource(buttonTexture);
+            }
+
             XNAButton retButton;
             if (!_clientWindowSizeRepository.Resizable)
             {
@@ -331,10 +347,10 @@ namespace EndlessClient.HUD.Controls
                 var yPosition = (buttonIndex < 6 ? 330 : 350) + (buttonIndex < 6 ? buttonIndex : buttonIndex - 6) * 20;
 
                 retButton = new XNAButton(
-                    mainButtonTexture,
+                    buttonTexture,
                     new Vector2(xPosition, yPosition),
-                    new Rectangle(0, heightDelta * buttonIndex, widthDelta, heightDelta),
-                    new Rectangle(widthDelta, heightDelta * buttonIndex, widthDelta, heightDelta))
+                    outSource,
+                    overSource)
                 {
                     DrawOrder = HUD_CONTROL_LAYER
                 };
@@ -342,10 +358,10 @@ namespace EndlessClient.HUD.Controls
             else
             {
                 retButton = new XNAButton(
-                    mainButtonTexture,
+                    buttonTexture,
                     GetDockedButtonPosition(buttonIndex),
-                    new Rectangle(0, heightDelta * buttonIndex, widthDelta, heightDelta),
-                    new Rectangle(widthDelta, heightDelta * buttonIndex, widthDelta, heightDelta))
+                    outSource,
+                    overSource)
                 {
                     DrawOrder = HUD_CONTROL_LAYER
                 };
@@ -369,7 +385,7 @@ namespace EndlessClient.HUD.Controls
         private Vector2 GetDockedButtonPosition(int buttonIndex)
         {
             var panelTexture = _nativeGraphicsManager.TextureFromResource(GFXTypes.PostLoginUI, 44);
-            var panelWidth = panelTexture.Width;
+            var panelWidth = HudUiMetrics.Scale(panelTexture.Width, _clientWindowSizeRepository.Resizable);
             var panelPos = _dockPanelPosition;
 
             var xPosition = buttonIndex < 6
@@ -385,9 +401,11 @@ namespace EndlessClient.HUD.Controls
         private Vector2 GetDefaultDockPanelPosition()
         {
             var panelTexture = _nativeGraphicsManager.TextureFromResource(GFXTypes.PostLoginUI, 44);
+            var panelWidth = HudUiMetrics.Scale(panelTexture.Width, _clientWindowSizeRepository.Resizable);
+            var panelHeight = HudUiMetrics.Scale(panelTexture.Height, _clientWindowSizeRepository.Resizable);
             return new Vector2(
-                (_clientWindowSizeRepository.Width - panelTexture.Width) / 2f,
-                _clientWindowSizeRepository.Height - 45 - panelTexture.Height);
+                (_clientWindowSizeRepository.Width - panelWidth) / 2f,
+                _clientWindowSizeRepository.Height - 45 - panelHeight);
         }
 
         private IXNAButton CreateFriendListButton()
@@ -607,8 +625,9 @@ namespace EndlessClient.HUD.Controls
                 return;
 
             var panelTexture = _nativeGraphicsManager.TextureFromResource(GFXTypes.PostLoginUI, 44);
+            var panelWidth = HudUiMetrics.Scale(panelTexture.Width, _clientWindowSizeRepository.Resizable);
             _hudMinimizeButton.DrawPosition = new Vector2(
-                _dockPanelPosition.X + panelTexture.Width - 22,
+                _dockPanelPosition.X + panelWidth - 22,
                 _dockPanelPosition.Y - 18);
         }
 

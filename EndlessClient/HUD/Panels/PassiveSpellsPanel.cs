@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using EndlessClient.Audio;
 using EndlessClient.Controllers;
 using EndlessClient.Dialogs;
 using EndlessClient.Dialogs.Factories;
@@ -35,6 +36,7 @@ namespace EndlessClient.HUD.Panels
         private readonly IXNALabel _availablePointsLabel;
         private readonly List<SkillTreePanelMember> _members;
         private readonly Texture2D _headerIcon;
+        private readonly XNAButton _panelCycleUp, _panelCycleDown;
 
         private int _cachedAvailablePoints = int.MinValue;
         private int _cachedTotalSpent = int.MinValue;
@@ -45,6 +47,8 @@ namespace EndlessClient.HUD.Panels
                                   IEOMessageBoxFactory messageBoxFactory,
                                   ISkillTreeActions skillTreeActions,
                                   ISkillTreeProvider skillTreeProvider,
+                                  IHudStateActions hudStateActions,
+                                  ISfxPlayer sfxPlayer,
                                   IClientWindowSizeProvider clientWindowSizeProvider)
             : base(clientWindowSizeProvider.Resizable)
         {
@@ -57,6 +61,12 @@ namespace EndlessClient.HUD.Panels
 
             BackgroundImage = _nativeGraphicsManager.TextureFromResource(GFXTypes.PostLoginUI, 62);
             DrawArea = HudUiMetrics.ScaledPanelDrawArea(BackgroundImage, _resizable);
+
+            var scrollPos = HudUiMetrics.ScalePoint(467, 2, _resizable);
+            var scrollSize = HudUiMetrics.ScalePoint(16, 115, _resizable);
+            (_panelCycleUp, _panelCycleDown) = HudPanelCycleArrows.Create(
+                _nativeGraphicsManager, scrollPos, scrollSize, _resizable,
+                InGameStates.PassiveSpells, hudStateActions, sfxPlayer);
 
             var font = HudUiMetrics.PanelLabelFont(_resizable);
 
@@ -104,6 +114,11 @@ namespace EndlessClient.HUD.Panels
         {
             _headerNameLabel.Initialize();
             _availablePointsLabel.Initialize();
+
+            _panelCycleUp.Initialize();
+            _panelCycleUp.SetParentControl(this);
+            _panelCycleDown.Initialize();
+            _panelCycleDown.SetParentControl(this);
 
             foreach (var member in _members)
                 member.Initialize();

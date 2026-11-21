@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using EndlessClient.Audio;
 using EndlessClient.ControlSets;
 using EndlessClient.HUD.Chat;
 using EndlessClient.Rendering;
@@ -27,7 +28,10 @@ namespace EndlessClient.HUD.Panels
         private readonly IHudControlProvider _hudControlProvider;
 
         private readonly ScrollBar _scrollBar;
+        private readonly XNAButton _panelCycleUp, _panelCycleDown;
         private readonly Dictionary<ChatTab, ChatPanelTab> _tabs;
+
+        public bool ResizableHud { get; }
 
         public ChatTab CurrentTab => _tabs.Single(x => x.Value.Active).Key;
 
@@ -37,6 +41,8 @@ namespace EndlessClient.HUD.Panels
                          IChatProvider chatProvider,
                          IHudControlProvider hudControlProvider,
                          BitmapFont chatFont,
+                         IHudStateActions hudStateActions,
+                         ISfxPlayer sfxPlayer,
                          IClientWindowSizeProvider clientWindowSizeProvider)
             : base(clientWindowSizeProvider.Resizable)
         {
@@ -45,11 +51,21 @@ namespace EndlessClient.HUD.Panels
             _chatRenderableGenerator = chatRenderableGenerator;
             _chatProvider = chatProvider;
             _hudControlProvider = hudControlProvider;
+            ResizableHud = clientWindowSizeProvider.Resizable;
 
-            //abs coordiantes: 568 309
-            _scrollBar = new ScrollBar(new Vector2(467, 2), new Vector2(16, 97), ScrollBarColors.LightOnMed, _nativeGraphicsManager)
+            BackgroundImage = _nativeGraphicsManager.TextureFromResource(GFXTypes.PostLoginUI, 28);
+            DrawArea = HudUiMetrics.ScaledPanelDrawArea(BackgroundImage, ResizableHud);
+
+            var scrollPos = HudUiMetrics.ScalePoint(467, 2, ResizableHud);
+            var scrollSize = HudUiMetrics.ScalePoint(16, 97, ResizableHud);
+            (_panelCycleUp, _panelCycleDown) = HudPanelCycleArrows.Create(
+                _nativeGraphicsManager, scrollPos, scrollSize, ResizableHud,
+                InGameStates.Chat, hudStateActions, sfxPlayer);
+
+            var (innerPos, innerSize) = HudPanelCycleArrows.InsetScrollBarArea(scrollPos, scrollSize, ResizableHud);
+            _scrollBar = new ScrollBar(innerPos, innerSize, ScrollBarColors.LightOnMed, _nativeGraphicsManager)
             {
-                LinesToRender = 7,
+                LinesToRender = HudUiMetrics.ChatLinesToRender(ResizableHud),
                 Visible = true
             };
             _scrollBar.SetParentControl(this);
@@ -61,17 +77,14 @@ namespace EndlessClient.HUD.Panels
             var largeSelected = new SpriteSheet(tabTexture, new Rectangle(132, 16, 132, 16));
             var largeUnselected = new SpriteSheet(tabTexture, new Rectangle(0, 16, 132, 16));
 
-            BackgroundImage = _nativeGraphicsManager.TextureFromResource(GFXTypes.PostLoginUI, 28);
-            DrawArea = HudUiMetrics.ScaledPanelDrawArea(BackgroundImage, clientWindowSizeProvider.Resizable);
-
             _tabs = new Dictionary<ChatTab, ChatPanelTab>
             {
-                {ChatTab.Local, new ChatPanelTab(_chatProvider, _hudControlProvider, _chatRenderableGenerator, this, _scrollBar, ChatTab.Local, smallSelected, smallUnselected, chatFont) { Visible = true, Active = true } },
-                {ChatTab.Global, new ChatPanelTab(_chatProvider, _hudControlProvider, _chatRenderableGenerator, this, _scrollBar, ChatTab.Global, smallSelected, smallUnselected, chatFont) { Visible = true, } },
-                {ChatTab.Group, new ChatPanelTab(_chatProvider, _hudControlProvider, _chatRenderableGenerator, this, _scrollBar, ChatTab.Group, smallSelected, smallUnselected, chatFont) { Visible = true, } },
-                {ChatTab.System, new ChatPanelTab(_chatProvider, _hudControlProvider, _chatRenderableGenerator, this, _scrollBar, ChatTab.System, smallSelected, smallUnselected, chatFont) { Visible = true, } },
-                {ChatTab.Private1, new ChatPanelTab(_chatProvider, _hudControlProvider, _chatRenderableGenerator, this, _scrollBar, ChatTab.Private1, largeSelected, largeUnselected, chatFont) {Visible = false} },
-                {ChatTab.Private2, new ChatPanelTab(_chatProvider, _hudControlProvider, _chatRenderableGenerator, this, _scrollBar, ChatTab.Private2, largeSelected, largeUnselected, chatFont) {Visible = false } },
+                {ChatTab.Local, new ChatPanelTab(_chatProvider, _hudControlProvider, _chatRenderableGenerator, this, _scrollBar, ChatTab.Local, smallSelected, smallUnselected, chatFont, ResizableHud) { Visible = true, Active = true } },
+                {ChatTab.Global, new ChatPanelTab(_chatProvider, _hudControlProvider, _chatRenderableGenerator, this, _scrollBar, ChatTab.Global, smallSelected, smallUnselected, chatFont, ResizableHud) { Visible = true, } },
+                {ChatTab.Group, new ChatPanelTab(_chatProvider, _hudControlProvider, _chatRenderableGenerator, this, _scrollBar, ChatTab.Group, smallSelected, smallUnselected, chatFont, ResizableHud) { Visible = true, } },
+                {ChatTab.System, new ChatPanelTab(_chatProvider, _hudControlProvider, _chatRenderableGenerator, this, _scrollBar, ChatTab.System, smallSelected, smallUnselected, chatFont, ResizableHud) { Visible = true, } },
+                {ChatTab.Private1, new ChatPanelTab(_chatProvider, _hudControlProvider, _chatRenderableGenerator, this, _scrollBar, ChatTab.Private1, largeSelected, largeUnselected, chatFont, ResizableHud) {Visible = false} },
+                {ChatTab.Private2, new ChatPanelTab(_chatProvider, _hudControlProvider, _chatRenderableGenerator, this, _scrollBar, ChatTab.Private2, largeSelected, largeUnselected, chatFont, ResizableHud) {Visible = false } },
             };
 
             foreach (var tab in _tabs.Values)
@@ -83,6 +96,11 @@ namespace EndlessClient.HUD.Panels
 
         public override void Initialize()
         {
+            _panelCycleUp.Initialize();
+            _panelCycleUp.SetParentControl(this);
+            _panelCycleDown.Initialize();
+            _panelCycleDown.SetParentControl(this);
+
             _scrollBar.Initialize();
 
             foreach (var tab in _tabs.Values)

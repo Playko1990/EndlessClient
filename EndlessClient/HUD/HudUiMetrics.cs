@@ -51,6 +51,29 @@ namespace EndlessClient.HUD
         public static string PanelLabelFont(bool resizable) =>
             ShouldEnlargeHud(resizable) ? Constants.FontSize10 : Constants.FontSize08pt5;
 
+        /// <summary>
+        /// Numeric values (stats / lvl / skp) are drawn at 2x the panel label size.
+        /// </summary>
+        public static float PanelValueTextScale(bool resizable) =>
+            ShouldEnlargeHud(resizable) ? 2f : 1f;
+
+        public static string ChatPanelFont(bool resizable) =>
+            ShouldEnlargeHud(resizable) ? Constants.FontSize10 : Constants.FontSize08;
+
+        public const int NativeChatLineHeight = 13;
+        public const int NativeChatLinesToRender = 7;
+        public const int NativeScrollArrowSize = 15;
+        public const int NativeScrollArrowWidth = 16;
+
+        public static int ChatLineHeight(bool resizable) =>
+            Scale(NativeChatLineHeight, resizable);
+
+        public static int ChatLinesToRender(bool resizable) =>
+            NativeChatLinesToRender; // line height scales with the panel, so line count stays the same
+
+        public static float UiScale(bool resizable) =>
+            ShouldEnlargeHud(resizable) ? PanelScale : 1f;
+
         public static Rectangle ScaledPanelDrawArea(Texture2D background, bool resizable)
         {
             var width = background.Width;

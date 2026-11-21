@@ -11,6 +11,6 @@ namespace EndlessClient.Rendering.Chat
 
         ChatData Data { get; }
 
-        void Render(IHudPanel parentPanel, SpriteBatch spriteBatch, BitmapFont chatFont);
+        void Render(IHudPanel parentPanel, SpriteBatch spriteBatch, BitmapFont chatFont, float uiScale = 1f);
     }
 }

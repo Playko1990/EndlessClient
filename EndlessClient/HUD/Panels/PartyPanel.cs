@@ -48,7 +48,7 @@ namespace EndlessClient.HUD.Panels
 
             var scrollPos = HudUiMetrics.ScalePoint(467, 20, _resizable);
             var scrollSize = HudUiMetrics.ScalePoint(16, 97, _resizable);
-            _scrollBar = new ScrollBar(scrollPos, scrollSize, ScrollBarColors.LightOnMed, _nativeGraphicsManager)
+            _scrollBar = new ScrollBar(scrollPos, scrollSize, ScrollBarColors.LightOnMed, _nativeGraphicsManager, HudUiMetrics.UiScale(_resizable))
             {
                 LinesToRender = 7,
                 Visible = true,

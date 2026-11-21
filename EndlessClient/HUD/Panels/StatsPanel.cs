@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Linq;
+using EndlessClient.Audio;
 using EndlessClient.Controllers;
 using EndlessClient.Dialogs;
 using EndlessClient.Dialogs.Factories;
@@ -23,19 +24,21 @@ namespace EndlessClient.HUD.Panels
         private readonly ITrainingController _trainingController;
         private readonly ISkillTreeActions _skillTreeActions;
         private readonly ISkillTreeProvider _skillTreeProvider;
+        private readonly XNAButton _panelCycleUp, _panelCycleDown;
         private const int STR = 0, INT = 1, WIS = 2, AGI = 3, CON = 4, CHA = 5;
-        private readonly IXNALabel[] _basicStats;
+        private readonly HudScaledLabel[] _basicStats;
         private readonly IXNAButton[] _arrowButtons;
 
         private const int HP = 0, TP = 1, DAM = 2, ACC = 3, ARM = 4, EVA = 5;
-        private readonly IXNALabel[] _characterStats;
+        private readonly HudScaledLabel[] _characterStats;
 
         private const int NAME = 0, LEVEL = 1, GUILD = 2;
         private readonly IXNALabel[] _characterInfo;
+        private HudScaledLabel _levelValue;
 
         private const int WEIGHT = 0, STATPTS = 1, SKILLPTS = 2, ELEM = 3,
                           GOLD = 4, EXP = 5, TNL = 6, KARMA = 7;
-        private readonly IXNALabel[] _otherInfo;
+        private readonly HudScaledLabel[] _otherInfo;
 
         private CharacterStats _lastCharacterStats;
         private InventoryItem _lastCharacterGold;
@@ -51,6 +54,8 @@ namespace EndlessClient.HUD.Panels
                           ITrainingController trainingController,
                           ISkillTreeActions skillTreeActions,
                           ISkillTreeProvider skillTreeProvider,
+                          IHudStateActions hudStateActions,
+                          ISfxPlayer sfxPlayer,
                           IClientWindowSizeProvider clientWindowSizeProvider)
             : base(clientWindowSizeProvider.Resizable)
         {
@@ -64,15 +69,22 @@ namespace EndlessClient.HUD.Panels
 
             var resizable = clientWindowSizeProvider.Resizable;
             var font = HudUiMetrics.PanelLabelFont(resizable);
+            var valueScale = HudUiMetrics.PanelValueTextScale(resizable);
 
             BackgroundImage = nativeGraphicsManager.TextureFromResource(GFXTypes.PostLoginUI, 34);
             DrawArea = HudUiMetrics.ScaledPanelDrawArea(BackgroundImage, resizable);
 
-            _basicStats = new IXNALabel[6];
+            var scrollPos = HudUiMetrics.ScalePoint(467, 2, resizable);
+            var scrollSize = HudUiMetrics.ScalePoint(16, 115, resizable);
+            (_panelCycleUp, _panelCycleDown) = HudPanelCycleArrows.Create(
+                nativeGraphicsManager, scrollPos, scrollSize, resizable,
+                InGameStates.Stats, hudStateActions, sfxPlayer);
+
+            _basicStats = new HudScaledLabel[6];
             _arrowButtons = new IXNAButton[6];
-            _characterStats = new IXNALabel[6];
+            _characterStats = new HudScaledLabel[6];
             _characterInfo = new IXNALabel[3];
-            _otherInfo = new IXNALabel[8];
+            _otherInfo = new HudScaledLabel[8];
 
             var buttonTexture = nativeGraphicsManager.TextureFromResource(GFXTypes.PostLoginUI, 27, true);
             var outTextureArea = new Rectangle(215, 386, 19, 15);
@@ -80,11 +92,11 @@ namespace EndlessClient.HUD.Panels
 
             for (int i = 0; i < _basicStats.Length; ++i)
             {
-                _basicStats[i] = new XNALabel(font)
+                _basicStats[i] = new HudScaledLabel(font, valueScale)
                 {
                     ForeColor = ColorConstants.LightGrayText,
-                    AutoSize = false,
                     Text = "",
+                    TextAlign = LabelAlignment.MiddleLeft,
                     DrawArea = HudUiMetrics.ScaleRectangle(new Rectangle(50, 8 + i * 18, 73, 13), resizable)
                 };
 
@@ -101,11 +113,11 @@ namespace EndlessClient.HUD.Panels
 
             for (int i = 0; i < _characterStats.Length; ++i)
             {
-                _characterStats[i] = new XNALabel(font)
+                _characterStats[i] = new HudScaledLabel(font, valueScale)
                 {
                     ForeColor = ColorConstants.LightGrayText,
-                    AutoSize = false,
                     Text = "",
+                    TextAlign = LabelAlignment.MiddleLeft,
                     DrawArea = HudUiMetrics.ScaleRectangle(new Rectangle(158, 8 + i * 18, 73, 13), resizable)
                 };
             }
@@ -116,11 +128,11 @@ namespace EndlessClient.HUD.Panels
                     ? new Rectangle(280, 44 + i % 4 * 18, 60, 13)
                     : new Rectangle(379, 44 + i % 4 * 18, 94, 13);
 
-                _otherInfo[i] = new XNALabel(font)
+                _otherInfo[i] = new HudScaledLabel(font, valueScale)
                 {
                     ForeColor = ColorConstants.LightGrayText,
-                    AutoSize = false,
                     Text = "",
+                    TextAlign = LabelAlignment.MiddleLeft,
                     DrawArea = HudUiMetrics.ScaleRectangle(drawArea, resizable)
                 };
             }
@@ -139,12 +151,21 @@ namespace EndlessClient.HUD.Panels
                 Text = "",
                 DrawArea = HudUiMetrics.ScaleRectangle(new Rectangle(280, 26, 193, 13), resizable)
             };
+            // Keep slot for index compatibility; numeric level uses a 2x scaled label.
             _characterInfo[LEVEL] = new XNALabel(font)
             {
                 ForeColor = ColorConstants.LightGrayText,
                 AutoSize = false,
                 Text = "",
+                Visible = false,
                 DrawArea = HudUiMetrics.ScaleRectangle(new Rectangle(453, 8, 20, 13), resizable)
+            };
+            _levelValue = new HudScaledLabel(font, valueScale)
+            {
+                ForeColor = ColorConstants.LightGrayText,
+                Text = "",
+                TextAlign = LabelAlignment.MiddleLeft,
+                DrawArea = HudUiMetrics.ScaleRectangle(new Rectangle(453, 8, 40, 13), resizable)
             };
         }
 
@@ -156,7 +177,10 @@ namespace EndlessClient.HUD.Panels
             var controls = _basicStats.Concat<IXNAControl>(_characterStats)
                                       .Concat(_arrowButtons)
                                       .Concat(_characterInfo)
-                                      .Concat(_otherInfo);
+                                      .Concat(_otherInfo)
+                                      .Append(_levelValue)
+                                      .Append(_panelCycleUp)
+                                      .Append(_panelCycleDown);
             foreach (var control in controls)
             {
                 control.SetParentControl(this);
@@ -211,7 +235,7 @@ namespace EndlessClient.HUD.Panels
 
                 _characterInfo[NAME].Text = $"{_characterProvider.MainCharacter.Name}";
                 _characterInfo[GUILD].Text = $"{_characterProvider.MainCharacter.GuildName}";
-                _characterInfo[LEVEL].Text = $"{_lastCharacterStats[CharacterStat.Level]}";
+                _levelValue.Text = $"{_lastCharacterStats[CharacterStat.Level]}";
 
                 if (_lastCharacterStats.Stats[CharacterStat.StatPoints] > 0)
                 {

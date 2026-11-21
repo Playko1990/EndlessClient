@@ -60,6 +60,7 @@ namespace EndlessClient.HUD.Panels
 
         private readonly IXNALabel _weightLabel;
         private readonly IXNAButton _drop, _junk, _paperdoll;
+        private readonly XNAButton _panelCycleUp, _panelCycleDown;
         //private readonly ScrollBar _scrollBar;
 
         private Option<CharacterStats> _cachedStats;
@@ -87,6 +88,7 @@ namespace EndlessClient.HUD.Panels
                               IActiveDialogProvider activeDialogProvider,
                               ISfxPlayer sfxPlayer,
                               IConfigurationProvider configProvider,
+                              IHudStateActions hudStateActions,
                               IClientWindowSizeProvider clientWindowSizeProvider)
             : base(clientWindowSizeProvider.Resizable)
         {
@@ -109,6 +111,12 @@ namespace EndlessClient.HUD.Panels
             _clientWindowSizeProvider = clientWindowSizeProvider;
 
             var resizable = clientWindowSizeProvider.Resizable;
+
+            var scrollPos = HudUiMetrics.ScalePoint(467, 2, resizable);
+            var scrollSize = HudUiMetrics.ScalePoint(16, 115, resizable);
+            (_panelCycleUp, _panelCycleDown) = HudPanelCycleArrows.Create(
+                NativeGraphicsManager, scrollPos, scrollSize, resizable,
+                InGameStates.Inventory, hudStateActions, _sfxPlayer);
 
             _weightLabel = new XNALabel(HudUiMetrics.PanelLabelFont(resizable))
             {
@@ -164,6 +172,11 @@ namespace EndlessClient.HUD.Panels
 
             _junk.Initialize();
             _junk.SetParentControl(this);
+
+            _panelCycleUp.Initialize();
+            _panelCycleUp.SetParentControl(this);
+            _panelCycleDown.Initialize();
+            _panelCycleDown.SetParentControl(this);
 
             _inventorySlotRepository.SlotMap = GetItemSlotMap(_playerInfoProvider.LoggedInAccountName, _characterProvider.MainCharacter.Name, _configProvider.Host);
             OnUpdateControl(new GameTime());

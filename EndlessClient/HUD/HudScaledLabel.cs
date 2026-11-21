@@ -1,3 +1,4 @@
+using System;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using MonoGame.Extended.BitmapFonts;
@@ -17,6 +18,7 @@ namespace EndlessClient.HUD
         public string Text { get; set; } = string.Empty;
         public Color ForeColor { get; set; } = Color.White;
         public LabelAlignment TextAlign { get; set; } = LabelAlignment.MiddleLeft;
+        public float TextScale => _textScale;
 
         public HudScaledLabel(string fontName, float textScale)
         {
@@ -28,6 +30,17 @@ namespace EndlessClient.HUD
         {
             _font = Game.Content.Load<BitmapFont>(_fontName);
             base.LoadContent();
+        }
+
+        public void ResizeToText(uint xPadding = 0, uint yPadding = 0)
+        {
+            if (_font == null)
+                return;
+
+            var size = (Vector2)_font.MeasureString(string.IsNullOrEmpty(Text) ? "L" : Text) * _textScale;
+            SetSize(
+                (int)Math.Round(size.X) + (int)xPadding,
+                (int)Math.Round(size.Y) + (int)yPadding);
         }
 
         protected override void OnDrawControl(GameTime gameTime)

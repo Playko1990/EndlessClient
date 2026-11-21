@@ -22,7 +22,8 @@ namespace EndlessClient.HUD.Inventory
     public class InventoryPanelItem : DraggablePanelItem<EIFRecord>
     {
         private const int MaxStatLines = 12;
-        private const int StatLineHeight = 12;
+        private const float TooltipTextScale = 2f;
+        private const int StatLineHeight = 24; // 12px line * TooltipTextScale
 
         private readonly InventoryPanel _inventoryPanel;
         private readonly IActiveDialogProvider _activeDialogProvider;
@@ -31,8 +32,8 @@ namespace EndlessClient.HUD.Inventory
         private readonly Texture2D _itemGraphic;
         private readonly Texture2D _highlightBackground;
         private readonly Texture2D _tooltipBackground;
-        private readonly XNALabel _nameLabel;
-        private readonly List<XNALabel> _statLabels = new List<XNALabel>();
+        private readonly HudScaledLabel _nameLabel;
+        private readonly List<HudScaledLabel> _statLabels = new List<HudScaledLabel>();
 
         private int _slot;
         private Option<Vector2> _highlightDrawPosition;
@@ -57,7 +58,7 @@ namespace EndlessClient.HUD.Inventory
             set
             {
                 _nameLabel.Text = value;
-                _nameLabel.ResizeBasedOnText(16, 9);
+                _nameLabel.ResizeToText(16, 9);
                 UpdateNameLabelPosition();
             }
         }
@@ -104,25 +105,21 @@ namespace EndlessClient.HUD.Inventory
             _tooltipBackground = new Texture2D(Game.GraphicsDevice, 1, 1);
             _tooltipBackground.SetData(new[] { Color.FromNonPremultiplied(20, 20, 20, 200) });
 
-            _nameLabel = new XNALabel(Constants.FontSize08)
+            _nameLabel = new HudScaledLabel(Constants.FontSize08, TooltipTextScale)
             {
                 Visible = false,
-                AutoSize = false,
                 TextAlign = LabelAlignment.MiddleLeft,
                 ForeColor = itemNameColorService.GetColorForInventoryDisplay(Data),
-                BackColor = Color.Transparent,
                 Text = string.Empty
             };
 
             for (int i = 0; i < MaxStatLines; i++)
             {
-                _statLabels.Add(new XNALabel(Constants.FontSize08)
+                _statLabels.Add(new HudScaledLabel(Constants.FontSize08, TooltipTextScale)
                 {
                     Visible = false,
-                    AutoSize = false,
                     TextAlign = LabelAlignment.MiddleLeft,
                     ForeColor = Color.White,
-                    BackColor = Color.Transparent,
                     Text = string.Empty
                 });
             }
@@ -161,7 +158,7 @@ namespace EndlessClient.HUD.Inventory
         {
             _nameLabel.Initialize();
             _nameLabel.SetParentControl(_parentContainer);
-            _nameLabel.ResizeBasedOnText(16, 9);
+            _nameLabel.ResizeToText(16, 9);
 
             foreach (var label in _statLabels)
             {
@@ -259,7 +256,7 @@ namespace EndlessClient.HUD.Inventory
                     _statLabels[i].Text = lines[i].Text;
                     _statLabels[i].ForeColor = lines[i].Color;
                     _statLabels[i].Visible = true;
-                    _statLabels[i].ResizeBasedOnText(16, 9);
+                    _statLabels[i].ResizeToText(16, 9);
                 }
                 else
                 {
@@ -298,7 +295,7 @@ namespace EndlessClient.HUD.Inventory
                     maxWidth = label.DrawArea.Width;
             }
 
-            var height = 16 + visibleStats * StatLineHeight + 6;
+            var height = _nameLabel.DrawArea.Height + visibleStats * StatLineHeight + 6;
             var pos = _nameLabel.DrawPositionWithParentOffset;
             return new Rectangle((int)pos.X - 3, (int)pos.Y - 2, maxWidth + 10, height);
         }
@@ -327,7 +324,9 @@ namespace EndlessClient.HUD.Inventory
             var lineIndex = 0;
             foreach (var label in _statLabels)
             {
-                label.DrawPosition = new Vector2(_nameLabel.DrawPosition.X, _nameLabel.DrawPosition.Y + 14 + lineIndex * StatLineHeight);
+                label.DrawPosition = new Vector2(
+                    _nameLabel.DrawPosition.X,
+                    _nameLabel.DrawPosition.Y + _nameLabel.DrawArea.Height + 2 + lineIndex * StatLineHeight);
                 label.DrawOrder = _parentContainer.DrawOrder + 201;
                 if (label.Visible)
                     lineIndex++;

@@ -320,7 +320,9 @@ namespace EndlessClient.Rendering.Character
             {
                 GraphicsDevice.SetRenderTarget(_charRenderTarget);
                 GraphicsDevice.Clear(ClearOptions.Target, Color.Transparent, 0, 0);
-                _sb.Begin(SpriteSortMode.FrontToBack, BlendState.AlphaBlend);
+                // PointClamp avoids sampling neighboring atlas cells on paperdoll edges.
+                _sb.Begin(SpriteSortMode.FrontToBack, BlendState.AlphaBlend,
+                    SamplerState.PointClamp, DepthStencilState.None, RasterizerState.CullNone);
 
                 var characterPropertyRenderers = _characterPropertyRendererBuilder
                     .BuildList(_characterTextures, _character.RenderProperties)

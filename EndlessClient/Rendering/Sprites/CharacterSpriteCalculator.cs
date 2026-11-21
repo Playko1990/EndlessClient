@@ -342,10 +342,12 @@ namespace EndlessClient.Rendering.Sprites
             var rotated = characterRenderProperties.Direction == EODirection.Left ||
                           characterRenderProperties.Direction == EODirection.Up;
 
+            // Standing, walk, and attack sheets all stack races vertically. Custom packs
+            // often keep 58px rows but add races — using vanilla's 7 rows then makes each
+            // "cell" span multiple races (boots floating above the head, other skins at the feet).
             var sheetRows = VanillaSheetRows;
-            if (gfxNum == 1 && texture.Height % PreferredStandingCellHeight == 0)
+            if (texture.Height % PreferredStandingCellHeight == 0)
             {
-                // Custom skin sheets that keep 58px race rows but add more races
                 sheetRows = System.Math.Max(1, texture.Height / PreferredStandingCellHeight);
             }
 

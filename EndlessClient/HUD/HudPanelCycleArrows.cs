@@ -25,12 +25,14 @@ namespace EndlessClient.HUD
             INativeGraphicsManager graphicsManager,
             Vector2 scrollBarPosition,
             Vector2 scrollBarSize,
-            bool resizable,
+            float uiScale,
             InGameStates currentPanel,
             IHudStateActions hudStateActions,
             ISfxPlayer sfxPlayer)
         {
-            var uiScale = HudUiMetrics.UiScale(resizable);
+            if (uiScale <= 0f)
+                uiScale = 1f;
+
             var arrowW = Math.Max(1, (int)Math.Round(HudUiMetrics.NativeScrollArrowWidth * uiScale));
             var arrowH = Math.Max(1, (int)Math.Round(HudUiMetrics.NativeScrollArrowSize * uiScale));
 
@@ -65,13 +67,30 @@ namespace EndlessClient.HUD
         /// <summary>
         /// Inset the content ScrollBar so its small arrows sit between the large cycle arrows.
         /// </summary>
-        public static (Vector2 Position, Vector2 Size) InsetScrollBarArea(Vector2 scrollPos, Vector2 scrollSize, bool resizable)
+        public static (Vector2 Position, Vector2 Size) InsetScrollBarArea(Vector2 scrollPos, Vector2 scrollSize, float uiScale)
         {
-            var edge = Math.Max(1, (int)Math.Round(HudUiMetrics.NativeScrollArrowSize * HudUiMetrics.UiScale(resizable)));
+            if (uiScale <= 0f)
+                uiScale = 1f;
+
+            var edge = Math.Max(1, (int)Math.Round(HudUiMetrics.NativeScrollArrowSize * uiScale));
             return (
                 scrollPos + new Vector2(0, edge),
                 new Vector2(scrollSize.X, Math.Max(edge * 2, scrollSize.Y - edge * 2)));
         }
+
+        public static (XNAButton Up, XNAButton Down) Create(
+            INativeGraphicsManager graphicsManager,
+            Vector2 scrollBarPosition,
+            Vector2 scrollBarSize,
+            bool resizable,
+            InGameStates currentPanel,
+            IHudStateActions hudStateActions,
+            ISfxPlayer sfxPlayer) =>
+            Create(graphicsManager, scrollBarPosition, scrollBarSize, HudUiMetrics.UiScale(resizable),
+                currentPanel, hudStateActions, sfxPlayer);
+
+        public static (Vector2 Position, Vector2 Size) InsetScrollBarArea(Vector2 scrollPos, Vector2 scrollSize, bool resizable) =>
+            InsetScrollBarArea(scrollPos, scrollSize, HudUiMetrics.UiScale(resizable));
 
         private static void SizeArrowButton(XNAButton button, Vector2 position, int width, int height)
         {

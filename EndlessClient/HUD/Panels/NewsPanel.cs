@@ -55,9 +55,9 @@ namespace EndlessClient.HUD.Panels
             // Vanilla news scroll chrome: abs (569, 350)-(585, 447) with panel at (102, 330)
             // → relative (467, 20) size 16x97. Scale with the enlarged panel so arrows stay
             // in the right-edge gutter instead of floating mid-panel.
-            var uiScale = PanelUiScale();
-            var scrollPos = new Vector2(467 * uiScale, 20 * uiScale);
-            var scrollSize = new Vector2(16 * uiScale, 97 * uiScale);
+            var uiScale = HudUiMetrics.ScaleFromPanel(BackgroundImage, DrawArea, _resizable);
+            var scrollPos = HudUiMetrics.ScalePoint(467, 20, uiScale);
+            var scrollSize = HudUiMetrics.ScalePoint(16, 97, uiScale);
             _scrollBar = new ScrollBar(scrollPos, scrollSize, ScrollBarColors.LightOnMed, _nativeGraphicsManager, uiScale)
             {
                 LinesToRender = HudUiMetrics.ChatLinesToRender(_resizable),
@@ -108,25 +108,9 @@ namespace EndlessClient.HUD.Panels
             if (_chatRenderables == null)
                 return;
 
-            var uiScale = PanelUiScale();
+            var uiScale = HudUiMetrics.ScaleFromPanel(BackgroundImage, DrawArea, _resizable);
             foreach (var renderable in _chatRenderables)
                 renderable.Render(this, _spriteBatch, _chatFont, uiScale);
-        }
-
-        /// <summary>
-        /// Prefer the panel's actual stretched size so text/scrollbar stay aligned even if
-        /// enlarge flags and DrawArea get out of sync.
-        /// </summary>
-        private float PanelUiScale()
-        {
-            if (BackgroundImage != null && BackgroundImage.Height > 0 && DrawArea.Height > 0)
-            {
-                var fromSize = (float)DrawArea.Height / BackgroundImage.Height;
-                if (fromSize > 1.01f)
-                    return fromSize;
-            }
-
-            return HudUiMetrics.UiScale(_resizable);
         }
 
         private void UpdateCachedNewsStrings()

@@ -56,14 +56,15 @@ namespace EndlessClient.HUD.Panels
             BackgroundImage = _nativeGraphicsManager.TextureFromResource(GFXTypes.PostLoginUI, 28);
             DrawArea = HudUiMetrics.ScaledPanelDrawArea(BackgroundImage, ResizableHud);
 
-            var scrollPos = HudUiMetrics.ScalePoint(467, 2, ResizableHud);
-            var scrollSize = HudUiMetrics.ScalePoint(16, 97, ResizableHud);
+            var uiScale = HudUiMetrics.ScaleFromPanel(BackgroundImage, DrawArea, ResizableHud);
+            var scrollPos = HudUiMetrics.ScalePoint(467, 2, uiScale);
+            var scrollSize = HudUiMetrics.ScalePoint(16, 97, uiScale);
             (_panelCycleUp, _panelCycleDown) = HudPanelCycleArrows.Create(
-                _nativeGraphicsManager, scrollPos, scrollSize, ResizableHud,
+                _nativeGraphicsManager, scrollPos, scrollSize, uiScale,
                 InGameStates.Chat, hudStateActions, sfxPlayer);
 
-            var (innerPos, innerSize) = HudPanelCycleArrows.InsetScrollBarArea(scrollPos, scrollSize, ResizableHud);
-            _scrollBar = new ScrollBar(innerPos, innerSize, ScrollBarColors.LightOnMed, _nativeGraphicsManager)
+            var (innerPos, innerSize) = HudPanelCycleArrows.InsetScrollBarArea(scrollPos, scrollSize, uiScale);
+            _scrollBar = new ScrollBar(innerPos, innerSize, ScrollBarColors.LightOnMed, _nativeGraphicsManager, uiScale)
             {
                 LinesToRender = HudUiMetrics.ChatLinesToRender(ResizableHud),
                 Visible = true

@@ -669,13 +669,13 @@ namespace EndlessClient.HUD.Controls
 
         private XNAButton CreateWindowSizeButton()
         {
-            // Same sheet as HUD minimize; top-right control shrinks/expands the game window.
-            var sheet = _nativeGraphicsManager.TextureFromResource(GFXTypes.PostLoginUI, 27, false);
+            // Clean chevron-only art (not the friend-list person glyph).
+            var sheet = WindowSizeButtonIcon.Create(_graphicsDeviceProvider.GraphicsDevice);
             _windowSizeButton = new XNAButton(
                 sheet,
                 GetWindowSizeButtonPosition(),
-                new Rectangle(0, 260, 17, 15),
-                new Rectangle(0, 276, 17, 15))
+                WindowSizeButtonIcon.OutSource,
+                WindowSizeButtonIcon.OverSource)
             {
                 DrawOrder = HUD_CONTROL_LAYER + 30,
                 Visible = _clientWindowSizeRepository.Resizable,

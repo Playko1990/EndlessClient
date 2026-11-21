@@ -19,9 +19,10 @@ namespace EndlessClient.HUD.Panels
 {
     public class PassiveSpellsPanel : DraggableHudPanel
     {
-        // Left-rail header well: title on top, tree sits inside the box above lvl/skp.
-        private const int HeaderIconNativeSize = 28;
-        private const int HeaderIconNativeX = 36;
+        // Left-rail header well: title on top, tree fills the box down toward lvl/skp.
+        // Top stays near the title; size grows downward to the bottom of the well.
+        private const int HeaderIconNativeSize = 56;
+        private const int HeaderIconNativeX = 21; // centered in the ~81px left rail
         private const int HeaderIconNativeY = 18;
 
         private readonly INativeGraphicsManager _nativeGraphicsManager;
@@ -156,7 +157,7 @@ namespace EndlessClient.HUD.Panels
             if (_headerIcon == null)
                 return;
 
-            // Larger than a normal selected-spell glyph so it fills the left header well.
+            // Top anchored at HeaderIconNativeY; larger size reaches the bottom of the well.
             var size = HudUiMetrics.Scale(HeaderIconNativeSize, _resizable);
             var x = DrawAreaWithParentOffset.X + HudUiMetrics.Scale(HeaderIconNativeX, _resizable);
             var y = DrawAreaWithParentOffset.Y + HudUiMetrics.Scale(HeaderIconNativeY, _resizable);

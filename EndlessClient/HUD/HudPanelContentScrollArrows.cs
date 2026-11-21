@@ -15,8 +15,7 @@ namespace EndlessClient.HUD
     {
         public static (XNAButton Up, XNAButton Down) Create(
             INativeGraphicsManager graphicsManager,
-            Vector2 scrollBarPosition,
-            Vector2 scrollBarSize,
+            Rectangle panelDrawArea,
             float uiScale,
             ScrollBar scrollBar,
             ISfxPlayer sfxPlayer = null)
@@ -24,8 +23,14 @@ namespace EndlessClient.HUD
             if (uiScale <= 0f)
                 uiScale = 1f;
 
-            var arrowW = Math.Max(1, (int)Math.Round(HudUiMetrics.NativeScrollArrowWidth * uiScale));
-            var arrowH = Math.Max(1, (int)Math.Round(HudUiMetrics.NativeScrollArrowSize * uiScale));
+            // Match the large chrome / hub-sized arrows on the far right of the panel.
+            var arrowSize = Math.Max(
+                Math.Max(1, (int)Math.Round(HudUiMetrics.NativeScrollArrowWidth * uiScale)),
+                HudUiMetrics.HubButtonSize(uiScale > 1.01f, panelDrawArea.Height));
+
+            var scrollTop = Math.Max(0, (int)Math.Round(2 * uiScale));
+            var scrollBottom = Math.Max(arrowSize * 2, panelDrawArea.Height - scrollTop);
+            var x = Math.Max(0, panelDrawArea.Width - arrowSize);
 
             var sheet = graphicsManager.TextureFromResource(GFXTypes.PostLoginUI, 29);
             const int vertOff = 105; // LightOnMed palette
@@ -34,12 +39,13 @@ namespace EndlessClient.HUD
             var downOut = new Rectangle(0, vertOff + 15, 16, 15);
             var downOver = new Rectangle(0, vertOff + 15 * 2, 16, 15);
 
-            var up = new XNAButton(sheet, scrollBarPosition, upOut, upOver);
-            SizeArrowButton(up, scrollBarPosition, arrowW, arrowH);
+            var upPos = new Vector2(x, scrollTop);
+            var up = new XNAButton(sheet, upPos, upOut, upOver);
+            SizeArrowButton(up, upPos, arrowSize, arrowSize);
 
-            var downPos = new Vector2(scrollBarPosition.X, scrollBarPosition.Y + scrollBarSize.Y - arrowH);
+            var downPos = new Vector2(x, scrollTop + scrollBottom - arrowSize);
             var down = new XNAButton(sheet, downPos, downOut, downOver);
-            SizeArrowButton(down, downPos, arrowW, arrowH);
+            SizeArrowButton(down, downPos, arrowSize, arrowSize);
 
             up.OnMouseDown += (_, _) =>
             {

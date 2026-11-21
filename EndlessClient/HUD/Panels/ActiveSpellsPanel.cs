@@ -144,20 +144,22 @@ namespace EndlessClient.HUD.Panels
                 ForeColor = ColorConstants.LightGrayText,
             };
 
-            // Large arrows on the right gutter scroll spells; hide the small ScrollBar arrows.
-            var scrollPos = HudUiMetrics.ScalePoint(467, 2, uiScale);
-            var scrollSize = HudUiMetrics.ScalePoint(16, 115, uiScale);
+            // Thumb-only scrollbar; large far-right arrows scroll the spell list.
+            var arrowSize = Math.Max(
+                HudUiMetrics.Scale(HudUiMetrics.NativeScrollArrowWidth, uiScale),
+                HudUiMetrics.HubButtonSize(ResizableHud, DrawArea.Height));
+            var scrollPos = new Vector2(DrawArea.Width - arrowSize, HudUiMetrics.Scale(2, uiScale));
+            var scrollSize = new Vector2(arrowSize, Math.Max(arrowSize * 2, DrawArea.Height - HudUiMetrics.Scale(4, uiScale)));
             var (innerPos, innerSize) = HudPanelCycleArrows.InsetScrollBarArea(scrollPos, scrollSize, uiScale);
-            _scrollBar = new ScrollBar(innerPos, innerSize, ScrollBarColors.LightOnMed, NativeGraphicsManager, uiScale)
+            _scrollBar = new ScrollBar(innerPos, innerSize, ScrollBarColors.LightOnMed, NativeGraphicsManager, uiScale, showArrowButtons: false)
             {
                 LinesToRender = 2
             };
-            _scrollBar.SetArrowButtonsVisible(false);
             _scrollBar.UpdateDimensions(4);
             SetScrollWheelHandler(_scrollBar);
 
             (_scrollUp, _scrollDown) = HudPanelContentScrollArrows.Create(
-                NativeGraphicsManager, scrollPos, scrollSize, uiScale, _scrollBar, _sfxPlayer);
+                NativeGraphicsManager, DrawArea, uiScale, _scrollBar, _sfxPlayer);
 
             Game.Exiting += SaveSpellsFile;
         }
@@ -327,9 +329,15 @@ namespace EndlessClient.HUD.Panels
             if (_scrollBar.ScrollOffset >= 2)
                 return;
 
-            // Align F1–F8 with spell slot boxes (101 + col*45, 9 + row*52).
             var uiScale = HudUiMetrics.ScaleFromPanel(BackgroundImage, DrawArea, ResizableHud);
+
+            // On the enlarged panel the chrome already paints F-keys inside each spell
+            // box; drawing the overlay again put giant labels on the top border.
+            if (uiScale > 1.01f)
+                return;
+
             var labelSize = HudUiMetrics.ScalePoint(18, 13, uiScale);
+            var origin = DrawPositionWithParentOffset;
 
             for (int i = 0; i < 8; ++i)
             {
@@ -337,7 +345,7 @@ namespace EndlessClient.HUD.Panels
 
                 if (_scrollBar.ScrollOffset == 0)
                 {
-                    var pos = DrawPosition + HudUiMetrics.ScalePoint(101 + 45 * i, 9, uiScale);
+                    var pos = origin + HudUiMetrics.ScalePoint(101 + 45 * i, 9, uiScale);
                     _spriteBatch.Draw(_functionKeyLabelSheet,
                         new Rectangle((int)pos.X, (int)pos.Y, (int)labelSize.X, (int)labelSize.Y),
                         _functionKeyRow1Source.WithPosition((_functionKeyRow1Source.Location + new Point(offset, 0)).ToVector2()),
@@ -347,7 +355,7 @@ namespace EndlessClient.HUD.Panels
                 if (_scrollBar.ScrollOffset < 2)
                 {
                     var yCoord = _scrollBar.ScrollOffset == 0 ? 9 + 52 : 9;
-                    var pos = DrawPosition + HudUiMetrics.ScalePoint(101 + 45 * i, yCoord, uiScale);
+                    var pos = origin + HudUiMetrics.ScalePoint(101 + 45 * i, yCoord, uiScale);
                     _spriteBatch.Draw(_functionKeyLabelSheet,
                         new Rectangle((int)pos.X, (int)pos.Y, (int)labelSize.X, (int)labelSize.Y),
                         _functionKeyRow2Source.WithPosition((_functionKeyRow2Source.Location + new Point(offset, 0)).ToVector2()),

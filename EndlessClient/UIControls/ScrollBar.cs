@@ -26,6 +26,7 @@ namespace EndlessClient.UIControls
         private readonly Rectangle? _backgroundTextureSource;
         private readonly int _arrowSize;
         private readonly int _arrowWidth;
+        private readonly bool _showArrowButtons;
 
         private int _totalHeight;
 
@@ -47,11 +48,13 @@ namespace EndlessClient.UIControls
                          Vector2 size,
                          ScrollBarColors palette,
                          INativeGraphicsManager nativeGraphicsManager,
-                         float uiScale = 1f)
+                         float uiScale = 1f,
+                         bool showArrowButtons = true)
         {
             DrawPosition = locationRelativeToParent;
             SetSize((int)size.X, (int)size.Y);
             ScrollOffset = 0;
+            _showArrowButtons = showArrowButtons;
 
             _arrowSize = Math.Max(1, (int)Math.Round(15 * uiScale));
             _arrowWidth = Math.Max(1, (int)Math.Round(16 * uiScale));
@@ -76,15 +79,24 @@ namespace EndlessClient.UIControls
             downArrows[1] = new Rectangle(0, vertOff + 15 * 2, 16, 15);
             var scrollBox = new Rectangle(0, vertOff, 16, 15);
 
+            // Always create up/down for ScrollBy logic; only parent/draw them when requested.
             _upButton = new XNAButton(scrollSpriteSheet, Vector2.Zero, upArrows[0], upArrows[1]);
             _upButton.OnMouseDown += ArrowClicked;
-            _upButton.SetParentControl(this);
-            ApplyArrowButtonSize(_upButton, y: 0);
+            _upButton.Visible = _showArrowButtons;
+            if (_showArrowButtons)
+            {
+                _upButton.SetParentControl(this);
+                ApplyArrowButtonSize(_upButton, y: 0);
+            }
 
             _downButton = new XNAButton(scrollSpriteSheet, new Vector2(0, size.Y - _arrowSize), downArrows[0], downArrows[1]);
             _downButton.OnMouseDown += ArrowClicked;
-            _downButton.SetParentControl(this);
-            ApplyArrowButtonSize(_downButton, y: size.Y - _arrowSize);
+            _downButton.Visible = _showArrowButtons;
+            if (_showArrowButtons)
+            {
+                _downButton.SetParentControl(this);
+                ApplyArrowButtonSize(_downButton, y: size.Y - _arrowSize);
+            }
 
             _scrollButton = new XNAButton(scrollSpriteSheet, new Vector2(0, _arrowSize), scrollBox, scrollBox);
             _scrollButton.OnClickDrag += OnScrollButtonDragged;
@@ -95,29 +107,37 @@ namespace EndlessClient.UIControls
             _totalHeight = DrawAreaWithParentOffset.Height;
         }
 
-        public ScrollBar(Vector2 locationRelativeToParent, Texture2D backgroundTexture, Rectangle? backgroundTextureSource, ScrollBarColors palette, INativeGraphicsManager nativeGraphicsManager, float uiScale = 1f)
+        public ScrollBar(Vector2 locationRelativeToParent, Texture2D backgroundTexture, Rectangle? backgroundTextureSource, ScrollBarColors palette, INativeGraphicsManager nativeGraphicsManager, float uiScale = 1f, bool showArrowButtons = true)
             : this(locationRelativeToParent,
                    (backgroundTextureSource.HasValue ? backgroundTextureSource.Value.Size : backgroundTexture.Bounds.Size).ToVector2(),
                    palette,
                    nativeGraphicsManager,
-                   uiScale)
+                   uiScale,
+                   showArrowButtons)
         {
             _backgroundTexture = backgroundTexture;
             _backgroundTextureSource = backgroundTextureSource;
 
             // assume vertical scrollbar : center on background image
-            _upButton.DrawPosition = new Vector2((DrawArea.Width - _upButton.DrawArea.Width) / 2, _upButton.DrawPosition.Y + 1);
-            _downButton.DrawPosition = new Vector2((DrawArea.Width - _downButton.DrawArea.Width) / 2, _downButton.DrawPosition.Y);
+            if (_showArrowButtons)
+            {
+                _upButton.DrawPosition = new Vector2((DrawArea.Width - _upButton.DrawArea.Width) / 2, _upButton.DrawPosition.Y + 1);
+                _downButton.DrawPosition = new Vector2((DrawArea.Width - _downButton.DrawArea.Width) / 2, _downButton.DrawPosition.Y);
+            }
             _scrollButton.DrawPosition = new Vector2((DrawArea.Width - _scrollButton.DrawArea.Width) / 2, _scrollButton.DrawPosition.Y);
         }
 
         public override void Initialize()
         {
-            _upButton.Initialize();
-            _downButton.Initialize();
+            if (_showArrowButtons)
+            {
+                _upButton.Initialize();
+                _downButton.Initialize();
+            }
             _scrollButton.Initialize();
 
             base.Initialize();
+            SetArrowButtonsVisible(_showArrowButtons);
         }
 
         public void UpdateDimensions(int numberOfLines)

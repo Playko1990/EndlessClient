@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using EndlessClient.Rendering;
 using EndlessClient.Rendering.Chat;
@@ -53,22 +54,24 @@ namespace EndlessClient.HUD.Panels
             BackgroundImage = _nativeGraphicsManager.TextureFromResource(GFXTypes.PostLoginUI, 48);
             DrawArea = HudUiMetrics.ScaledPanelDrawArea(BackgroundImage, _resizable);
 
-            // Large arrows on the right gutter; hide the small ScrollBar arrow sprites.
+            // Thumb-only scrollbar; large far-right arrows scroll news.
             var uiScale = HudUiMetrics.ScaleFromPanel(BackgroundImage, DrawArea, _resizable);
-            var scrollPos = HudUiMetrics.ScalePoint(467, 20, uiScale);
-            var scrollSize = HudUiMetrics.ScalePoint(16, 97, uiScale);
+            var arrowSize = Math.Max(
+                HudUiMetrics.Scale(HudUiMetrics.NativeScrollArrowWidth, uiScale),
+                HudUiMetrics.HubButtonSize(_resizable, DrawArea.Height));
+            var scrollPos = new Vector2(DrawArea.Width - arrowSize, HudUiMetrics.Scale(20, uiScale));
+            var scrollSize = new Vector2(arrowSize, Math.Max(arrowSize * 2, DrawArea.Height - HudUiMetrics.Scale(24, uiScale)));
             var (innerPos, innerSize) = HudPanelCycleArrows.InsetScrollBarArea(scrollPos, scrollSize, uiScale);
-            _scrollBar = new ScrollBar(innerPos, innerSize, ScrollBarColors.LightOnMed, _nativeGraphicsManager, uiScale)
+            _scrollBar = new ScrollBar(innerPos, innerSize, ScrollBarColors.LightOnMed, _nativeGraphicsManager, uiScale, showArrowButtons: false)
             {
                 LinesToRender = HudUiMetrics.ChatLinesToRender(_resizable),
                 Visible = true
             };
-            _scrollBar.SetArrowButtonsVisible(false);
             _scrollBar.SetParentControl(this);
             SetScrollWheelHandler(_scrollBar);
 
             (_scrollUp, _scrollDown) = HudPanelContentScrollArrows.Create(
-                _nativeGraphicsManager, scrollPos, scrollSize, uiScale, _scrollBar);
+                _nativeGraphicsManager, DrawArea, uiScale, _scrollBar);
         }
 
         public override void Initialize()

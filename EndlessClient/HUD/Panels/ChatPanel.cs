@@ -56,22 +56,24 @@ namespace EndlessClient.HUD.Panels
             BackgroundImage = _nativeGraphicsManager.TextureFromResource(GFXTypes.PostLoginUI, 28);
             DrawArea = HudUiMetrics.ScaledPanelDrawArea(BackgroundImage, ResizableHud);
 
-            // Large arrows on the right gutter scroll chat; hide the small ScrollBar arrows.
+            // Thumb-only scrollbar; large far-right arrows scroll chat.
             var uiScale = HudUiMetrics.ScaleFromPanel(BackgroundImage, DrawArea, ResizableHud);
-            var scrollPos = HudUiMetrics.ScalePoint(467, 2, uiScale);
-            var scrollSize = HudUiMetrics.ScalePoint(16, 97, uiScale);
+            var arrowSize = Math.Max(
+                HudUiMetrics.Scale(HudUiMetrics.NativeScrollArrowWidth, uiScale),
+                HudUiMetrics.HubButtonSize(ResizableHud, DrawArea.Height));
+            var scrollPos = new Vector2(DrawArea.Width - arrowSize, HudUiMetrics.Scale(2, uiScale));
+            var scrollSize = new Vector2(arrowSize, Math.Max(arrowSize * 2, DrawArea.Height - HudUiMetrics.Scale(4, uiScale)));
             var (innerPos, innerSize) = HudPanelCycleArrows.InsetScrollBarArea(scrollPos, scrollSize, uiScale);
-            _scrollBar = new ScrollBar(innerPos, innerSize, ScrollBarColors.LightOnMed, _nativeGraphicsManager, uiScale)
+            _scrollBar = new ScrollBar(innerPos, innerSize, ScrollBarColors.LightOnMed, _nativeGraphicsManager, uiScale, showArrowButtons: false)
             {
                 LinesToRender = HudUiMetrics.ChatLinesToRender(ResizableHud),
                 Visible = true
             };
-            _scrollBar.SetArrowButtonsVisible(false);
             _scrollBar.SetParentControl(this);
             SetScrollWheelHandler(_scrollBar);
 
             (_scrollUp, _scrollDown) = HudPanelContentScrollArrows.Create(
-                _nativeGraphicsManager, scrollPos, scrollSize, uiScale, _scrollBar, sfxPlayer);
+                _nativeGraphicsManager, DrawArea, uiScale, _scrollBar, sfxPlayer);
 
             var tabTexture = _nativeGraphicsManager.TextureFromResource(GFXTypes.PostLoginUI, 35);
             var smallSelected = new SpriteSheet(tabTexture, new Rectangle(307, 16, 43, 16));

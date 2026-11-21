@@ -147,6 +147,36 @@ namespace EndlessClient.UIControls
             _downButton.FlashSpeed = milliseconds;
         }
 
+        /// <summary>
+        /// Scroll content by a number of lines (negative = up, positive = down).
+        /// </summary>
+        public void ScrollBy(int delta)
+        {
+            if (delta == 0 || _totalHeight <= LinesToRender)
+                return;
+
+            if (delta < 0)
+            {
+                for (var i = 0; i < -delta; i++)
+                    ArrowClicked(_upButton, EventArgs.Empty);
+            }
+            else
+            {
+                for (var i = 0; i < delta; i++)
+                    ArrowClicked(_downButton, EventArgs.Empty);
+            }
+        }
+
+        /// <summary>
+        /// Hide the built-in arrow sprites when large chrome arrows drive scrolling instead.
+        /// Click areas stay disabled; use <see cref="ScrollBy"/> from the large arrows.
+        /// </summary>
+        public void SetArrowButtonsVisible(bool visible)
+        {
+            _upButton.Visible = visible;
+            _downButton.Visible = visible;
+        }
+
         protected override void OnDrawControl(GameTime gameTime)
         {
             if (_backgroundTexture != null)

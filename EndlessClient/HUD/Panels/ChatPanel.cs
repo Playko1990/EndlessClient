@@ -28,6 +28,7 @@ namespace EndlessClient.HUD.Panels
         private readonly IHudControlProvider _hudControlProvider;
 
         private readonly ScrollBar _scrollBar;
+        private readonly XNAButton _scrollUp, _scrollDown;
         private readonly Dictionary<ChatTab, ChatPanelTab> _tabs;
 
         public bool ResizableHud { get; }
@@ -55,17 +56,22 @@ namespace EndlessClient.HUD.Panels
             BackgroundImage = _nativeGraphicsManager.TextureFromResource(GFXTypes.PostLoginUI, 28);
             DrawArea = HudUiMetrics.ScaledPanelDrawArea(BackgroundImage, ResizableHud);
 
-            // One large scrollbar on the right gutter (no mid-panel inset arrows).
+            // Large arrows on the right gutter scroll chat; hide the small ScrollBar arrows.
             var uiScale = HudUiMetrics.ScaleFromPanel(BackgroundImage, DrawArea, ResizableHud);
             var scrollPos = HudUiMetrics.ScalePoint(467, 2, uiScale);
             var scrollSize = HudUiMetrics.ScalePoint(16, 97, uiScale);
-            _scrollBar = new ScrollBar(scrollPos, scrollSize, ScrollBarColors.LightOnMed, _nativeGraphicsManager, uiScale)
+            var (innerPos, innerSize) = HudPanelCycleArrows.InsetScrollBarArea(scrollPos, scrollSize, uiScale);
+            _scrollBar = new ScrollBar(innerPos, innerSize, ScrollBarColors.LightOnMed, _nativeGraphicsManager, uiScale)
             {
                 LinesToRender = HudUiMetrics.ChatLinesToRender(ResizableHud),
                 Visible = true
             };
+            _scrollBar.SetArrowButtonsVisible(false);
             _scrollBar.SetParentControl(this);
             SetScrollWheelHandler(_scrollBar);
+
+            (_scrollUp, _scrollDown) = HudPanelContentScrollArrows.Create(
+                _nativeGraphicsManager, scrollPos, scrollSize, uiScale, _scrollBar, sfxPlayer);
 
             var tabTexture = _nativeGraphicsManager.TextureFromResource(GFXTypes.PostLoginUI, 35);
             var smallSelected = new SpriteSheet(tabTexture, new Rectangle(307, 16, 43, 16));
@@ -92,6 +98,11 @@ namespace EndlessClient.HUD.Panels
 
         public override void Initialize()
         {
+            _scrollUp.Initialize();
+            _scrollUp.SetParentControl(this);
+            _scrollDown.Initialize();
+            _scrollDown.SetParentControl(this);
+
             _scrollBar.Initialize();
 
             foreach (var tab in _tabs.Values)

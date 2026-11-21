@@ -19,6 +19,7 @@ namespace EndlessClient.HUD.Panels
         private readonly IChatRenderableGenerator _chatRenderableGenerator;
         private readonly INewsProvider _newsProvider;
         private readonly ScrollBar _scrollBar;
+        private readonly XNAButton _scrollUp, _scrollDown;
         private readonly List<IChatRenderable> _chatRenderables;
         private readonly BitmapFont _chatFont;
         private readonly bool _resizable;
@@ -52,23 +53,31 @@ namespace EndlessClient.HUD.Panels
             BackgroundImage = _nativeGraphicsManager.TextureFromResource(GFXTypes.PostLoginUI, 48);
             DrawArea = HudUiMetrics.ScaledPanelDrawArea(BackgroundImage, _resizable);
 
-            // Vanilla news scroll chrome: abs (569, 350)-(585, 447) with panel at (102, 330)
-            // → relative (467, 20) size 16x97. Scale with the enlarged panel so arrows stay
-            // in the right-edge gutter instead of floating mid-panel.
+            // Large arrows on the right gutter; hide the small ScrollBar arrow sprites.
             var uiScale = HudUiMetrics.ScaleFromPanel(BackgroundImage, DrawArea, _resizable);
             var scrollPos = HudUiMetrics.ScalePoint(467, 20, uiScale);
             var scrollSize = HudUiMetrics.ScalePoint(16, 97, uiScale);
-            _scrollBar = new ScrollBar(scrollPos, scrollSize, ScrollBarColors.LightOnMed, _nativeGraphicsManager, uiScale)
+            var (innerPos, innerSize) = HudPanelCycleArrows.InsetScrollBarArea(scrollPos, scrollSize, uiScale);
+            _scrollBar = new ScrollBar(innerPos, innerSize, ScrollBarColors.LightOnMed, _nativeGraphicsManager, uiScale)
             {
                 LinesToRender = HudUiMetrics.ChatLinesToRender(_resizable),
                 Visible = true
             };
+            _scrollBar.SetArrowButtonsVisible(false);
             _scrollBar.SetParentControl(this);
             SetScrollWheelHandler(_scrollBar);
+
+            (_scrollUp, _scrollDown) = HudPanelContentScrollArrows.Create(
+                _nativeGraphicsManager, scrollPos, scrollSize, uiScale, _scrollBar);
         }
 
         public override void Initialize()
         {
+            _scrollUp.Initialize();
+            _scrollUp.SetParentControl(this);
+            _scrollDown.Initialize();
+            _scrollDown.SetParentControl(this);
+
             _scrollBar.Initialize();
             base.Initialize();
         }
@@ -93,7 +102,7 @@ namespace EndlessClient.HUD.Panels
 
                 if (_firstTime && renderables.Count > _scrollBar.LinesToRender)
                 {
-                    _scrollBar.SetDownArrowFlashSpeed(500);
+                    _scrollDown.FlashSpeed = 500;
                     _firstTime = false;
                 }
             }

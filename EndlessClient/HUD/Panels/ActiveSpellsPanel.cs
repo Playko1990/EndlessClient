@@ -56,6 +56,7 @@ namespace EndlessClient.HUD.Panels
         private readonly XNALabel _selectedSpellName;
         private readonly HudScaledLabel _selectedSpellLevel, _totalSkillPoints;
         private readonly ScrollBar _scrollBar;
+        private readonly XNAButton _scrollUp, _scrollDown;
 
         private HashSet<InventorySpell> _cachedSpells;
         private int _cachedAvailableSkillPoints = int.MinValue;
@@ -143,15 +144,20 @@ namespace EndlessClient.HUD.Panels
                 ForeColor = ColorConstants.LightGrayText,
             };
 
-            // One large scrollbar on the right gutter (no inset mid-panel arrows).
+            // Large arrows on the right gutter scroll spells; hide the small ScrollBar arrows.
             var scrollPos = HudUiMetrics.ScalePoint(467, 2, uiScale);
             var scrollSize = HudUiMetrics.ScalePoint(16, 115, uiScale);
-            _scrollBar = new ScrollBar(scrollPos, scrollSize, ScrollBarColors.LightOnMed, NativeGraphicsManager, uiScale)
+            var (innerPos, innerSize) = HudPanelCycleArrows.InsetScrollBarArea(scrollPos, scrollSize, uiScale);
+            _scrollBar = new ScrollBar(innerPos, innerSize, ScrollBarColors.LightOnMed, NativeGraphicsManager, uiScale)
             {
                 LinesToRender = 2
             };
+            _scrollBar.SetArrowButtonsVisible(false);
             _scrollBar.UpdateDimensions(4);
             SetScrollWheelHandler(_scrollBar);
+
+            (_scrollUp, _scrollDown) = HudPanelContentScrollArrows.Create(
+                NativeGraphicsManager, scrollPos, scrollSize, uiScale, _scrollBar, _sfxPlayer);
 
             Game.Exiting += SaveSpellsFile;
         }
@@ -168,6 +174,11 @@ namespace EndlessClient.HUD.Panels
 
             _totalSkillPoints.Initialize();
             _totalSkillPoints.SetParentControl(this);
+
+            _scrollUp.Initialize();
+            _scrollUp.SetParentControl(this);
+            _scrollDown.Initialize();
+            _scrollDown.SetParentControl(this);
 
             _scrollBar.Initialize();
             _scrollBar.SetParentControl(this);

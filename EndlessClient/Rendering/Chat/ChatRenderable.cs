@@ -8,6 +8,7 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using MonoGame.Extended.BitmapFonts;
 using Optional.Unsafe;
+using XNAControls;
 
 namespace EndlessClient.Rendering.Chat
 {
@@ -20,6 +21,7 @@ namespace EndlessClient.Rendering.Chat
 
         private readonly string _partialMessage;
 
+        // Vanilla news/chat content starts 20px below the panel top (abs Y 350 with panel at 330).
         protected virtual int HeaderYOffset => 3;
 
         public int DisplayIndex { get; set; }
@@ -57,22 +59,30 @@ namespace EndlessClient.Rendering.Chat
 
         public void Render(IHudPanel parentPanel, SpriteBatch spriteBatch, BitmapFont chatFont, float uiScale = 1f)
         {
-            spriteBatch.Begin();
+            if (uiScale <= 0f)
+                uiScale = 1f;
 
             var lineHeight = HudUiMetrics.NativeChatLineHeight * uiScale;
             var iconOff = ICON_GRAPHIC_X_OFF * uiScale;
             var msgOff = CHAT_MESSAGE_X_OFF * uiScale;
             var headerOff = HeaderYOffset * uiScale;
 
-            var pos = parentPanel.DrawPosition + new Vector2(0, DisplayIndex * lineHeight);
+            // Match panel background drawing (DrawAreaWithParentOffset), not local DrawPosition alone.
+            var panelOrigin = parentPanel is XNAControl control
+                ? control.DrawPositionWithParentOffset
+                : parentPanel.DrawPosition;
+            var pos = panelOrigin + new Vector2(0, DisplayIndex * lineHeight);
+
+            spriteBatch.Begin();
+
             var iconSrc = GetChatIconRectangle(Data.Icon);
             if (iconSrc.HasValue)
             {
                 var iconDest = new Rectangle(
-                    (int)(pos.X + iconOff),
-                    (int)(pos.Y + headerOff),
-                    Math.Max(1, (int)(iconSrc.Value.Width * uiScale)),
-                    Math.Max(1, (int)(iconSrc.Value.Height * uiScale)));
+                    (int)Math.Round(pos.X + iconOff),
+                    (int)Math.Round(pos.Y + headerOff),
+                    Math.Max(1, (int)Math.Round(iconSrc.Value.Width * uiScale)),
+                    Math.Max(1, (int)Math.Round(iconSrc.Value.Height * uiScale)));
                 spriteBatch.Draw(_nativeGraphicsManager.TextureFromResource(GFXTypes.PostLoginUI, 32, true),
                                  iconDest,
                                  iconSrc,
@@ -88,6 +98,7 @@ namespace EndlessClient.Rendering.Chat
             spriteBatch.End();
 
             var textPos = new Vector2(pos.X + msgOff, pos.Y + headerOff);
+            // Scale glyphs around the origin, then place at textPos (same pattern as HudScaledLabel).
             var transform = Matrix.CreateScale(uiScale) *
                             Matrix.CreateTranslation(textPos.X, textPos.Y, 0f);
             spriteBatch.Begin(transformMatrix: transform);
@@ -97,14 +108,21 @@ namespace EndlessClient.Rendering.Chat
 
         private static Rectangle? GetChatIconRectangle(ChatIcon icon)
         {
+            if (icon == ChatIcon.None)
+                return null;
+
             var (x, y, width, height) = icon.GetChatIconRectangleBounds().ValueOrDefault();
+            if (width <= 0 || height <= 0)
+                return null;
+
             return new Rectangle(x, y, width, height);
         }
     }
 
     public class NewsChatRenderable : ChatRenderable
     {
-        protected override int HeaderYOffset => 23;
+        // Vanilla DrawNewsText uses abs Y = 14*row + 350 → 20px below panel top (330).
+        protected override int HeaderYOffset => 20;
 
         public NewsChatRenderable(INativeGraphicsManager nativeGraphicsManager, int displayIndex, ChatData data, string partialMessage)
             : base(nativeGraphicsManager, displayIndex, data, partialMessage)

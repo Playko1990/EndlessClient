@@ -1,5 +1,6 @@
 ﻿using System;
 using EndlessClient.ControlSets;
+using EndlessClient.HUD;
 using EndlessClient.HUD.Chat;
 using EndlessClient.HUD.Controls;
 using EndlessClient.Rendering;
@@ -93,8 +94,8 @@ namespace EndlessClient.UIControls
         private void PlaceAboveChatBar()
         {
             var iconHeight = Texture.Height / 8 - 2;
-            // Clear of the single chat bar at Height-40; high enough that no chrome covers it.
-            DrawArea = new Rectangle(4, _clientWindowSizeProvider.Height - 40 - iconHeight - 4, Texture.Width, iconHeight);
+            var chatTop = HudUiMetrics.ResizableChatBarTop(_clientWindowSizeProvider.Height);
+            DrawArea = new Rectangle(4, chatTop - iconHeight - 4, Texture.Width, iconHeight);
         }
 
         private bool AtLeastOneCharTypedOrDeleted()

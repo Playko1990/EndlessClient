@@ -9,6 +9,7 @@ using EndlessClient.ControlSets;
 using EndlessClient.GameExecution;
 using EndlessClient.HUD.Boss;
 using EndlessClient.HUD.Chat;
+using EndlessClient.HUD;
 using EndlessClient.HUD.Panels;
 using EndlessClient.HUD.SkillTree;
 using EndlessClient.HUD.Spells;
@@ -430,14 +431,21 @@ namespace EndlessClient.HUD.Controls
             var panelTexture = _nativeGraphicsManager.TextureFromResource(GFXTypes.PostLoginUI, 44);
             var panelWidth = HudUiMetrics.Scale(panelTexture.Width, _clientWindowSizeRepository.Resizable);
             var panelHeight = HudUiMetrics.Scale(panelTexture.Height, _clientWindowSizeRepository.Resizable);
+            var chatTop = HudUiMetrics.ResizableChatBarTop(_clientWindowSizeRepository.Height);
             return new Vector2(
                 (_clientWindowSizeRepository.Width - panelWidth) / 2f,
-                _clientWindowSizeRepository.Height - 45 - panelHeight);
+                chatTop - 5 - panelHeight);
         }
 
         private IXNAButton CreateFriendListButton()
         {
-            Func<Vector2> getFriendListDrawPosition = () => new Vector2(_clientWindowSizeRepository.Width - 48, _clientWindowSizeRepository.Height - 37);
+            Func<Vector2> getFriendListDrawPosition = () =>
+            {
+                var chat = HudUiMetrics.ResizableChatBarArea(
+                    _clientWindowSizeRepository.Width,
+                    _clientWindowSizeRepository.Height);
+                return new Vector2(chat.Right - 40, chat.Y + (chat.Height - 15) / 2f);
+            };
             var button = new XNAButton(
                 _nativeGraphicsManager.TextureFromResource(GFXTypes.PostLoginUI, 27, false),
                 _clientWindowSizeRepository.Resizable ? getFriendListDrawPosition() : new Vector2(592, 312),
@@ -460,7 +468,13 @@ namespace EndlessClient.HUD.Controls
 
         private IXNAButton CreateIgnoreListButton()
         {
-            Func<Vector2> getIgnoreListDrawPosition = () => new Vector2(_clientWindowSizeRepository.Width - 31, _clientWindowSizeRepository.Height - 37);
+            Func<Vector2> getIgnoreListDrawPosition = () =>
+            {
+                var chat = HudUiMetrics.ResizableChatBarArea(
+                    _clientWindowSizeRepository.Width,
+                    _clientWindowSizeRepository.Height);
+                return new Vector2(chat.Right - 23, chat.Y + (chat.Height - 15) / 2f);
+            };
             var button = new XNAButton(
                 _nativeGraphicsManager.TextureFromResource(GFXTypes.PostLoginUI, 27, false),
                 _clientWindowSizeRepository.Resizable ? getIgnoreListDrawPosition() : new Vector2(609, 312),
@@ -607,10 +621,10 @@ namespace EndlessClient.HUD.Controls
 
         private Vector2 GetHudRestoreButtonPosition()
         {
-            // Just above the chat bar on the right (chat row is Height-40), above Add Friend.
-            return new Vector2(
-                _clientWindowSizeRepository.Width - 48,
-                _clientWindowSizeRepository.Height - 58);
+            var chat = HudUiMetrics.ResizableChatBarArea(
+                _clientWindowSizeRepository.Width,
+                _clientWindowSizeRepository.Height);
+            return new Vector2(chat.Right - 40, chat.Y - 20);
         }
 
         private void ApplyDockPositionToChrome()

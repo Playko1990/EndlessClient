@@ -1,4 +1,5 @@
 ﻿using System;
+using EndlessClient.HUD;
 using EndlessClient.Rendering;
 using EOLib.Shared;
 using Microsoft.Xna.Framework;
@@ -35,10 +36,15 @@ namespace EndlessClient.UIControls
         private static Rectangle GetPositionBasedOnWindowSize(IClientWindowSizeProvider windowSizeProvider)
         {
             //original location: 558, 456
-            var xLoc = windowSizeProvider.Width - 82;
-            var yLoc = windowSizeProvider.Height - (windowSizeProvider.Resizable ? 15 : 26);
+            if (windowSizeProvider.Resizable)
+            {
+                var status = HudUiMetrics.ResizableStatusBarArea(
+                    windowSizeProvider.Width,
+                    windowSizeProvider.Height);
+                return new Rectangle(status.Right - 82, status.Y + 1, 1, 1);
+            }
 
-            return new Rectangle(xLoc, yLoc, 1, 1);
+            return new Rectangle(windowSizeProvider.Width - 82, windowSizeProvider.Height - 26, 1, 1);
         }
     }
 }

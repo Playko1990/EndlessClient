@@ -65,6 +65,37 @@ namespace EndlessClient.HUD
         public const int NativeScrollArrowSize = 15;
         public const int NativeScrollArrowWidth = 16;
 
+        // Resizable bottom chrome: thicker chat entry, inset so it doesn't span
+        // edge-to-edge (full-width stretch was spawning an extra bar segment).
+        public const int ResizableChatBarHeight = 28;
+        public const int ResizableStatusBarHeight = 16;
+        public const int ResizableBottomChromeGap = 2;
+        public const int ResizableChatBarSideInset = 96;
+        public const int ResizableChatBarMaxWidth = 920;
+
+        public static Rectangle ResizableChatBarArea(int windowWidth, int windowHeight)
+        {
+            var width = Math.Max(420, windowWidth - ResizableChatBarSideInset * 2);
+            width = Math.Min(width, ResizableChatBarMaxWidth);
+            width = Math.Min(width, Math.Max(420, (int)(windowWidth * 0.72)));
+            var x = (windowWidth - width) / 2;
+            var y = windowHeight - ResizableStatusBarHeight - ResizableBottomChromeGap - ResizableChatBarHeight;
+            return new Rectangle(x, y, width, ResizableChatBarHeight);
+        }
+
+        public static Rectangle ResizableStatusBarArea(int windowWidth, int windowHeight)
+        {
+            var chat = ResizableChatBarArea(windowWidth, windowHeight);
+            return new Rectangle(
+                chat.X,
+                windowHeight - ResizableStatusBarHeight,
+                chat.Width,
+                ResizableStatusBarHeight);
+        }
+
+        public static int ResizableChatBarTop(int windowHeight) =>
+            windowHeight - ResizableStatusBarHeight - ResizableBottomChromeGap - ResizableChatBarHeight;
+
         public static int ChatLineHeight(bool resizable) =>
             Scale(NativeChatLineHeight, resizable);
 

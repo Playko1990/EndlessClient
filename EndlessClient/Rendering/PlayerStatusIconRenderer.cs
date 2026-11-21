@@ -1,4 +1,5 @@
 ﻿using System;
+using EndlessClient.HUD;
 using EndlessClient.HUD.Spells;
 using EOLib.Domain.Character;
 using EOLib.Domain.Map;
@@ -53,7 +54,8 @@ namespace EndlessClient.Rendering
             {
                 // Icon cell is half the sheet height; sit on the sword row above the chat bar.
                 var iconHeight = _statusIcons.Height / 2;
-                DrawPosition = new Vector2(28, clientWindowSizeProvider.Height - 40 - iconHeight - 4);
+                var chatTop = HudUiMetrics.ResizableChatBarTop(clientWindowSizeProvider.Height);
+                DrawPosition = new Vector2(28, chatTop - iconHeight - 4);
             }
 
             PlaceAboveChatBar();

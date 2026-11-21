@@ -21,9 +21,6 @@ namespace EndlessClient.UIControls
         private readonly Rectangle _background = new Rectangle(70, 451, 548, 20);
         private readonly Rectangle _rightSide = new Rectangle(618, 451, 12, 20);
 
-        // Bottom status chrome (the second / lower text bar under the chat entry).
-        private const int ResizableStatusBarHeight = 14;
-
         private readonly Texture2D _hudBackground;
 
         public StatusBarLabel(INativeGraphicsManager nativeGraphicsManager,
@@ -38,9 +35,8 @@ namespace EndlessClient.UIControls
             if (_clientWindowSizeProvider.Resizable)
             {
                 KeepInClientWindowBounds = false;
-                DrawArea = new Rectangle(40, _clientWindowSizeProvider.Height - ResizableStatusBarHeight + 2, 1, 1);
-                _clientWindowSizeProvider.GameWindowSizeChanged += (_, _) =>
-                    DrawArea = new Rectangle(40, _clientWindowSizeProvider.Height - ResizableStatusBarHeight + 2, 1, 1);
+                PlaceText();
+                _clientWindowSizeProvider.GameWindowSizeChanged += (_, _) => PlaceText();
 
                 _hudBackground = _nativeGraphicsManager.TextureFromResource(GFXTypes.PostLoginUI, 1, false, true);
             }
@@ -48,6 +44,14 @@ namespace EndlessClient.UIControls
             {
                 DrawArea = new Rectangle(97, _clientWindowSizeProvider.Height - 26, 1, 1);
             }
+        }
+
+        private void PlaceText()
+        {
+            var bar = HudUiMetrics.ResizableStatusBarArea(
+                _clientWindowSizeProvider.Width,
+                _clientWindowSizeProvider.Height);
+            DrawArea = new Rectangle(bar.X + 40, bar.Y + 2, 1, 1);
         }
 
         protected override void OnUnconditionalUpdateControl(GameTime gameTime)
@@ -69,13 +73,11 @@ namespace EndlessClient.UIControls
         {
             if (_clientWindowSizeProvider.Resizable)
             {
-                var bgDrawArea = new Rectangle(
-                    0,
-                    _clientWindowSizeProvider.Height - ResizableStatusBarHeight,
+                var bgDrawArea = HudUiMetrics.ResizableStatusBarArea(
                     _clientWindowSizeProvider.Width,
-                    ResizableStatusBarHeight);
+                    _clientWindowSizeProvider.Height);
 
-                _spriteBatch.Begin(samplerState: SamplerState.LinearWrap);
+                _spriteBatch.Begin(samplerState: SamplerState.LinearClamp);
                 _spriteBatch.Draw(_hudBackground, bgDrawArea, _background, Color.White);
                 _spriteBatch.End();
 
@@ -87,7 +89,7 @@ namespace EndlessClient.UIControls
                     Color.White);
                 _spriteBatch.Draw(
                     _hudBackground,
-                    new Rectangle(_clientWindowSizeProvider.Width - _rightSide.Width, bgDrawArea.Y, _rightSide.Width, bgDrawArea.Height),
+                    new Rectangle(bgDrawArea.Right - _rightSide.Width, bgDrawArea.Y, _rightSide.Width, bgDrawArea.Height),
                     _rightSide,
                     Color.White);
                 _spriteBatch.End();

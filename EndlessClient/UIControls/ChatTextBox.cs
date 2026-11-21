@@ -1,5 +1,6 @@
 ﻿using System;
 using EndlessClient.Content;
+using EndlessClient.HUD;
 using EndlessClient.Rendering;
 using EOLib.Graphics;
 using EOLib.Shared;
@@ -100,15 +101,20 @@ namespace EndlessClient.UIControls
                 var texture = _nativeGraphicsManager.TextureFromResource(GFXTypes.PostLoginUI, 1, true);
                 var capTexture = _nativeGraphicsManager.TextureFromResource(GFXTypes.PostLoginUI, 1, false);
 
-                _spriteBatch.Begin(samplerState: SamplerState.LinearWrap);
+                // Clamp (not wrap) so a long stretch can't sample neighboring atlas rows as a third bar.
+                _spriteBatch.Begin(samplerState: SamplerState.LinearClamp);
                 _spriteBatch.Draw(texture, area, _background, Color.White);
                 _spriteBatch.End();
 
                 _spriteBatch.Begin();
-                _spriteBatch.Draw(capTexture, area.Location.ToVector2(), _leftSide, Color.White);
                 _spriteBatch.Draw(
                     capTexture,
-                    new Vector2(area.Right - _rightSide.Value.Width, area.Y),
+                    new Rectangle(area.X, area.Y, _leftSide.Value.Width, area.Height),
+                    _leftSide,
+                    Color.White);
+                _spriteBatch.Draw(
+                    capTexture,
+                    new Rectangle(area.Right - _rightSide.Value.Width, area.Y, _rightSide.Value.Width, area.Height),
                     _rightSide,
                     Color.White);
                 _spriteBatch.End();
@@ -130,8 +136,9 @@ namespace EndlessClient.UIControls
 
         private void ApplyResizableLayout()
         {
-            // Match the status/bottom bar length: edge-to-edge. Sword sits above this row.
-            DrawArea = new Rectangle(0, _clientWindowSizeProvider.Height - 40, _clientWindowSizeProvider.Width, 20);
+            DrawArea = HudUiMetrics.ResizableChatBarArea(
+                _clientWindowSizeProvider.Width,
+                _clientWindowSizeProvider.Height);
             LeftPadding = ResizableLeftCapPad;
             MaxWidth = Math.Max(40, DrawArea.Width - ResizableLeftCapPad - ResizableRightIconReserve);
         }

@@ -62,7 +62,10 @@ namespace EndlessClient.HUD.SkillTree
         public static Rectangle OverSource(Texture2D texture) =>
             new Rectangle(texture.Width / 2, 0, texture.Width / 2, texture.Height);
 
-        private static Texture2D LoadTreeTexture(GraphicsDevice graphicsDevice)
+        /// <summary>
+        /// Loads the transparent canopy/node-graph tree symbol (same art as the HUD button).
+        /// </summary>
+        public static Texture2D LoadTreeTexture(GraphicsDevice graphicsDevice)
         {
             var assembly = typeof(SkillTreeHudIcon).Assembly;
             using (var stream = assembly.GetManifestResourceStream(EmbeddedIconName))

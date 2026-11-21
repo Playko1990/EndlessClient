@@ -11,21 +11,30 @@ using EOLib.Domain.Character;
 using EOLib.Graphics;
 using EOLib.Shared;
 using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Graphics;
 using XNAControls;
 
 namespace EndlessClient.HUD.Panels
 {
     public class PassiveSpellsPanel : DraggableHudPanel
     {
+        // Native coords for the left-rail header well (above the name at y=50).
+        // Larger than a normal selected-spell glyph (~36px) so the tree fills the box.
+        private const int HeaderIconNativeSize = 42;
+        private const int HeaderIconNativeX = 29;
+        private const int HeaderIconNativeY = 6;
+
         private readonly INativeGraphicsManager _nativeGraphicsManager;
         private readonly ITrainingController _trainingController;
         private readonly IEOMessageBoxFactory _messageBoxFactory;
         private readonly ISkillTreeActions _skillTreeActions;
         private readonly ISkillTreeProvider _skillTreeProvider;
+        private readonly bool _resizable;
 
-        private readonly IXNALabel _titleLabel;
+        private readonly IXNALabel _headerNameLabel;
         private readonly IXNALabel _availablePointsLabel;
         private readonly List<SkillTreePanelMember> _members;
+        private readonly Texture2D _headerIcon;
 
         private int _cachedAvailablePoints = int.MinValue;
         private int _cachedTotalSpent = int.MinValue;
@@ -44,38 +53,42 @@ namespace EndlessClient.HUD.Panels
             _messageBoxFactory = messageBoxFactory;
             _skillTreeActions = skillTreeActions;
             _skillTreeProvider = skillTreeProvider;
+            _resizable = clientWindowSizeProvider.Resizable;
 
             BackgroundImage = _nativeGraphicsManager.TextureFromResource(GFXTypes.PostLoginUI, 62);
-            DrawArea = HudUiMetrics.ScaledPanelDrawArea(BackgroundImage, clientWindowSizeProvider.Resizable);
+            DrawArea = HudUiMetrics.ScaledPanelDrawArea(BackgroundImage, _resizable);
 
-            var resizable = clientWindowSizeProvider.Resizable;
-
-            _titleLabel = new XNALabel(Constants.FontSize08pt5)
+            // Title + enlarged tree symbol live in the left-rail header box (not the panel corners).
+            _headerNameLabel = new XNALabel(Constants.FontSize08pt5)
             {
                 AutoSize = false,
-                DrawArea = HudUiMetrics.ScaleRectangle(new Rectangle(10, 4, 200, 13), resizable),
+                DrawArea = HudUiMetrics.ScaleRectangle(new Rectangle(9, 50, 81, 13), _resizable),
                 ForeColor = ColorConstants.LightGrayText,
-                Text = "Skill Tree"
+                TextAlign = LabelAlignment.MiddleCenter,
+                Text = "Skill Tree",
+                Visible = true
             };
-            _titleLabel.SetParentControl(this);
+            _headerNameLabel.SetParentControl(this);
 
             // Same left-rail "skp" slot as Active Spells (panel art already prints the label).
             _availablePointsLabel = new XNALabel(Constants.FontSize08pt5)
             {
                 AutoSize = false,
-                DrawArea = HudUiMetrics.ScaleRectangle(new Rectangle(32, 96, 42, 15), resizable),
+                DrawArea = HudUiMetrics.ScaleRectangle(new Rectangle(32, 96, 42, 15), _resizable),
                 ForeColor = ColorConstants.LightGrayText,
                 TextAlign = LabelAlignment.MiddleLeft,
                 Text = "0"
             };
             _availablePointsLabel.SetParentControl(this);
 
+            _headerIcon = SkillTreeHudIcon.LoadTreeTexture(Game.GraphicsDevice);
+
             // One skill per grid box, filling left-to-right / top-to-bottom from slot 0.
             _members = Enum.GetValues(typeof(SkillTreeStat))
                 .Cast<SkillTreeStat>()
                 .Select((stat, index) =>
                 {
-                    var member = new SkillTreePanelMember(_nativeGraphicsManager, stat, index, resizable);
+                    var member = new SkillTreePanelMember(_nativeGraphicsManager, stat, index, _resizable);
                     member.TrainClicked += HandleTrainClicked;
                     member.SetParentControl(this);
                     return member;
@@ -87,7 +100,7 @@ namespace EndlessClient.HUD.Panels
 
         public override void Initialize()
         {
-            _titleLabel.Initialize();
+            _headerNameLabel.Initialize();
             _availablePointsLabel.Initialize();
 
             foreach (var member in _members)
@@ -113,12 +126,38 @@ namespace EndlessClient.HUD.Panels
             base.OnUpdateControl(gameTime);
         }
 
+        protected override void OnDrawControl(GameTime gameTime)
+        {
+            base.OnDrawControl(gameTime);
+
+            _spriteBatch.Begin();
+            DrawHeaderIcon();
+            _spriteBatch.End();
+        }
+
         protected override void Dispose(bool disposing)
         {
             if (disposing)
+            {
                 _skillTreeActions.Save();
+                _headerIcon?.Dispose();
+            }
 
             base.Dispose(disposing);
+        }
+
+        private void DrawHeaderIcon()
+        {
+            if (_headerIcon == null)
+                return;
+
+            // Larger than a normal selected-spell glyph so it fills the left header well.
+            var size = HudUiMetrics.Scale(HeaderIconNativeSize, _resizable);
+            var x = DrawAreaWithParentOffset.X + HudUiMetrics.Scale(HeaderIconNativeX, _resizable);
+            var y = DrawAreaWithParentOffset.Y + HudUiMetrics.Scale(HeaderIconNativeY, _resizable);
+            var dst = new Rectangle(x, y, size, size);
+
+            _spriteBatch.Draw(_headerIcon, dst, Color.White);
         }
 
         private void RefreshDisplays(bool force)

@@ -228,9 +228,13 @@ namespace EndlessClient.Rendering.Character
 
             if (!Character.RenderProperties.IsHidden || _characterProvider.MainCharacter.AdminLevel > 0)
             {
-                _sb.Begin(transformMatrix: WorldCamera.GetTransform(
-                    _clientWindowSizeRepository.Width,
-                    _clientWindowSizeRepository.Height));
+                // World zoom is in-game only — never scale login/character-select UI previews.
+                if (_isUiControl)
+                    _sb.Begin();
+                else
+                    _sb.Begin(transformMatrix: WorldCamera.GetTransform(
+                        _clientWindowSizeRepository.Width,
+                        _clientWindowSizeRepository.Height));
                 DrawToSpriteBatch(_sb);
 
                 if (_sb.IsDisposed)

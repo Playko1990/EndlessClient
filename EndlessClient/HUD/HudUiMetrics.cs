@@ -9,9 +9,14 @@ namespace EndlessClient.HUD
     /// </summary>
     public static class HudUiMetrics
     {
-        // Large enough that the size jump is obvious on a maximized desktop window.
+        // Panel size the user liked.
         public const float PanelScale = 1.85f;
-        public const float StatusBarScale = 3.0f;
+
+        // Slightly enlarged vs classic 14px bars; less than the previous 3x pass.
+        public const float StatusBarScale = 2.0f;
+
+        // Native HUD side-button stride in classic layout.
+        public const int NativeSideButtonStep = 20;
 
         public const int NativeInventorySlotSize = 26;
 
@@ -20,6 +25,9 @@ namespace EndlessClient.HUD
 
         public static int InventorySlotSize(bool resizable) =>
             ShouldEnlargeHud(resizable) ? (int)(NativeInventorySlotSize * PanelScale) : NativeInventorySlotSize;
+
+        public static int SideButtonStep(bool resizable) =>
+            ShouldEnlargeHud(resizable) ? (int)(NativeSideButtonStep * PanelScale) : NativeSideButtonStep;
 
         public static Rectangle ScaledPanelDrawArea(Texture2D background, bool resizable)
         {

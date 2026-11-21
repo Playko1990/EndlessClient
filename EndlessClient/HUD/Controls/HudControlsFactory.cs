@@ -365,11 +365,15 @@ namespace EndlessClient.HUD.Controls
                 {
                     DrawOrder = HUD_CONTROL_LAYER
                 };
+                ScaleDockedSideButton(retButton);
 
                 _clientWindowSizeRepository.GameWindowSizeChanged += (_, _) =>
                 {
                     if (!_hudChromeMinimized)
+                    {
                         retButton.DrawPosition = GetDockedButtonPosition(buttonIndex);
+                        ScaleDockedSideButton(retButton);
+                    }
                 };
             }
 
@@ -382,18 +386,34 @@ namespace EndlessClient.HUD.Controls
             return retButton;
         }
 
+        private void ScaleDockedSideButton(XNAButton button)
+        {
+            if (!HudUiMetrics.ShouldEnlargeHud(_clientWindowSizeRepository.Resizable))
+                return;
+
+            var step = HudUiMetrics.SideButtonStep(resizable: true);
+            button.DrawArea = new Rectangle(
+                (int)button.DrawPosition.X,
+                (int)button.DrawPosition.Y,
+                step,
+                step);
+            button.ClickArea = new Rectangle(0, 0, step, step);
+        }
+
         private Vector2 GetDockedButtonPosition(int buttonIndex)
         {
             var panelTexture = _nativeGraphicsManager.TextureFromResource(GFXTypes.PostLoginUI, 44);
             var panelWidth = HudUiMetrics.Scale(panelTexture.Width, _clientWindowSizeRepository.Resizable);
             var panelPos = _dockPanelPosition;
+            var step = HudUiMetrics.SideButtonStep(_clientWindowSizeRepository.Resizable);
 
+            // Left column sits flush against the panel; size matches panel scale so the stack fills its height.
             var xPosition = buttonIndex < 6
-                ? panelPos.X - 40
+                ? panelPos.X - step
                 : panelPos.X + panelWidth;
             var yPosition = panelPos.Y
-                + (buttonIndex < 6 ? 0 : 20)
-                + (buttonIndex < 6 ? buttonIndex : buttonIndex - 6) * 20;
+                + (buttonIndex < 6 ? 0 : step)
+                + (buttonIndex < 6 ? buttonIndex : buttonIndex - 6) * step;
 
             return new Vector2(xPosition, yPosition);
         }
@@ -616,6 +636,7 @@ namespace EndlessClient.HUD.Controls
             {
                 var buttonIndex = (int)state;
                 button.DrawPosition = GetDockedButtonPosition(buttonIndex);
+                ScaleDockedSideButton(button);
             }
         }
 

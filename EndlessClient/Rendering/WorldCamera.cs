@@ -8,8 +8,8 @@ namespace EndlessClient.Rendering
     /// </summary>
     public static class WorldCamera
     {
-        // ~30% zoom-out so the cabin / map reads clearly less close-up.
-        public const float Zoom = 0.70f;
+        // Just a little zoomed out from the classic 1:1 view.
+        public const float Zoom = 0.90f;
 
         public static Matrix GetTransform(int viewportWidth, int viewportHeight)
         {

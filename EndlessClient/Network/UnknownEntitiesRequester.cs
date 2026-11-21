@@ -16,8 +16,8 @@ namespace EndlessClient.Network
 {
     public class UnknownEntitiesRequester : GameComponent
     {
-        // Match MapRenderDistanceCalculator so NPCs/players stay for the whole on-screen map,
-        // not the classic ~12–15 tile Manhattan cull that hid them on large windows.
+        // Players/items: match MapRenderDistanceCalculator on-screen bounds.
+        // NPCs are never distance-culled (kept for the whole map visit).
         private const int BASE_SEE_DISTANCE = 22;
 
         private const int REQUEST_INTERVAL_MS = 1000;
@@ -78,8 +78,9 @@ namespace EndlessClient.Network
         {
             var mc = _characterProvider.MainCharacter;
 
+            // NPCs stay for the whole map visit — never distance-cull them so every known
+            // map NPC remains drawable whenever its tile is on screen.
             var entities = new List<IMapEntity>(_currentMapStateRepository.Characters)
-                .Concat(_currentMapStateRepository.NPCs)
                 .Concat(_currentMapStateRepository.MapItems);
 
             // Same viewport scaling as MapRenderDistanceCalculator (iso Y uses Width/320).
@@ -108,8 +109,6 @@ namespace EndlessClient.Network
             {
                 if (entity is Character c && _characterRendererProvider.CharacterRenderers.ContainsKey(c.ID))
                     _currentMapStateRepository.Characters.Remove(c);
-                else if (entity is NPC n && _npcRendererProvider.NPCRenderers.ContainsKey(n.Index))
-                    _currentMapStateRepository.NPCs.Remove(n);
                 else if (entity is MapItem i)
                     _currentMapStateRepository.MapItems.Remove(i);
             }

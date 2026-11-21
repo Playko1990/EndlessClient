@@ -26,8 +26,10 @@ namespace EndlessClient.Rendering.MapEntityRenderers
 
         public override MapRenderLayer RenderLayer => MapRenderLayer.Npc;
 
-        // Match map view bounds / UnknownEntitiesRequester so NPCs draw for the full screen.
-        protected override int RenderDistance => 22;
+        // Unused when CanRender always draws known NPCs; kept for base class contract.
+        protected override int RenderDistance => 255;
+
+        public override bool CanRender(int row, int col) => ElementExistsAt(row, col);
 
         protected override bool ElementExistsAt(int row, int col)
         {

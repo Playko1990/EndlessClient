@@ -1,5 +1,6 @@
 ﻿using System;
 using EndlessClient.Audio;
+using EndlessClient.HUD;
 using EndlessClient.HUD.Controls;
 using EndlessClient.HUD.Panels;
 using EOLib.Domain.Character;
@@ -18,6 +19,7 @@ namespace EndlessClient.HUD.Spells
         private const int ICON_AREA_WIDTH = 42, ICON_AREA_HEIGHT = 36;
 
         private readonly ISfxPlayer _sfxPlayer;
+        private readonly bool _resizable;
 
         private readonly Texture2D _spellGraphic;
         private Rectangle _spellGraphicSourceRect;
@@ -42,9 +44,17 @@ namespace EndlessClient.HUD.Spells
         public override Rectangle EventArea => IsDragging ? DrawArea : DrawAreaWithParentOffset;
 
         // uses absolute coordinates
-        protected override Rectangle GridArea => new Rectangle(
-            _parentContainer.DrawPositionWithParentOffset.ToPoint() + new Point(98, 6),
-            new Point(363, 102));
+        protected override Rectangle GridArea
+        {
+            get
+            {
+                var origin = HudUiMetrics.ScalePoint(98, 6, _resizable).ToPoint();
+                var size = HudUiMetrics.ScalePoint(363, 102, _resizable).ToPoint();
+                return new Rectangle(
+                    _parentContainer.DrawPositionWithParentOffset.ToPoint() + origin,
+                    size);
+            }
+        }
 
         public event EventHandler<MouseEventArgs> Click;
 
@@ -56,6 +66,7 @@ namespace EndlessClient.HUD.Spells
             : base(spellPanel)
         {
             _sfxPlayer = sfxPlayer;
+            _resizable = spellPanel.ResizableHud;
 
             Slot = DisplaySlot = slot;
             InventorySpell = spell;
@@ -67,7 +78,9 @@ namespace EndlessClient.HUD.Spells
             _whitePixel = new Texture2D(Game.GraphicsDevice, 1, 1);
             _whitePixel.SetData(new[] { Color.White });
 
-            SetSize(ICON_AREA_WIDTH, ICON_AREA_HEIGHT);
+            SetSize(
+                HudUiMetrics.Scale(ICON_AREA_WIDTH, _resizable),
+                HudUiMetrics.Scale(ICON_AREA_HEIGHT, _resizable));
         }
 
         public int GetCurrentSlotBasedOnPosition(int scrollOffset)
@@ -78,11 +91,13 @@ namespace EndlessClient.HUD.Spells
             // old offset X needs to be adjusted since it assumes parent coordinates are the start of the slot grid
             // this works for inventory without adjustment since the grid goes all the way to the parent panel coordinate
             // however, spell panel has 2 slots worth of padding for the selected slot / level up controls
-            var adjustedOffsetX = OldOffset.X + (ICON_AREA_WIDTH * 2);
+            var iconW = HudUiMetrics.Scale(ICON_AREA_WIDTH, _resizable);
+            var iconH = HudUiMetrics.Scale(ICON_AREA_HEIGHT, _resizable);
+            var adjustedOffsetX = OldOffset.X + (iconW * 2);
 
             return scrollOffset * ActiveSpellsPanel.SpellRowLength +
-                (int)((DrawPosition.X - adjustedOffsetX) / ICON_AREA_WIDTH) +
-                ActiveSpellsPanel.SpellRowLength * (int)((DrawPosition.Y - OldOffset.Y) / ICON_AREA_HEIGHT);
+                (int)((DrawPosition.X - adjustedOffsetX) / iconW) +
+                ActiveSpellsPanel.SpellRowLength * (int)((DrawPosition.Y - OldOffset.Y) / iconH);
         }
 
         protected override void OnDrawControl(GameTime gameTime)
@@ -135,8 +150,12 @@ namespace EndlessClient.HUD.Spells
         {
             if (!IsDragging)
             {
-                var width = (int)(InventorySpell.Level / 100.0 * 36);
-                var levelDestinationRectangle = new Rectangle(DrawAreaWithParentOffset.X + 3, DrawAreaWithParentOffset.Y + 40, width, 6);
+                var width = (int)(InventorySpell.Level / 100.0 * HudUiMetrics.Scale(36, _resizable));
+                var levelDestinationRectangle = new Rectangle(
+                    DrawAreaWithParentOffset.X + HudUiMetrics.Scale(3, _resizable),
+                    DrawAreaWithParentOffset.Y + HudUiMetrics.Scale(40, _resizable),
+                    width,
+                    HudUiMetrics.Scale(6, _resizable));
                 _spriteBatch.Draw(_whitePixel, levelDestinationRectangle, Color.FromNonPremultiplied(0xc9, 0xb8, 0x9b, 0xff));
             }
 
@@ -162,23 +181,31 @@ namespace EndlessClient.HUD.Spells
             var halfWidth = _spellGraphic.Width / 2;
             _spellGraphicSourceRect = new Rectangle(MouseOver ? halfWidth : 0, 0, halfWidth, _spellGraphic.Height);
 
+            // Scale spell glyphs to the enlarged slot while keeping aspect ratio.
+            var maxW = Math.Max(1, DrawArea.Width - HudUiMetrics.Scale(6, _resizable));
+            var maxH = Math.Max(1, DrawArea.Height - HudUiMetrics.Scale(10, _resizable));
+            var scale = Math.Min(
+                maxW / (float)_spellGraphicSourceRect.Width,
+                maxH / (float)_spellGraphicSourceRect.Height);
+            var drawW = Math.Max(1, (int)(_spellGraphicSourceRect.Width * scale));
+            var drawH = Math.Max(1, (int)(_spellGraphicSourceRect.Height * scale));
+
             Rectangle targetDrawArea;
             if (!IsDragging)
             {
                 targetDrawArea = new Rectangle(
-                    DrawAreaWithParentOffset.X + (DrawAreaWithParentOffset.Width - _spellGraphicSourceRect.Width) / 2,
-                    DrawAreaWithParentOffset.Y + (DrawAreaWithParentOffset.Height - _spellGraphicSourceRect.Height) / 2,
-                    _spellGraphicSourceRect.Width,
-                    _spellGraphicSourceRect.Height);
+                    DrawAreaWithParentOffset.X + (DrawAreaWithParentOffset.Width - drawW) / 2,
+                    DrawAreaWithParentOffset.Y + (DrawAreaWithParentOffset.Height - drawH) / 2,
+                    drawW,
+                    drawH);
             }
             else
             {
                 targetDrawArea = new Rectangle(
-                    Mouse.GetState().X - _spellGraphicSourceRect.Width / 2,
-                    Mouse.GetState().Y - _spellGraphicSourceRect.Height / 2,
-                    _spellGraphicSourceRect.Width,
-                    _spellGraphicSourceRect.Height
-                    );
+                    Mouse.GetState().X - drawW / 2,
+                    Mouse.GetState().Y - drawH / 2,
+                    drawW,
+                    drawH);
             }
 
             _spriteBatch.Draw(_spellGraphic,
@@ -187,13 +214,12 @@ namespace EndlessClient.HUD.Spells
                 Color.FromNonPremultiplied(255, 255, 255, IsDragging ? 127 : 255));
         }
 
-        private static Vector2 GetDisplayPosition(int slot)
+        private Vector2 GetDisplayPosition(int slot)
         {
-            //start pos: 101, 97
-            //xdelta: 45; ydelta: 52
+            //start pos: 101, 9 — xdelta: 45; ydelta: 52 (matches PostLoginUI #62 grid)
             var row = slot / ActiveSpellsPanel.SpellRowLength;
             var col = slot % ActiveSpellsPanel.SpellRowLength;
-            return new Vector2(101 + col * 45, 9 + row * 52);
+            return HudUiMetrics.ScalePoint(101 + col * 45, 9 + row * 52, _resizable);
         }
     }
 }

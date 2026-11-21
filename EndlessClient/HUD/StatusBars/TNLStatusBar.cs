@@ -21,7 +21,6 @@ namespace EndlessClient.HUD.StatusBars
             : base(nativeGraphicsManager, clientWindowSizeProvider, characterProvider)
         {
             _experienceTableProvider = experienceTableProvider;
-            DrawArea = new Rectangle(430, 0, _sourceRectangleArea.Width, _sourceRectangleArea.Height);
 
             _sourceRectangleArea = new Rectangle(_sourceRectangleArea.Width * 3 - 1,
                                                  0,
@@ -42,11 +41,7 @@ namespace EndlessClient.HUD.StatusBars
             var nextLevelExp = ExpTable[Stats[CharacterStat.Level] + 1];
             var srcWidth = 25 + (int)Math.Round((Stats[CharacterStat.Experience] - thisLevelExp) / (double)(nextLevelExp - thisLevelExp) * 79);
             var maskSrc = new Rectangle(_sourceRectangleArea.X, _sourceRectangleArea.Height, srcWidth, _sourceRectangleArea.Height);
-
-            _spriteBatch.Begin();
-            _spriteBatch.Draw(_texture, DrawPositionWithParentOffset, _sourceRectangleArea, Color.White);
-            _spriteBatch.Draw(_texture, DrawPositionWithParentOffset, maskSrc, Color.White);
-            _spriteBatch.End();
+            DrawScaledStatusBar(_sourceRectangleArea, maskSrc);
         }
 
         private IReadOnlyList<int> ExpTable => _experienceTableProvider.ExperienceByLevel;

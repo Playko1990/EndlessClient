@@ -1,36 +1,47 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using EndlessClient.Audio;
 using EndlessClient.Controllers;
 using EndlessClient.Dialogs;
 using EndlessClient.Dialogs.Factories;
+using EndlessClient.HUD;
 using EndlessClient.HUD.SkillTree;
 using EndlessClient.Rendering;
-using EndlessClient.UIControls;
 using EOLib.Domain.Character;
 using EOLib.Graphics;
 using EOLib.Shared;
 using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Graphics;
 using XNAControls;
 
 namespace EndlessClient.HUD.Panels
 {
     public class PassiveSpellsPanel : DraggableHudPanel
     {
+        // Left-rail header well (above the "Skill Tree" label at y=50).
+        // Icon is centered inside this box.
+        private const int HeaderWellNativeX = 9;
+        private const int HeaderWellNativeY = 4;
+        private const int HeaderWellNativeW = 81;
+        private const int HeaderWellNativeH = 44;
+        private const int HeaderIconNativeSize = 36;
+
         private readonly INativeGraphicsManager _nativeGraphicsManager;
         private readonly ITrainingController _trainingController;
         private readonly IEOMessageBoxFactory _messageBoxFactory;
         private readonly ISkillTreeActions _skillTreeActions;
         private readonly ISkillTreeProvider _skillTreeProvider;
+        private readonly bool _resizable;
 
-        private readonly IXNALabel _titleLabel;
+        private readonly IXNALabel _headerNameLabel;
         private readonly IXNALabel _availablePointsLabel;
-        private readonly ScrollBar _scrollBar;
         private readonly List<SkillTreePanelMember> _members;
+        private readonly Texture2D _headerIcon;
+        private readonly XNAButton _panelCycleUp, _panelCycleDown;
 
         private int _cachedAvailablePoints = int.MinValue;
         private int _cachedTotalSpent = int.MinValue;
-        private int _cachedScrollOffset;
         private bool _confirmedTraining;
 
         public PassiveSpellsPanel(INativeGraphicsManager nativeGraphicsManager,
@@ -38,6 +49,8 @@ namespace EndlessClient.HUD.Panels
                                   IEOMessageBoxFactory messageBoxFactory,
                                   ISkillTreeActions skillTreeActions,
                                   ISkillTreeProvider skillTreeProvider,
+                                  IHudStateActions hudStateActions,
+                                  ISfxPlayer sfxPlayer,
                                   IClientWindowSizeProvider clientWindowSizeProvider)
             : base(clientWindowSizeProvider.Resizable)
         {
@@ -46,62 +59,72 @@ namespace EndlessClient.HUD.Panels
             _messageBoxFactory = messageBoxFactory;
             _skillTreeActions = skillTreeActions;
             _skillTreeProvider = skillTreeProvider;
+            _resizable = clientWindowSizeProvider.Resizable;
 
             BackgroundImage = _nativeGraphicsManager.TextureFromResource(GFXTypes.PostLoginUI, 62);
-            DrawArea = new Rectangle(102, 330, BackgroundImage.Width, BackgroundImage.Height);
+            DrawArea = HudUiMetrics.ScaledPanelDrawArea(BackgroundImage, _resizable);
 
-            _titleLabel = new XNALabel(Constants.FontSize08pt5)
+            var scrollPos = HudUiMetrics.ScalePoint(467, 2, _resizable);
+            var scrollSize = HudUiMetrics.ScalePoint(16, 115, _resizable);
+            (_panelCycleUp, _panelCycleDown) = HudPanelCycleArrows.Create(
+                _nativeGraphicsManager, scrollPos, scrollSize, _resizable,
+                InGameStates.PassiveSpells, hudStateActions, sfxPlayer);
+
+            var font = HudUiMetrics.PanelLabelFont(_resizable);
+
+            // Title + enlarged tree symbol live in the left-rail header box (not the panel corners).
+            _headerNameLabel = new XNALabel(font)
             {
                 AutoSize = false,
-                DrawArea = new Rectangle(10, 4, 200, 13),
+                DrawArea = HudUiMetrics.ScaleRectangle(new Rectangle(9, 50, 81, 13), _resizable),
                 ForeColor = ColorConstants.LightGrayText,
-                Text = "Skill Tree"
+                TextAlign = LabelAlignment.MiddleCenter,
+                Text = "Skill Tree",
+                Visible = true
             };
-            _titleLabel.SetParentControl(this);
+            _headerNameLabel.SetParentControl(this);
 
-            _availablePointsLabel = new XNALabel(Constants.FontSize08pt5)
+            // Same left-rail "skp" slot as Active Spells (panel art already prints the label).
+            _availablePointsLabel = new XNALabel(font)
             {
                 AutoSize = false,
-                DrawArea = new Rectangle(300, 4, 150, 13),
+                DrawArea = HudUiMetrics.ScaleRectangle(new Rectangle(32, 96, 42, 15), _resizable),
                 ForeColor = ColorConstants.LightGrayText,
-                TextAlign = LabelAlignment.MiddleRight,
-                Text = "sk.pts: 0"
+                TextAlign = LabelAlignment.MiddleLeft,
+                Text = "0"
             };
             _availablePointsLabel.SetParentControl(this);
 
-            _scrollBar = new ScrollBar(new Vector2(467, 20), new Vector2(16, 97), ScrollBarColors.LightOnMed, _nativeGraphicsManager)
-            {
-                LinesToRender = 6,
-                Visible = true
-            };
-            _scrollBar.SetParentControl(this);
-            SetScrollWheelHandler(_scrollBar);
+            _headerIcon = SkillTreeHudIcon.LoadTreeTexture(Game.GraphicsDevice);
 
+            // One skill per grid box, filling left-to-right / top-to-bottom from slot 0.
             _members = Enum.GetValues(typeof(SkillTreeStat))
                 .Cast<SkillTreeStat>()
-                .Select(stat =>
+                .Select((stat, index) =>
                 {
-                    var member = new SkillTreePanelMember(_nativeGraphicsManager, stat);
+                    var member = new SkillTreePanelMember(_nativeGraphicsManager, stat, index, _resizable);
                     member.TrainClicked += HandleTrainClicked;
                     member.SetParentControl(this);
                     return member;
                 })
                 .ToList();
 
-            _scrollBar.UpdateDimensions(_members.Count);
             _skillTreeActions.EnsureLoaded();
         }
 
         public override void Initialize()
         {
-            _titleLabel.Initialize();
+            _headerNameLabel.Initialize();
             _availablePointsLabel.Initialize();
-            _scrollBar.Initialize();
+
+            _panelCycleUp.Initialize();
+            _panelCycleUp.SetParentControl(this);
+            _panelCycleDown.Initialize();
+            _panelCycleDown.SetParentControl(this);
 
             foreach (var member in _members)
                 member.Initialize();
 
-            UpdateMemberVisibility();
             RefreshDisplays(force: true);
 
             base.Initialize();
@@ -116,24 +139,48 @@ namespace EndlessClient.HUD.Panels
             if (available != _cachedAvailablePoints || spent != _cachedTotalSpent)
                 RefreshDisplays(force: false);
 
-            if (_cachedScrollOffset != _scrollBar.ScrollOffset)
-            {
-                _cachedScrollOffset = _scrollBar.ScrollOffset;
-                UpdateMemberVisibility();
-            }
-
             if (available <= 0)
                 _confirmedTraining = false;
 
             base.OnUpdateControl(gameTime);
         }
 
+        protected override void OnDrawControl(GameTime gameTime)
+        {
+            base.OnDrawControl(gameTime);
+
+            _spriteBatch.Begin();
+            DrawHeaderIcon();
+            _spriteBatch.End();
+        }
+
         protected override void Dispose(bool disposing)
         {
             if (disposing)
+            {
                 _skillTreeActions.Save();
+                _headerIcon?.Dispose();
+            }
 
             base.Dispose(disposing);
+        }
+
+        private void DrawHeaderIcon()
+        {
+            if (_headerIcon == null)
+                return;
+
+            // Center the cleaned tree symbol in the left-rail header well.
+            var wellX = DrawAreaWithParentOffset.X + HudUiMetrics.Scale(HeaderWellNativeX, _resizable);
+            var wellY = DrawAreaWithParentOffset.Y + HudUiMetrics.Scale(HeaderWellNativeY, _resizable);
+            var wellW = HudUiMetrics.Scale(HeaderWellNativeW, _resizable);
+            var wellH = HudUiMetrics.Scale(HeaderWellNativeH, _resizable);
+            var size = HudUiMetrics.Scale(HeaderIconNativeSize, _resizable);
+            var x = wellX + (wellW - size) / 2;
+            var y = wellY + (wellH - size) / 2;
+            var dst = new Rectangle(x, y, size, size);
+
+            _spriteBatch.Draw(_headerIcon, dst, Color.White);
         }
 
         private void RefreshDisplays(bool force)
@@ -145,23 +192,12 @@ namespace EndlessClient.HUD.Panels
 
             _cachedAvailablePoints = available;
             _cachedTotalSpent = spent;
-            _availablePointsLabel.Text = $"sk.pts: {available}";
+            _availablePointsLabel.Text = available.ToString();
 
             foreach (var member in _members)
             {
                 var rank = _skillTreeProvider.GetRank(member.Stat);
                 member.UpdateDisplay(rank, SkillTreePanelMember.FormatBonus(member.Stat, rank), available > 0);
-            }
-        }
-
-        private void UpdateMemberVisibility()
-        {
-            for (int i = 0; i < _members.Count; i++)
-            {
-                var visible = i >= _scrollBar.ScrollOffset && i < _scrollBar.ScrollOffset + _scrollBar.LinesToRender;
-                _members[i].Visible = visible;
-                if (visible)
-                    _members[i].DisplayIndex = i - _scrollBar.ScrollOffset;
             }
         }
 

@@ -25,6 +25,14 @@ namespace EndlessClient.HUD.StatusBars
 
         protected abstract int StatusBarIndex { get; }
 
+        protected float BarScale =>
+            HudUiMetrics.ShouldEnlargeHud(_clientWindowSizeProvider.Resizable, _clientWindowSizeProvider.Width)
+                ? HudUiMetrics.StatusBarScale
+                : 1f;
+
+        protected int ScaledBarWidth => (int)(_sourceRectangleArea.Width * BarScale);
+        protected int ScaledBarHeight => (int)(_sourceRectangleArea.Height * BarScale);
+
         private Option<DateTime> _labelShowTime;
 
         public event Action StatusBarClicked;
@@ -89,8 +97,11 @@ namespace EndlessClient.HUD.StatusBars
 
             if (_labelShowTime.HasValue)
             {
-                var dest = new Vector2(DrawAreaWithParentOffset.X,
-                                       DrawAreaWithParentOffset.Y + _sourceRectangleArea.Height - 3);
+                var dest = new Rectangle(
+                    DrawAreaWithParentOffset.X,
+                    DrawAreaWithParentOffset.Y + ScaledBarHeight - 3,
+                    ScaledBarWidth,
+                    (int)(DropDownSourceRectangle.Height * BarScale));
 
                 _spriteBatch.Begin();
                 _spriteBatch.Draw(_texture, dest, DropDownSourceRectangle, Color.White);
@@ -112,8 +123,27 @@ namespace EndlessClient.HUD.StatusBars
 
         protected void ChangeStatusBarPosition()
         {
-            var xCoord = (_clientWindowSizeProvider.Width / 2) + StatusBarIndex * DrawArea.Width;
+            var xCoord = (_clientWindowSizeProvider.Width / 2) + StatusBarIndex * ScaledBarWidth;
             DrawPosition = new Vector2(xCoord, 0);
+            DrawArea = new Rectangle((int)DrawPosition.X, (int)DrawPosition.Y, ScaledBarWidth, ScaledBarHeight);
+            _label.DrawPosition = new Vector2(6 * BarScale, ScaledBarHeight + 1);
+        }
+
+        protected void DrawScaledStatusBar(Rectangle source, Rectangle maskSource)
+        {
+            var dest = new Rectangle(
+                DrawAreaWithParentOffset.X,
+                DrawAreaWithParentOffset.Y,
+                ScaledBarWidth,
+                ScaledBarHeight);
+
+            var maskWidth = (int)(maskSource.Width * BarScale);
+            var maskDest = new Rectangle(dest.X, dest.Y, maskWidth, dest.Height);
+
+            _spriteBatch.Begin();
+            _spriteBatch.Draw(_texture, dest, source, Color.White);
+            _spriteBatch.Draw(_texture, maskDest, maskSource, Color.White);
+            _spriteBatch.End();
         }
 
         /// <summary>

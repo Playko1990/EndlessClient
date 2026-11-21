@@ -8,6 +8,7 @@ using EndlessClient.Audio;
 using EndlessClient.Controllers;
 using EndlessClient.ControlSets;
 using EndlessClient.Dialogs;
+using EndlessClient.HUD;
 using EndlessClient.HUD.Controls;
 using EndlessClient.HUD.Inventory;
 using EndlessClient.Rendering;
@@ -59,12 +60,17 @@ namespace EndlessClient.HUD.Panels
 
         private readonly IXNALabel _weightLabel;
         private readonly IXNAButton _drop, _junk, _paperdoll;
+        private readonly XNAButton _panelCycleUp, _panelCycleDown;
         //private readonly ScrollBar _scrollBar;
 
         private Option<CharacterStats> _cachedStats;
         private HashSet<InventoryItem> _cachedInventory;
 
         public INativeGraphicsManager NativeGraphicsManager { get; }
+
+        public bool ResizableHud => _clientWindowSizeProvider.Resizable;
+
+        public int SlotPixelSize => HudUiMetrics.InventorySlotSize(_clientWindowSizeProvider.Resizable);
 
         public InventoryPanel(INativeGraphicsManager nativeGraphicsManager,
                               IInventoryController inventoryController,
@@ -82,6 +88,7 @@ namespace EndlessClient.HUD.Panels
                               IActiveDialogProvider activeDialogProvider,
                               ISfxPlayer sfxPlayer,
                               IConfigurationProvider configProvider,
+                              IHudStateActions hudStateActions,
                               IClientWindowSizeProvider clientWindowSizeProvider)
             : base(clientWindowSizeProvider.Resizable)
         {
@@ -103,9 +110,17 @@ namespace EndlessClient.HUD.Panels
             _configProvider = configProvider;
             _clientWindowSizeProvider = clientWindowSizeProvider;
 
-            _weightLabel = new XNALabel(Constants.FontSize08pt5)
+            var resizable = clientWindowSizeProvider.Resizable;
+
+            var scrollPos = HudUiMetrics.ScalePoint(467, 2, resizable);
+            var scrollSize = HudUiMetrics.ScalePoint(16, 115, resizable);
+            (_panelCycleUp, _panelCycleDown) = HudPanelCycleArrows.Create(
+                NativeGraphicsManager, scrollPos, scrollSize, resizable,
+                InGameStates.Inventory, hudStateActions, _sfxPlayer);
+
+            _weightLabel = new XNALabel(HudUiMetrics.PanelLabelFont(resizable))
             {
-                DrawArea = new Rectangle(385, 37, 88, 18),
+                DrawArea = HudUiMetrics.ScaleRectangle(new Rectangle(385, 37, 88, 18), resizable),
                 ForeColor = ColorConstants.LightGrayText,
                 TextAlign = LabelAlignment.MiddleCenter,
                 Visible = true,
@@ -114,7 +129,8 @@ namespace EndlessClient.HUD.Panels
 
             var weirdOffsetSheet = NativeGraphicsManager.TextureFromResource(GFXTypes.PostLoginUI, 27);
 
-            _paperdoll = new XNAButton(weirdOffsetSheet, new Vector2(385, 9), new Rectangle(39, 385, 88, 19), new Rectangle(126, 385, 88, 19));
+            _paperdoll = new XNAButton(weirdOffsetSheet, HudUiMetrics.ScalePoint(385, 9, resizable), new Rectangle(39, 385, 88, 19), new Rectangle(126, 385, 88, 19));
+            HudUiMetrics.ScaleControlSize((XNAButton)_paperdoll, resizable);
             _paperdoll.OnMouseEnter += MouseOverButton;
             _paperdoll.OnMouseDown += (_, _) =>
             {
@@ -122,11 +138,13 @@ namespace EndlessClient.HUD.Panels
                 _sfxPlayer.PlaySfx(SoundEffectID.ButtonClick);
             };
 
-            _drop = new XNAButton(weirdOffsetSheet, new Vector2(389, 68), new Rectangle(0, 15, 38, 37), new Rectangle(0, 52, 38, 37));
+            _drop = new XNAButton(weirdOffsetSheet, HudUiMetrics.ScalePoint(389, 68, resizable), new Rectangle(0, 15, 38, 37), new Rectangle(0, 52, 38, 37));
+            HudUiMetrics.ScaleControlSize((XNAButton)_drop, resizable);
             _drop.OnMouseEnter += MouseOverButton;
             _drop.OnMouseDown += (_, _) => _sfxPlayer.PlaySfx(SoundEffectID.InventoryPlace);
 
-            _junk = new XNAButton(weirdOffsetSheet, new Vector2(431, 68), new Rectangle(0, 89, 38, 37), new Rectangle(0, 126, 38, 37));
+            _junk = new XNAButton(weirdOffsetSheet, HudUiMetrics.ScalePoint(431, 68, resizable), new Rectangle(0, 89, 38, 37), new Rectangle(0, 126, 38, 37));
+            HudUiMetrics.ScaleControlSize((XNAButton)_junk, resizable);
             _junk.OnMouseEnter += MouseOverButton;
             _junk.OnMouseDown += (_, _) => _sfxPlayer.PlaySfx(SoundEffectID.InventoryPlace);
 
@@ -134,7 +152,7 @@ namespace EndlessClient.HUD.Panels
             _cachedInventory = new HashSet<InventoryItem>();
 
             BackgroundImage = NativeGraphicsManager.TextureFromResource(GFXTypes.PostLoginUI, 44);
-            DrawArea = new Rectangle(102, 330, BackgroundImage.Width, BackgroundImage.Height);
+            DrawArea = HudUiMetrics.ScaledPanelDrawArea(BackgroundImage, resizable);
 
             Game.Exiting += SaveInventoryFile;
         }
@@ -154,6 +172,11 @@ namespace EndlessClient.HUD.Panels
 
             _junk.Initialize();
             _junk.SetParentControl(this);
+
+            _panelCycleUp.Initialize();
+            _panelCycleUp.SetParentControl(this);
+            _panelCycleDown.Initialize();
+            _panelCycleDown.SetParentControl(this);
 
             _inventorySlotRepository.SlotMap = GetItemSlotMap(_playerInfoProvider.LoggedInAccountName, _characterProvider.MainCharacter.Name, _configProvider.Host);
             OnUpdateControl(new GameTime());
@@ -565,5 +588,6 @@ namespace EndlessClient.HUD.Panels
                 }
             }
         }
+
     }
 }

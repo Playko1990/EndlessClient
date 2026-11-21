@@ -1,3 +1,5 @@
+using System;
+using EndlessClient.HUD;
 using EndlessClient.HUD.Panels;
 using EOLib.Domain.Chat;
 using EOLib.Extensions;
@@ -53,15 +55,29 @@ namespace EndlessClient.Rendering.Chat
             return hash;
         }
 
-        public void Render(IHudPanel parentPanel, SpriteBatch spriteBatch, BitmapFont chatFont)
+        public void Render(IHudPanel parentPanel, SpriteBatch spriteBatch, BitmapFont chatFont, float uiScale = 1f)
         {
             spriteBatch.Begin();
 
-            var pos = parentPanel.DrawPosition + new Vector2(0, DisplayIndex * 13);
-            spriteBatch.Draw(_nativeGraphicsManager.TextureFromResource(GFXTypes.PostLoginUI, 32, true),
-                             new Vector2(pos.X + ICON_GRAPHIC_X_OFF, pos.Y + HeaderYOffset),
-                             GetChatIconRectangle(Data.Icon),
-                             Color.White);
+            var lineHeight = HudUiMetrics.NativeChatLineHeight * uiScale;
+            var iconOff = ICON_GRAPHIC_X_OFF * uiScale;
+            var msgOff = CHAT_MESSAGE_X_OFF * uiScale;
+            var headerOff = HeaderYOffset * uiScale;
+
+            var pos = parentPanel.DrawPosition + new Vector2(0, DisplayIndex * lineHeight);
+            var iconSrc = GetChatIconRectangle(Data.Icon);
+            if (iconSrc.HasValue)
+            {
+                var iconDest = new Rectangle(
+                    (int)(pos.X + iconOff),
+                    (int)(pos.Y + headerOff),
+                    Math.Max(1, (int)(iconSrc.Value.Width * uiScale)),
+                    Math.Max(1, (int)(iconSrc.Value.Height * uiScale)));
+                spriteBatch.Draw(_nativeGraphicsManager.TextureFromResource(GFXTypes.PostLoginUI, 32, true),
+                                 iconDest,
+                                 iconSrc,
+                                 Color.White);
+            }
 
             string strToDraw;
             if (string.IsNullOrEmpty(Data.Who))
@@ -69,11 +85,13 @@ namespace EndlessClient.Rendering.Chat
             else
                 strToDraw = Data.Who + "  " + _partialMessage;
 
-            spriteBatch.DrawString(chatFont,
-                                   strToDraw,
-                                   new Vector2(pos.X + CHAT_MESSAGE_X_OFF, pos.Y + HeaderYOffset),
-                                   Data.ChatColor.ToColor());
+            spriteBatch.End();
 
+            var textPos = new Vector2(pos.X + msgOff, pos.Y + headerOff);
+            var transform = Matrix.CreateScale(uiScale) *
+                            Matrix.CreateTranslation(textPos.X, textPos.Y, 0f);
+            spriteBatch.Begin(transformMatrix: transform);
+            spriteBatch.DrawString(chatFont, strToDraw, Vector2.Zero, Data.ChatColor.ToColor());
             spriteBatch.End();
         }
 

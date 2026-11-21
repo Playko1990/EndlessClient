@@ -63,6 +63,7 @@ namespace EndlessClient.HUD.Panels
         private readonly IClientWindowSizeProvider _clientWindowSizeProvider;
         private readonly ISkillTreeActions _skillTreeActions;
         private readonly ISkillTreeProvider _skillTreeProvider;
+        private readonly IHudStateActions _hudStateActions;
 
         public HudPanelFactory(INativeGraphicsManager nativeGraphicsManager,
                                IInventoryController inventoryController,
@@ -97,7 +98,8 @@ namespace EndlessClient.HUD.Panels
                                IConfigurationProvider configurationProvider,
                                IClientWindowSizeProvider clientWindowSizeProvider,
                                ISkillTreeActions skillTreeActions,
-                               ISkillTreeProvider skillTreeProvider)
+                               ISkillTreeProvider skillTreeProvider,
+                               IHudStateActions hudStateActions)
         {
             _nativeGraphicsManager = nativeGraphicsManager;
             _inventoryController = inventoryController;
@@ -133,6 +135,7 @@ namespace EndlessClient.HUD.Panels
             _clientWindowSizeProvider = clientWindowSizeProvider;
             _skillTreeActions = skillTreeActions;
             _skillTreeProvider = skillTreeProvider;
+            _hudStateActions = hudStateActions;
         }
 
         public NewsPanel CreateNewsPanel()
@@ -165,6 +168,7 @@ namespace EndlessClient.HUD.Panels
                 _activeDialogProvider,
                 _sfxPlayer,
                 _configurationProvider,
+                _hudStateActions,
                 _clientWindowSizeProvider)
             { DrawOrder = HUD_CONTROL_LAYER };
         }
@@ -182,6 +186,7 @@ namespace EndlessClient.HUD.Panels
                 _sfxPlayer,
                 _configurationProvider,
                 _skillTreeActions,
+                _hudStateActions,
                 _clientWindowSizeProvider)
             { DrawOrder = HUD_CONTROL_LAYER };
         }
@@ -193,13 +198,15 @@ namespace EndlessClient.HUD.Panels
                 _messageBoxFactory,
                 _skillTreeActions,
                 _skillTreeProvider,
+                _hudStateActions,
+                _sfxPlayer,
                 _clientWindowSizeProvider)
             { DrawOrder = HUD_CONTROL_LAYER };
         }
 
         public ChatPanel CreateChatPanel()
         {
-            var chatFont = _contentProvider.Fonts[Constants.FontSize08];
+            var chatFont = _contentProvider.Fonts[HudUiMetrics.ChatPanelFont(_clientWindowSizeProvider.Resizable)];
 
             return new ChatPanel(_nativeGraphicsManager,
                                  _chatActions,
@@ -207,6 +214,8 @@ namespace EndlessClient.HUD.Panels
                                  _chatProvider,
                                  _hudControlProvider,
                                  chatFont,
+                                 _hudStateActions,
+                                 _sfxPlayer,
                                  _clientWindowSizeProvider)
             { DrawOrder = HUD_CONTROL_LAYER };
         }
@@ -221,6 +230,8 @@ namespace EndlessClient.HUD.Panels
                                   _trainingController,
                                   _skillTreeActions,
                                   _skillTreeProvider,
+                                  _hudStateActions,
+                                  _sfxPlayer,
                                   _clientWindowSizeProvider)
             { DrawOrder = HUD_CONTROL_LAYER };
         }

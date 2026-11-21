@@ -3,6 +3,7 @@ using System.Linq;
 using EndlessClient.Rendering;
 using EndlessClient.Rendering.Chat;
 using EndlessClient.UIControls;
+using EndlessClient.HUD;
 using EOLib.Domain.Login;
 using EOLib.Graphics;
 using Microsoft.Xna.Framework;
@@ -20,6 +21,7 @@ namespace EndlessClient.HUD.Panels
         private readonly ScrollBar _scrollBar;
         private readonly List<IChatRenderable> _chatRenderables;
         private readonly BitmapFont _chatFont;
+        private readonly bool _resizable;
 
         //cached data fields
         private readonly List<string> _cachedNewsStrings;
@@ -38,11 +40,14 @@ namespace EndlessClient.HUD.Panels
             _nativeGraphicsManager = nativeGraphicsManager;
             _chatRenderableGenerator = chatRenderableGenerator;
             _newsProvider = newsProvider;
+            _resizable = clientWindowSizeProvider.Resizable;
 
-            //abs coordiantes: 568 331
-            _scrollBar = new ScrollBar(new Vector2(467, 20), new Vector2(16, 97), ScrollBarColors.LightOnMed, _nativeGraphicsManager)
+            var resizable = _resizable;
+            var scrollPos = HudUiMetrics.ScalePoint(467, 20, resizable);
+            var scrollSize = HudUiMetrics.ScalePoint(16, 97, resizable);
+            _scrollBar = new ScrollBar(scrollPos, scrollSize, ScrollBarColors.LightOnMed, _nativeGraphicsManager, HudUiMetrics.UiScale(resizable))
             {
-                LinesToRender = 7,
+                LinesToRender = HudUiMetrics.ChatLinesToRender(resizable),
                 Visible = true
             };
             _scrollBar.SetParentControl(this);
@@ -56,7 +61,7 @@ namespace EndlessClient.HUD.Panels
             _cachedLinesToRender = -1;
 
             BackgroundImage = _nativeGraphicsManager.TextureFromResource(GFXTypes.PostLoginUI, 48);
-            DrawArea = new Rectangle(102, 330, BackgroundImage.Width, BackgroundImage.Height);
+            DrawArea = HudUiMetrics.ScaledPanelDrawArea(BackgroundImage, resizable);
         }
 
         public override void Initialize()
@@ -100,8 +105,9 @@ namespace EndlessClient.HUD.Panels
             if (_chatRenderables == null)
                 return;
 
+            var uiScale = HudUiMetrics.UiScale(_resizable);
             foreach (var renderable in _chatRenderables)
-                renderable.Render(this, _spriteBatch, _chatFont);
+                renderable.Render(this, _spriteBatch, _chatFont, uiScale);
         }
 
         private void UpdateCachedNewsStrings()

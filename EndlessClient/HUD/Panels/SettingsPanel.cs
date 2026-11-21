@@ -5,6 +5,7 @@ using EndlessClient.Audio;
 using EndlessClient.Dialogs;
 using EndlessClient.Dialogs.Factories;
 using EndlessClient.Rendering;
+using EndlessClient.HUD;
 using EOLib.Config;
 using EOLib.Domain.Chat;
 using EOLib.Graphics;
@@ -74,17 +75,21 @@ namespace EndlessClient.HUD.Panels
             _configurationRepository = configurationRepository;
             _sfxPlayer = sfxPlayer;
 
+            var resizable = clientWindowSizeProvider.Resizable;
+
             BackgroundImage = _nativeGraphicsManager.TextureFromResource(GFXTypes.PostLoginUI, 47);
-            DrawArea = new Rectangle(102, 330, BackgroundImage.Width, BackgroundImage.Height);
+            DrawArea = HudUiMetrics.ScaledPanelDrawArea(BackgroundImage, resizable);
 
             var values = Enum.GetValues<WhichSetting>();
             _labels = values.ToDictionary(k => k,
                 v =>
                 {
                     var ndx = (int)v;
-                    return (IXNALabel)new XNALabel(Constants.FontSize09)
+                    return (IXNALabel)new XNALabel(HudUiMetrics.PanelLabelFont(resizable))
                     {
-                        DrawArea = new Rectangle(117 + (ndx / 5) * 239, 25 + 18 * (ndx % 5), 100, 15),
+                        DrawArea = HudUiMetrics.ScaleRectangle(
+                            new Rectangle(117 + (ndx / 5) * 239, 25 + 18 * (ndx % 5), 100, 15),
+                            resizable),
                         AutoSize = false,
                         ForeColor = ColorConstants.LightGrayText,
                     };
@@ -96,11 +101,13 @@ namespace EndlessClient.HUD.Panels
                 v =>
                 {
                     var ndx = (int)v;
-                    return (IXNAButton)new XNAButton(
+                    var button = new XNAButton(
                         _nativeGraphicsManager.TextureFromResource(GFXTypes.PostLoginUI, 27, true),
-                        new Vector2(215 + (ndx / 5) * 239, 25 + 18 * (ndx % 5)),
+                        HudUiMetrics.ScalePoint(215 + (ndx / 5) * 239, 25 + 18 * (ndx % 5), resizable),
                         new Rectangle(0, 0, 19, 15),
                         new Rectangle(19, 0, 19, 15));
+                    HudUiMetrics.ScaleControlSize(button, resizable);
+                    return (IXNAButton)button;
                 });
         }
 

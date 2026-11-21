@@ -10,8 +10,10 @@ using EndlessClient.GameExecution;
 using EndlessClient.HUD.Boss;
 using EndlessClient.HUD.Chat;
 using EndlessClient.HUD.Panels;
+using EndlessClient.HUD.SkillTree;
 using EndlessClient.HUD.Spells;
 using EndlessClient.HUD.StatusBars;
+using Microsoft.Xna.Framework.Graphics;
 using EndlessClient.Input;
 using EndlessClient.Network;
 using EndlessClient.Rendering;
@@ -197,14 +199,9 @@ namespace EndlessClient.HUD.Controls
             _hudChromeMinimized = false;
             if (_clientWindowSizeRepository.Resizable)
             {
+                // Always pin the docked HUD panel to bottom-center. Saved Dock:X/Y from
+                // earlier sessions left the panel mid-screen after the size increase.
                 _dockPanelPosition = GetDefaultDockPanelPosition();
-                var panelConfig = new IniReader(Constants.PanelLayoutFile);
-                if (panelConfig.Load() &&
-                    panelConfig.GetValue("PANELS", "Dock:X", out int dockX) &&
-                    panelConfig.GetValue("PANELS", "Dock:Y", out int dockY))
-                {
-                    _dockPanelPosition = new Vector2(dockX, dockY);
-                }
             }
 
             var controls = new Dictionary<HudControlIdentifier, IGameComponent>
@@ -324,6 +321,20 @@ namespace EndlessClient.HUD.Controls
             var widthDelta = mainButtonTexture.Width / 2;
             var heightDelta = mainButtonTexture.Height / 11;
 
+            Texture2D buttonTexture = mainButtonTexture;
+            Rectangle outSource = new Rectangle(0, heightDelta * buttonIndex, widthDelta, heightDelta);
+            Rectangle overSource = new Rectangle(widthDelta, heightDelta * buttonIndex, widthDelta, heightDelta);
+
+            if (whichState == InGameStates.PassiveSpells)
+            {
+                buttonTexture = SkillTreeHudIcon.Create(
+                    _graphicsDeviceProvider.GraphicsDevice,
+                    mainButtonTexture,
+                    buttonIndex);
+                outSource = SkillTreeHudIcon.OutSource(buttonTexture);
+                overSource = SkillTreeHudIcon.OverSource(buttonTexture);
+            }
+
             XNAButton retButton;
             if (!_clientWindowSizeRepository.Resizable)
             {
@@ -331,10 +342,10 @@ namespace EndlessClient.HUD.Controls
                 var yPosition = (buttonIndex < 6 ? 330 : 350) + (buttonIndex < 6 ? buttonIndex : buttonIndex - 6) * 20;
 
                 retButton = new XNAButton(
-                    mainButtonTexture,
+                    buttonTexture,
                     new Vector2(xPosition, yPosition),
-                    new Rectangle(0, heightDelta * buttonIndex, widthDelta, heightDelta),
-                    new Rectangle(widthDelta, heightDelta * buttonIndex, widthDelta, heightDelta))
+                    outSource,
+                    overSource)
                 {
                     DrawOrder = HUD_CONTROL_LAYER
                 };
@@ -342,18 +353,22 @@ namespace EndlessClient.HUD.Controls
             else
             {
                 retButton = new XNAButton(
-                    mainButtonTexture,
+                    buttonTexture,
                     GetDockedButtonPosition(buttonIndex),
-                    new Rectangle(0, heightDelta * buttonIndex, widthDelta, heightDelta),
-                    new Rectangle(widthDelta, heightDelta * buttonIndex, widthDelta, heightDelta))
+                    outSource,
+                    overSource)
                 {
                     DrawOrder = HUD_CONTROL_LAYER
                 };
+                ScaleDockedSideButton(retButton);
 
                 _clientWindowSizeRepository.GameWindowSizeChanged += (_, _) =>
                 {
                     if (!_hudChromeMinimized)
+                    {
                         retButton.DrawPosition = GetDockedButtonPosition(buttonIndex);
+                        ScaleDockedSideButton(retButton);
+                    }
                 };
             }
 
@@ -366,18 +381,42 @@ namespace EndlessClient.HUD.Controls
             return retButton;
         }
 
+        private void ScaleDockedSideButton(XNAButton button)
+        {
+            if (!HudUiMetrics.ShouldEnlargeHud(_clientWindowSizeRepository.Resizable))
+                return;
+
+            var step = GetHubButtonStep();
+            button.DrawArea = new Rectangle(
+                (int)button.DrawPosition.X,
+                (int)button.DrawPosition.Y,
+                step,
+                step);
+            button.ClickArea = new Rectangle(0, 0, step, step);
+        }
+
+        private int GetHubButtonStep()
+        {
+            var panelTexture = _nativeGraphicsManager.TextureFromResource(GFXTypes.PostLoginUI, 44);
+            var panelHeight = HudUiMetrics.Scale(panelTexture.Height, _clientWindowSizeRepository.Resizable);
+            return HudUiMetrics.HubButtonSize(_clientWindowSizeRepository.Resizable, panelHeight);
+        }
+
         private Vector2 GetDockedButtonPosition(int buttonIndex)
         {
             var panelTexture = _nativeGraphicsManager.TextureFromResource(GFXTypes.PostLoginUI, 44);
-            var panelWidth = panelTexture.Width;
+            var panelWidth = HudUiMetrics.Scale(panelTexture.Width, _clientWindowSizeRepository.Resizable);
             var panelPos = _dockPanelPosition;
+            var step = GetHubButtonStep();
 
+            // Left column sits flush against the panel; 6 buttons fill the panel height.
+            // Right column has 5 buttons and starts one step down so bottoms align.
             var xPosition = buttonIndex < 6
-                ? panelPos.X - 40
+                ? panelPos.X - step
                 : panelPos.X + panelWidth;
             var yPosition = panelPos.Y
-                + (buttonIndex < 6 ? 0 : 20)
-                + (buttonIndex < 6 ? buttonIndex : buttonIndex - 6) * 20;
+                + (buttonIndex < 6 ? 0 : step)
+                + (buttonIndex < 6 ? buttonIndex : buttonIndex - 6) * step;
 
             return new Vector2(xPosition, yPosition);
         }
@@ -385,9 +424,11 @@ namespace EndlessClient.HUD.Controls
         private Vector2 GetDefaultDockPanelPosition()
         {
             var panelTexture = _nativeGraphicsManager.TextureFromResource(GFXTypes.PostLoginUI, 44);
+            var panelWidth = HudUiMetrics.Scale(panelTexture.Width, _clientWindowSizeRepository.Resizable);
+            var panelHeight = HudUiMetrics.Scale(panelTexture.Height, _clientWindowSizeRepository.Resizable);
             return new Vector2(
-                (_clientWindowSizeRepository.Width - panelTexture.Width) / 2f,
-                _clientWindowSizeRepository.Height - 45 - panelTexture.Height);
+                (_clientWindowSizeRepository.Width - panelWidth) / 2f,
+                _clientWindowSizeRepository.Height - 45 - panelHeight);
         }
 
         private IXNAButton CreateFriendListButton()
@@ -513,26 +554,10 @@ namespace EndlessClient.HUD.Controls
                     if (_hudChromeMinimized)
                         return;
 
-                    // Keep the dock on-screen after resize; panels share one position.
-                    if (_clientWindowSizeRepository.Width < _dockPanelPosition.X + retPanel.DrawArea.Width)
-                        _dockPanelPosition = new Vector2(_clientWindowSizeRepository.Width - retPanel.DrawArea.Width, _dockPanelPosition.Y);
-                    if (_clientWindowSizeRepository.Height < _dockPanelPosition.Y + retPanel.DrawArea.Height)
-                        _dockPanelPosition = new Vector2(_dockPanelPosition.X, _clientWindowSizeRepository.Height - retPanel.DrawArea.Height);
-
+                    // Keep the docked panel bottom-center after every resize.
+                    _dockPanelPosition = GetDefaultDockPanelPosition();
                     ApplyDockPositionToChrome();
                 };
-
-                // Ignore per-panel saved layouts that stack multiple windows; one shared dock.
-                var panelConfig = new IniReader(Constants.PanelLayoutFile);
-                if (panelConfig.Load())
-                {
-                    if (panelConfig.GetValue("PANELS", "Dock:X", out int x) &&
-                        panelConfig.GetValue("PANELS", "Dock:Y", out int y))
-                    {
-                        _dockPanelPosition = new Vector2(x, y);
-                        retPanel.DrawPosition = _dockPanelPosition;
-                    }
-                }
             }
 
             return retPanel;
@@ -559,7 +584,8 @@ namespace EndlessClient.HUD.Controls
 
                 panel.DragCompleted += () =>
                 {
-                    _dockPanelPosition = panel.DrawPosition;
+                    // Snap back to bottom-center so the enlarged panel stays docked.
+                    _dockPanelPosition = GetDefaultDockPanelPosition();
                     ApplyDockPositionToChrome();
                     SaveDockPosition();
                 };
@@ -598,6 +624,7 @@ namespace EndlessClient.HUD.Controls
             {
                 var buttonIndex = (int)state;
                 button.DrawPosition = GetDockedButtonPosition(buttonIndex);
+                ScaleDockedSideButton(button);
             }
         }
 
@@ -607,8 +634,9 @@ namespace EndlessClient.HUD.Controls
                 return;
 
             var panelTexture = _nativeGraphicsManager.TextureFromResource(GFXTypes.PostLoginUI, 44);
+            var panelWidth = HudUiMetrics.Scale(panelTexture.Width, _clientWindowSizeRepository.Resizable);
             _hudMinimizeButton.DrawPosition = new Vector2(
-                _dockPanelPosition.X + panelTexture.Width - 22,
+                _dockPanelPosition.X + panelWidth - 22,
                 _dockPanelPosition.Y - 18);
         }
 

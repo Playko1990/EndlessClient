@@ -56,7 +56,6 @@ namespace EndlessClient.HUD.Panels
         private readonly XNALabel _selectedSpellName;
         private readonly HudScaledLabel _selectedSpellLevel, _totalSkillPoints;
         private readonly ScrollBar _scrollBar;
-        private readonly XNAButton _panelCycleUp, _panelCycleDown;
 
         private HashSet<InventorySpell> _cachedSpells;
         private int _cachedAvailableSkillPoints = int.MinValue;
@@ -110,9 +109,13 @@ namespace EndlessClient.HUD.Panels
             var resizable = clientWindowSizeProvider.Resizable;
             var font = HudUiMetrics.PanelLabelFont(resizable);
 
+            BackgroundImage = NativeGraphicsManager.TextureFromResource(GFXTypes.PostLoginUI, 62);
+            DrawArea = HudUiMetrics.ScaledPanelDrawArea(BackgroundImage, clientWindowSizeProvider.Resizable);
+            var uiScale = HudUiMetrics.ScaleFromPanel(BackgroundImage, DrawArea, resizable);
+
             _selectedSpellName = new XNALabel(font)
             {
-                DrawArea = HudUiMetrics.ScaleRectangle(new Rectangle(9, 50, 81, 13), resizable),
+                DrawArea = HudUiMetrics.ScaleRectangle(new Rectangle(9, 50, 81, 13), uiScale),
                 Visible = false,
                 Text = "",
                 AutoSize = false,
@@ -123,7 +126,7 @@ namespace EndlessClient.HUD.Panels
             var valueScale = HudUiMetrics.PanelValueTextScale(resizable);
             _selectedSpellLevel = new HudScaledLabel(font, valueScale)
             {
-                DrawArea = HudUiMetrics.ScaleRectangle(new Rectangle(32, 78, 42, 15), resizable),
+                DrawArea = HudUiMetrics.ScaleRectangle(new Rectangle(32, 78, 42, 15), uiScale),
                 Visible = true,
                 Text = "0",
                 TextAlign = LabelAlignment.MiddleLeft,
@@ -133,29 +136,22 @@ namespace EndlessClient.HUD.Panels
             _skillTreeActions.EnsureLoaded();
             _totalSkillPoints = new HudScaledLabel(font, valueScale)
             {
-                DrawArea = HudUiMetrics.ScaleRectangle(new Rectangle(32, 96, 42, 15), resizable),
+                DrawArea = HudUiMetrics.ScaleRectangle(new Rectangle(32, 96, 42, 15), uiScale),
                 Visible = true,
                 Text = _skillTreeActions.GetAvailablePoints().ToString(),
                 TextAlign = LabelAlignment.MiddleLeft,
                 ForeColor = ColorConstants.LightGrayText,
             };
 
-            var scrollPos = HudUiMetrics.ScalePoint(467, 2, resizable);
-            var scrollSize = HudUiMetrics.ScalePoint(16, 115, resizable);
-            (_panelCycleUp, _panelCycleDown) = HudPanelCycleArrows.Create(
-                NativeGraphicsManager, scrollPos, scrollSize, resizable,
-                InGameStates.ActiveSpells, _hudStateActions, _sfxPlayer);
-
-            var (innerPos, innerSize) = HudPanelCycleArrows.InsetScrollBarArea(scrollPos, scrollSize, resizable);
-            _scrollBar = new ScrollBar(innerPos, innerSize, ScrollBarColors.LightOnMed, NativeGraphicsManager)
+            // One large scrollbar on the right gutter (no inset mid-panel arrows).
+            var scrollPos = HudUiMetrics.ScalePoint(467, 2, uiScale);
+            var scrollSize = HudUiMetrics.ScalePoint(16, 115, uiScale);
+            _scrollBar = new ScrollBar(scrollPos, scrollSize, ScrollBarColors.LightOnMed, NativeGraphicsManager, uiScale)
             {
                 LinesToRender = 2
             };
             _scrollBar.UpdateDimensions(4);
             SetScrollWheelHandler(_scrollBar);
-
-            BackgroundImage = NativeGraphicsManager.TextureFromResource(GFXTypes.PostLoginUI, 62);
-            DrawArea = HudUiMetrics.ScaledPanelDrawArea(BackgroundImage, clientWindowSizeProvider.Resizable);
 
             Game.Exiting += SaveSpellsFile;
         }
@@ -172,11 +168,6 @@ namespace EndlessClient.HUD.Panels
 
             _totalSkillPoints.Initialize();
             _totalSkillPoints.SetParentControl(this);
-
-            _panelCycleUp.Initialize();
-            _panelCycleUp.SetParentControl(this);
-            _panelCycleDown.Initialize();
-            _panelCycleDown.SetParentControl(this);
 
             _scrollBar.Initialize();
             _scrollBar.SetParentControl(this);
@@ -325,9 +316,9 @@ namespace EndlessClient.HUD.Panels
             if (_scrollBar.ScrollOffset >= 2)
                 return;
 
-            // Native label size 18x13; positions match spell slot tops (row0=8, row1=60).
-            // Pre-responsive absolute coords were 338/390 with panel Y=330 → relative 8/60.
-            var labelSize = HudUiMetrics.ScalePoint(18, 13, ResizableHud);
+            // Align F1–F8 with spell slot boxes (101 + col*45, 9 + row*52).
+            var uiScale = HudUiMetrics.ScaleFromPanel(BackgroundImage, DrawArea, ResizableHud);
+            var labelSize = HudUiMetrics.ScalePoint(18, 13, uiScale);
 
             for (int i = 0; i < 8; ++i)
             {
@@ -335,7 +326,7 @@ namespace EndlessClient.HUD.Panels
 
                 if (_scrollBar.ScrollOffset == 0)
                 {
-                    var pos = DrawPosition + HudUiMetrics.ScalePoint(100 + 45 * i, 8, ResizableHud);
+                    var pos = DrawPosition + HudUiMetrics.ScalePoint(101 + 45 * i, 9, uiScale);
                     _spriteBatch.Draw(_functionKeyLabelSheet,
                         new Rectangle((int)pos.X, (int)pos.Y, (int)labelSize.X, (int)labelSize.Y),
                         _functionKeyRow1Source.WithPosition((_functionKeyRow1Source.Location + new Point(offset, 0)).ToVector2()),
@@ -344,8 +335,8 @@ namespace EndlessClient.HUD.Panels
 
                 if (_scrollBar.ScrollOffset < 2)
                 {
-                    var yCoord = _scrollBar.ScrollOffset == 0 ? 60 : 8;
-                    var pos = DrawPosition + HudUiMetrics.ScalePoint(100 + 45 * i, yCoord, ResizableHud);
+                    var yCoord = _scrollBar.ScrollOffset == 0 ? 9 + 52 : 9;
+                    var pos = DrawPosition + HudUiMetrics.ScalePoint(101 + 45 * i, yCoord, uiScale);
                     _spriteBatch.Draw(_functionKeyLabelSheet,
                         new Rectangle((int)pos.X, (int)pos.Y, (int)labelSize.X, (int)labelSize.Y),
                         _functionKeyRow2Source.WithPosition((_functionKeyRow2Source.Location + new Point(offset, 0)).ToVector2()),
@@ -359,11 +350,12 @@ namespace EndlessClient.HUD.Panels
             if (_activeSpellIcon == null)
                 return;
 
+            var uiScale = HudUiMetrics.ScaleFromPanel(BackgroundImage, DrawArea, ResizableHud);
             var srcRect = new Rectangle(0, 0, _activeSpellIcon.Width / 2, _activeSpellIcon.Height);
-            var size = HudUiMetrics.Scale(Math.Max(srcRect.Width, srcRect.Height), ResizableHud);
+            var size = HudUiMetrics.Scale(Math.Max(srcRect.Width, srcRect.Height), uiScale);
             var dstRect = new Rectangle(
-                DrawAreaWithParentOffset.X + HudUiMetrics.Scale(32, ResizableHud),
-                DrawAreaWithParentOffset.Y + HudUiMetrics.Scale(14, ResizableHud),
+                DrawAreaWithParentOffset.X + HudUiMetrics.Scale(32, uiScale),
+                DrawAreaWithParentOffset.Y + HudUiMetrics.Scale(14, uiScale),
                 size,
                 size);
             _spriteBatch.Draw(_activeSpellIcon, dstRect, srcRect, Color.White);

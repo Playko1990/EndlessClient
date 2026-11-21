@@ -48,8 +48,9 @@ namespace EndlessClient.HUD.Spells
         {
             get
             {
-                var origin = HudUiMetrics.ScalePoint(98, 6, _resizable).ToPoint();
-                var size = HudUiMetrics.ScalePoint(363, 102, _resizable).ToPoint();
+                var uiScale = PanelUiScale();
+                var origin = HudUiMetrics.ScalePoint(98, 6, uiScale).ToPoint();
+                var size = HudUiMetrics.ScalePoint(363, 102, uiScale).ToPoint();
                 return new Rectangle(
                     _parentContainer.DrawPositionWithParentOffset.ToPoint() + origin,
                     size);
@@ -78,9 +79,10 @@ namespace EndlessClient.HUD.Spells
             _whitePixel = new Texture2D(Game.GraphicsDevice, 1, 1);
             _whitePixel.SetData(new[] { Color.White });
 
+            var uiScale = PanelUiScale();
             SetSize(
-                HudUiMetrics.Scale(ICON_AREA_WIDTH, _resizable),
-                HudUiMetrics.Scale(ICON_AREA_HEIGHT, _resizable));
+                HudUiMetrics.Scale(ICON_AREA_WIDTH, uiScale),
+                HudUiMetrics.Scale(ICON_AREA_HEIGHT, uiScale));
         }
 
         public int GetCurrentSlotBasedOnPosition(int scrollOffset)
@@ -91,8 +93,9 @@ namespace EndlessClient.HUD.Spells
             // old offset X needs to be adjusted since it assumes parent coordinates are the start of the slot grid
             // this works for inventory without adjustment since the grid goes all the way to the parent panel coordinate
             // however, spell panel has 2 slots worth of padding for the selected slot / level up controls
-            var iconW = HudUiMetrics.Scale(ICON_AREA_WIDTH, _resizable);
-            var iconH = HudUiMetrics.Scale(ICON_AREA_HEIGHT, _resizable);
+            var uiScale = PanelUiScale();
+            var iconW = HudUiMetrics.Scale(ICON_AREA_WIDTH, uiScale);
+            var iconH = HudUiMetrics.Scale(ICON_AREA_HEIGHT, uiScale);
             var adjustedOffsetX = OldOffset.X + (iconW * 2);
 
             return scrollOffset * ActiveSpellsPanel.SpellRowLength +
@@ -219,7 +222,14 @@ namespace EndlessClient.HUD.Spells
             //start pos: 101, 9 — xdelta: 45; ydelta: 52 (matches PostLoginUI #62 grid)
             var row = slot / ActiveSpellsPanel.SpellRowLength;
             var col = slot % ActiveSpellsPanel.SpellRowLength;
-            return HudUiMetrics.ScalePoint(101 + col * 45, 9 + row * 52, _resizable);
+            return HudUiMetrics.ScalePoint(101 + col * 45, 9 + row * 52, PanelUiScale());
+        }
+
+        private float PanelUiScale()
+        {
+            if (_parentContainer is ActiveSpellsPanel panel)
+                return HudUiMetrics.ScaleFromPanel(panel.BackgroundImage, panel.DrawArea, _resizable);
+            return HudUiMetrics.UiScale(_resizable);
         }
     }
 }

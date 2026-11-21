@@ -215,8 +215,8 @@ namespace EndlessClient.HUD.Chat
 
         private Rectangle GetTabClickableArea(float uiScale)
         {
-            // Native tabs sit on the dark strip at y=102; scale with the stretched panel
-            // so they stay on that strip instead of floating mid-panel.
+            // Native tab strip is at y=102. Pin to the bottom of the stretched panel
+            // so scr/glb/grp/sys stay on the dark chrome even if texture metrics drift.
             var native = Tab switch
             {
                 ChatTab.Private1 => new Rectangle(23, 102, 132, 16),
@@ -228,7 +228,10 @@ namespace EndlessClient.HUD.Chat
                 _ => throw new ArgumentOutOfRangeException(nameof(Tab), Tab, null),
             };
 
-            return HudUiMetrics.ScaleRectangle(native, uiScale);
+            var scaled = HudUiMetrics.ScaleRectangle(native, uiScale);
+            var parentHeight = _parentPanel.DrawArea.Height;
+            var y = Math.Max(0, parentHeight - scaled.Height);
+            return new Rectangle(scaled.X, y, scaled.Width, scaled.Height);
         }
 
         private string GetTabTextLabel()

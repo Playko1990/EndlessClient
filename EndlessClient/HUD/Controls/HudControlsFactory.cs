@@ -96,6 +96,7 @@ namespace EndlessClient.HUD.Controls
         private XNAButton _hudMinimizeButton;
         private XNAButton _hudRestoreButton;
         private XNAButton _windowSizeButton;
+        private Texture2D _windowSizeButtonSheet;
         private DraggableHudPanel _lastVisibleDockPanel;
         private bool _windowIsDisplaySized = true;
 
@@ -669,10 +670,12 @@ namespace EndlessClient.HUD.Controls
 
         private XNAButton CreateWindowSizeButton()
         {
-            // Clean chevron-only art (not the friend-list person glyph).
-            var sheet = WindowSizeButtonIcon.Create(_graphicsDeviceProvider.GraphicsDevice);
+            var maximized = _clientWindowSizeRepository.IsMaximizedWindowed || _windowIsDisplaySized;
+            _windowSizeButtonSheet = WindowSizeButtonIcon.Create(
+                _graphicsDeviceProvider.GraphicsDevice,
+                maximized);
             _windowSizeButton = new XNAButton(
-                sheet,
+                _windowSizeButtonSheet,
                 GetWindowSizeButtonPosition(),
                 WindowSizeButtonIcon.OutSource,
                 WindowSizeButtonIcon.OverSource)
@@ -686,6 +689,7 @@ namespace EndlessClient.HUD.Controls
             {
                 _windowSizeButton.DrawPosition = GetWindowSizeButtonPosition();
                 _windowSizeButton.Visible = _clientWindowSizeRepository.Resizable;
+                RefreshWindowSizeButtonGlyph();
             };
 
             _windowSizeButton.OnMouseDown += (_, _) =>
@@ -700,6 +704,15 @@ namespace EndlessClient.HUD.Controls
                     EOResourceID.STATUS_LABEL_HUD_BUTTON_HOVER_FIRST);
 
             return _windowSizeButton;
+        }
+
+        private void RefreshWindowSizeButtonGlyph()
+        {
+            if (_windowSizeButtonSheet == null)
+                return;
+
+            var maximized = _clientWindowSizeRepository.IsMaximizedWindowed || _windowIsDisplaySized;
+            WindowSizeButtonIcon.SetMaximized(_windowSizeButtonSheet, maximized);
         }
 
         private void ToggleWindowDisplaySize()
@@ -726,16 +739,21 @@ namespace EndlessClient.HUD.Controls
 
             if (_windowSizeButton != null)
                 _windowSizeButton.DrawPosition = GetWindowSizeButtonPosition();
+
+            RefreshWindowSizeButtonGlyph();
         }
 
         private XNAButton CreateHudMinimizeButton()
         {
-            var sheet = _nativeGraphicsManager.TextureFromResource(GFXTypes.PostLoginUI, 27, false);
+            // Minimize bar — not the friend-list person glyph / up-chevron.
+            var sheet = HudChromeButtonIcons.Create(
+                _graphicsDeviceProvider.GraphicsDevice,
+                HudChromeButtonIcons.Glyph.Minimize);
             _hudMinimizeButton = new XNAButton(
                 sheet,
                 new Vector2(0, 0),
-                new Rectangle(0, 260, 17, 15),
-                new Rectangle(0, 276, 17, 15))
+                HudChromeButtonIcons.OutSource,
+                HudChromeButtonIcons.OverSource)
             {
                 DrawOrder = HUD_CONTROL_LAYER + 20,
                 Visible = _clientWindowSizeRepository.Resizable
@@ -755,12 +773,15 @@ namespace EndlessClient.HUD.Controls
 
         private XNAButton CreateHudRestoreButton()
         {
-            var sheet = _nativeGraphicsManager.TextureFromResource(GFXTypes.PostLoginUI, 27, false);
+            // Maximize square — restores the docked HUD panel.
+            var sheet = HudChromeButtonIcons.Create(
+                _graphicsDeviceProvider.GraphicsDevice,
+                HudChromeButtonIcons.Glyph.Maximize);
             _hudRestoreButton = new XNAButton(
                 sheet,
                 GetHudRestoreButtonPosition(),
-                new Rectangle(17, 260, 17, 15),
-                new Rectangle(17, 276, 17, 15))
+                HudChromeButtonIcons.OutSource,
+                HudChromeButtonIcons.OverSource)
             {
                 DrawOrder = HUD_CONTROL_LAYER + 20,
                 Visible = false

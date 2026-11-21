@@ -52,8 +52,8 @@ namespace EndlessClient.UIControls
             if (clientWindowSizeProvider.Resizable)
             {
                 KeepInClientWindowBounds = false;
-                PlaceAboveChatBar();
-                clientWindowSizeProvider.GameWindowSizeChanged += (_, _) => PlaceAboveChatBar();
+                PlaceOnChatBar();
+                clientWindowSizeProvider.GameWindowSizeChanged += (_, _) => PlaceOnChatBar();
             }
             else
             {
@@ -91,11 +91,15 @@ namespace EndlessClient.UIControls
             base.OnUpdateControl(gameTime);
         }
 
-        private void PlaceAboveChatBar()
+        private void PlaceOnChatBar()
         {
+            // Sit on the left of the chat entry (Public/Private/…) — not a third bar above it.
+            var chat = HudUiMetrics.ResizableChatBarArea(
+                _clientWindowSizeProvider.Width,
+                _clientWindowSizeProvider.Height);
             var iconHeight = Texture.Height / 8 - 2;
-            var chatTop = HudUiMetrics.ResizableChatBarTop(_clientWindowSizeProvider.Height);
-            DrawArea = new Rectangle(4, chatTop - iconHeight - 4, Texture.Width, iconHeight);
+            var y = chat.Y + Math.Max(0, (chat.Height - iconHeight) / 2);
+            DrawArea = new Rectangle(chat.X + 4, y, Texture.Width, iconHeight);
         }
 
         private bool AtLeastOneCharTypedOrDeleted()

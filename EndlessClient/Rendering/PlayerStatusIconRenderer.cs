@@ -50,16 +50,18 @@ namespace EndlessClient.Rendering
             _statusIcons = nativeGraphicsManager.TextureFromResource(GFXTypes.PostLoginUI, 46, true);
 
             KeepInClientWindowBounds = false;
-            void PlaceAboveChatBar()
+            void PlaceNearChatBar()
             {
-                // Icon cell is half the sheet height; sit on the sword row above the chat bar.
+                // Small status icons just above the left of the chat entry (not a separate bar).
                 var iconHeight = _statusIcons.Height / 2;
-                var chatTop = HudUiMetrics.ResizableChatBarTop(clientWindowSizeProvider.Height);
-                DrawPosition = new Vector2(28, chatTop - iconHeight - 4);
+                var chat = HudUiMetrics.ResizableChatBarArea(
+                    clientWindowSizeProvider.Width,
+                    clientWindowSizeProvider.Height);
+                DrawPosition = new Vector2(chat.X + 28, chat.Y - iconHeight - 2);
             }
 
-            PlaceAboveChatBar();
-            clientWindowSizeProvider.GameWindowSizeChanged += (o, e) => PlaceAboveChatBar();
+            PlaceNearChatBar();
+            clientWindowSizeProvider.GameWindowSizeChanged += (o, e) => PlaceNearChatBar();
         }
 
         protected override void OnUpdateControl(GameTime gameTime)

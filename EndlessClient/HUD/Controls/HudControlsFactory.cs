@@ -927,7 +927,7 @@ namespace EndlessClient.HUD.Controls
         {
             return new ChatModePictureBox(_nativeGraphicsManager, _clientWindowSizeRepository, _chatModeCalculator, _hudControlProvider)
             {
-                // Above chat bar chrome so the sword is never covered by a stray bar segment.
+                // On top of the chat entry so Public/Private stays readable on the left.
                 DrawOrder = HUD_CONTROL_LAYER + 25
             };
         }

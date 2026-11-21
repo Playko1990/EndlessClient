@@ -54,6 +54,7 @@ namespace EndlessClient.Rendering
         private readonly IGraphicsDeviceRepository _graphicsDeviceRepository;
 
         private readonly List<EventHandler<EventArgs>> _resizeEvents;
+        private readonly Dictionary<EventHandler<EventArgs>, EventHandler<EventArgs>> _windowResizeWrappers;
         private bool _syncing;
         private bool _keepMaximized;
 #if !LINUX && !OSX
@@ -103,9 +104,12 @@ namespace EndlessClient.Rendering
 
         public bool Resizable
         {
-            get => _gameWindowRepository.Window.AllowUserResizing;
+            get => _gameWindowRepository.Window?.AllowUserResizing ?? false;
             set
             {
+                if (_gameWindowRepository.Window == null)
+                    return;
+
                 _gameWindowRepository.Window.AllowUserResizing = value;
                 ApplyStandardWindowChrome();
                 EnsureFormHooks();
@@ -131,12 +135,25 @@ namespace EndlessClient.Rendering
         {
             add
             {
-                _gameWindowRepository.Window.ClientSizeChanged += value;
+                // Suppress Window.ClientSizeChanged while ApplyChanges is running — MonoGame
+                // fires it mid-reset and recreating RenderTarget2Ds then crashes on login maximize.
+                EventHandler<EventArgs> wrapper = (_, e) =>
+                {
+                    if (_syncing)
+                        return;
+                    value(this, e);
+                };
+                _windowResizeWrappers[value] = wrapper;
+                _gameWindowRepository.Window.ClientSizeChanged += wrapper;
                 _resizeEvents.Add(value);
             }
             remove
             {
-                _gameWindowRepository.Window.ClientSizeChanged -= value;
+                if (_windowResizeWrappers.TryGetValue(value, out var wrapper))
+                {
+                    _gameWindowRepository.Window.ClientSizeChanged -= wrapper;
+                    _windowResizeWrappers.Remove(value);
+                }
                 _resizeEvents.Remove(value);
             }
         }
@@ -147,6 +164,7 @@ namespace EndlessClient.Rendering
             _gameWindowRepository = gameWindowRepository;
             _graphicsDeviceRepository = graphicsDeviceRepository;
             _resizeEvents = new List<EventHandler<EventArgs>>();
+            _windowResizeWrappers = new Dictionary<EventHandler<EventArgs>, EventHandler<EventArgs>>();
         }
 
         public void MaximizeWindowed()
@@ -477,14 +495,16 @@ namespace EndlessClient.Rendering
         {
             if (TryGetRealClientSize(out var w, out _))
                 return w;
-            return _gameWindowRepository.Window.ClientBounds.Width;
+            var boundsW = _gameWindowRepository.Window?.ClientBounds.Width ?? 0;
+            return boundsW > 0 ? boundsW : DEFAULT_BACKBUFFER_WIDTH;
         }
 
         private int GetRealClientHeight()
         {
             if (TryGetRealClientSize(out _, out var h))
                 return h;
-            return _gameWindowRepository.Window.ClientBounds.Height;
+            var boundsH = _gameWindowRepository.Window?.ClientBounds.Height ?? 0;
+            return boundsH > 0 ? boundsH : DEFAULT_BACKBUFFER_HEIGHT;
         }
 
         private bool TryGetRealClientSize(out int width, out int height)

@@ -251,14 +251,18 @@ namespace EndlessClient.Rendering.Character
 
         public void SetToCenterScreenPosition()
         {
-            var skinRect = _characterTextures.Skin.SourceRectangle;
+            // Skin can be null briefly during login resize/device reset; never NRE here.
+            var skinWidth = _characterTextures?.Skin?.SourceRectangle.Width ?? _standingSkinWidth;
+            var skinHeight = _characterTextures?.Skin?.SourceRectangle.Height ?? _standingSkinHeight;
+            if (skinWidth <= 0) skinWidth = _standingSkinWidth;
+            if (skinHeight <= 0) skinHeight = _standingSkinHeight;
 
             var xCoord = _clientWindowSizeRepository.Resizable
-                ? (_clientWindowSizeRepository.Width - skinRect.Width) / 2
+                ? (_clientWindowSizeRepository.Width - skinWidth) / 2
                 : 310;
             var yCoord = _clientWindowSizeRepository.Resizable
-                ? (_clientWindowSizeRepository.Height - skinRect.Height) / 2 - 11
-                : (298 - skinRect.Height) / 2 - skinRect.Height / 4 - 3;
+                ? (_clientWindowSizeRepository.Height - skinHeight) / 2 - 11
+                : (298 - skinHeight) / 2 - skinHeight / 4 - 3;
 
             SetAbsoluteScreenPosition(xCoord, yCoord);
         }
@@ -553,16 +557,29 @@ namespace EndlessClient.Rendering.Character
         {
             lock (_rt_locker_)
             {
-                _charRenderTarget?.Dispose();
-                _charRenderTarget = _renderTargetFactory.CreateRenderTarget();
-
-                _rtColorData = new Color[_charRenderTarget.Width * _charRenderTarget.Height];
+                try
+                {
+                    var next = _renderTargetFactory.CreateRenderTarget();
+                    var old = _charRenderTarget;
+                    _charRenderTarget = next;
+                    _rtColorData = new Color[next.Width * next.Height];
+                    old?.Dispose();
+                }
+                catch
+                {
+                    // GraphicsDevice can be mid-reset during maximize/ApplyChanges.
+                    // Keep the previous target; next resize will retry.
+                }
             }
         }
 
         private void RecreateRenderTargetEvent(object sender, EventArgs e)
         {
             RecreateRenderTarget();
+
+            // New RT is empty until the next paperdoll bake — without this flag the
+            // character stays invisible after login maximize / window sync.
+            _textureUpdateRequired = true;
 
             if (_character == _characterProvider.MainCharacter)
                 SetToCenterScreenPosition();

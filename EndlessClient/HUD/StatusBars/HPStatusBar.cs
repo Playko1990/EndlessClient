@@ -47,8 +47,15 @@ namespace EndlessClient.HUD.StatusBars
         {
             get
             {
-                _skillTreeActions.EnsureLoaded();
-                return Math.Max(1, Stats[CharacterStat.MaxHP] + _skillTreeProvider.GetBonuses().MaxHp);
+                try
+                {
+                    _skillTreeActions.EnsureLoaded();
+                    return Math.Max(1, Stats[CharacterStat.MaxHP] + _skillTreeProvider.GetBonuses().MaxHp);
+                }
+                catch
+                {
+                    return Math.Max(1, Stats[CharacterStat.MaxHP]);
+                }
             }
         }
     }

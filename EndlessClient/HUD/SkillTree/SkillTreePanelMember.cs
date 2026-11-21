@@ -36,12 +36,15 @@ namespace EndlessClient.HUD.SkillTree
 
             var pad = HudUiMetrics.Scale(2, resizable);
             var innerWidth = Math.Max(8, DrawArea.Width - pad * 2);
-            var font = HudUiMetrics.ShouldEnlargeHud(resizable) ? Constants.FontSize10 : Constants.FontSize08;
+            var font = HudUiMetrics.PanelLabelFont(resizable);
+            var lineH = HudUiMetrics.Scale(11, resizable);
+            var textTop = HudUiMetrics.Scale(3, resizable);
+            var buttonY = Math.Max(textTop + lineH * 3, DrawArea.Height - HudUiMetrics.Scale(16, resizable));
 
             _nameLabel = new XNALabel(font)
             {
                 AutoSize = false,
-                DrawArea = new Rectangle(pad, pad, innerWidth, HudUiMetrics.Scale(12, resizable)),
+                DrawArea = new Rectangle(pad, textTop, innerWidth, lineH),
                 ForeColor = ColorConstants.LightGrayText,
                 TextAlign = LabelAlignment.MiddleCenter,
                 Text = GetDisplayName(stat)
@@ -51,7 +54,7 @@ namespace EndlessClient.HUD.SkillTree
             _rankLabel = new XNALabel(font)
             {
                 AutoSize = false,
-                DrawArea = new Rectangle(pad, HudUiMetrics.Scale(14, resizable), innerWidth, HudUiMetrics.Scale(12, resizable)),
+                DrawArea = new Rectangle(pad, textTop + lineH, innerWidth, lineH),
                 ForeColor = ColorConstants.LightGrayText,
                 TextAlign = LabelAlignment.MiddleCenter,
                 Text = "Lv 0"
@@ -61,7 +64,7 @@ namespace EndlessClient.HUD.SkillTree
             _bonusLabel = new XNALabel(font)
             {
                 AutoSize = false,
-                DrawArea = new Rectangle(pad, HudUiMetrics.Scale(26, resizable), innerWidth, HudUiMetrics.Scale(12, resizable)),
+                DrawArea = new Rectangle(pad, textTop + lineH * 2, innerWidth, lineH),
                 ForeColor = ColorConstants.LightGrayText,
                 TextAlign = LabelAlignment.MiddleCenter,
                 Text = string.Empty
@@ -72,7 +75,7 @@ namespace EndlessClient.HUD.SkillTree
             var arrowSize = HudUiMetrics.Scale(15, resizable);
             _trainButton = new XNAButton(
                 buttonTexture,
-                new Vector2((DrawArea.Width - arrowSize) / 2f, HudUiMetrics.Scale(36, resizable)),
+                new Vector2((DrawArea.Width - arrowSize) / 2f, buttonY),
                 new Rectangle(215, 386, 19, 15),
                 new Rectangle(234, 386, 19, 15))
             {
@@ -81,7 +84,7 @@ namespace EndlessClient.HUD.SkillTree
             };
             _trainButton.DrawArea = new Rectangle(
                 (DrawArea.Width - arrowSize) / 2,
-                HudUiMetrics.Scale(36, resizable),
+                buttonY,
                 arrowSize,
                 arrowSize);
             _trainButton.ClickArea = new Rectangle(0, 0, arrowSize, arrowSize);
@@ -120,7 +123,7 @@ namespace EndlessClient.HUD.SkillTree
         public static string GetDisplayName(SkillTreeStat stat) => stat switch
         {
             SkillTreeStat.CritChance => "Crit Chance",
-            SkillTreeStat.CritDamage => "Crit Damage",
+            SkillTreeStat.CritDamage => "Crit Dmg",
             SkillTreeStat.MoveSpeed => "Move Speed",
             SkillTreeStat.AttackSpeed => "Atk Speed",
             SkillTreeStat.GoldDrop => "Gold Drop",

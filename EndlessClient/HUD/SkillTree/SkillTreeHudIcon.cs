@@ -167,6 +167,20 @@ namespace EndlessClient.HUD.SkillTree
             }
         }
 
+        private static bool IsBackdropOrFringe(Color c)
+        {
+            // Fully/nearly transparent already handled by caller.
+            // Near-black bake-in from old exports (not outline ink on the tree).
+            if (c.R < 28 && c.G < 28 && c.B < 28 && c.A < 250)
+                return true;
+
+            // Light gray / yellow fringe left by JPG/keying.
+            if (c.R > 175 && c.G > 175 && c.B > 160 && Math.Abs(c.R - c.G) < 24)
+                return true;
+
+            return false;
+        }
+
         private static void BlitCentered(
             Color[] dest,
             int stride,
@@ -193,7 +207,11 @@ namespace EndlessClient.HUD.SkillTree
                 {
                     var srcX = Math.Min(srcWidth - 1, x * srcWidth / destW);
                     var sc = src[srcY * srcWidth + srcX];
-                    if (sc.A == 0)
+                    if (sc.A < 16)
+                        continue;
+
+                    // Ignore leftover backdrop / fringe from the source art so wood chrome shows through.
+                    if (IsBackdropOrFringe(sc))
                         continue;
 
                     var dx = destX0 + x;

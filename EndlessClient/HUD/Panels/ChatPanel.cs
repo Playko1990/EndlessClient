@@ -46,8 +46,12 @@ namespace EndlessClient.HUD.Panels
             _chatProvider = chatProvider;
             _hudControlProvider = hudControlProvider;
 
+            var resizable = clientWindowSizeProvider.Resizable;
+
             //abs coordiantes: 568 309
-            _scrollBar = new ScrollBar(new Vector2(467, 2), new Vector2(16, 97), ScrollBarColors.LightOnMed, _nativeGraphicsManager)
+            var scrollPos = HudUiMetrics.ScalePoint(467, 2, resizable);
+            var scrollSize = HudUiMetrics.ScalePoint(16, 97, resizable);
+            _scrollBar = new ScrollBar(scrollPos, scrollSize, ScrollBarColors.LightOnMed, _nativeGraphicsManager)
             {
                 LinesToRender = 7,
                 Visible = true
@@ -62,16 +66,16 @@ namespace EndlessClient.HUD.Panels
             var largeUnselected = new SpriteSheet(tabTexture, new Rectangle(0, 16, 132, 16));
 
             BackgroundImage = _nativeGraphicsManager.TextureFromResource(GFXTypes.PostLoginUI, 28);
-            DrawArea = HudUiMetrics.ScaledPanelDrawArea(BackgroundImage, clientWindowSizeProvider.Resizable);
+            DrawArea = HudUiMetrics.ScaledPanelDrawArea(BackgroundImage, resizable);
 
             _tabs = new Dictionary<ChatTab, ChatPanelTab>
             {
-                {ChatTab.Local, new ChatPanelTab(_chatProvider, _hudControlProvider, _chatRenderableGenerator, this, _scrollBar, ChatTab.Local, smallSelected, smallUnselected, chatFont) { Visible = true, Active = true } },
-                {ChatTab.Global, new ChatPanelTab(_chatProvider, _hudControlProvider, _chatRenderableGenerator, this, _scrollBar, ChatTab.Global, smallSelected, smallUnselected, chatFont) { Visible = true, } },
-                {ChatTab.Group, new ChatPanelTab(_chatProvider, _hudControlProvider, _chatRenderableGenerator, this, _scrollBar, ChatTab.Group, smallSelected, smallUnselected, chatFont) { Visible = true, } },
-                {ChatTab.System, new ChatPanelTab(_chatProvider, _hudControlProvider, _chatRenderableGenerator, this, _scrollBar, ChatTab.System, smallSelected, smallUnselected, chatFont) { Visible = true, } },
-                {ChatTab.Private1, new ChatPanelTab(_chatProvider, _hudControlProvider, _chatRenderableGenerator, this, _scrollBar, ChatTab.Private1, largeSelected, largeUnselected, chatFont) {Visible = false} },
-                {ChatTab.Private2, new ChatPanelTab(_chatProvider, _hudControlProvider, _chatRenderableGenerator, this, _scrollBar, ChatTab.Private2, largeSelected, largeUnselected, chatFont) {Visible = false } },
+                {ChatTab.Local, new ChatPanelTab(_chatProvider, _hudControlProvider, _chatRenderableGenerator, this, _scrollBar, ChatTab.Local, smallSelected, smallUnselected, chatFont, resizable) { Visible = true, Active = true } },
+                {ChatTab.Global, new ChatPanelTab(_chatProvider, _hudControlProvider, _chatRenderableGenerator, this, _scrollBar, ChatTab.Global, smallSelected, smallUnselected, chatFont, resizable) { Visible = true, } },
+                {ChatTab.Group, new ChatPanelTab(_chatProvider, _hudControlProvider, _chatRenderableGenerator, this, _scrollBar, ChatTab.Group, smallSelected, smallUnselected, chatFont, resizable) { Visible = true, } },
+                {ChatTab.System, new ChatPanelTab(_chatProvider, _hudControlProvider, _chatRenderableGenerator, this, _scrollBar, ChatTab.System, smallSelected, smallUnselected, chatFont, resizable) { Visible = true, } },
+                {ChatTab.Private1, new ChatPanelTab(_chatProvider, _hudControlProvider, _chatRenderableGenerator, this, _scrollBar, ChatTab.Private1, largeSelected, largeUnselected, chatFont, resizable) {Visible = false} },
+                {ChatTab.Private2, new ChatPanelTab(_chatProvider, _hudControlProvider, _chatRenderableGenerator, this, _scrollBar, ChatTab.Private2, largeSelected, largeUnselected, chatFont, resizable) {Visible = false } },
             };
 
             foreach (var tab in _tabs.Values)

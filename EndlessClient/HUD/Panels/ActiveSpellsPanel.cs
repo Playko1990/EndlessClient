@@ -64,8 +64,6 @@ namespace EndlessClient.HUD.Panels
 
         public INativeGraphicsManager NativeGraphicsManager { get; }
 
-        public bool ResizableHud { get; }
-
         public ActiveSpellsPanel(INativeGraphicsManager nativeGraphicsManager,
                                  IStatusLabelSetter statusLabelSetter,
                                  IPlayerInfoProvider playerInfoProvider,
@@ -81,7 +79,6 @@ namespace EndlessClient.HUD.Panels
             : base(clientWindowSizeProvider.Resizable)
         {
             NativeGraphicsManager = nativeGraphicsManager;
-            ResizableHud = clientWindowSizeProvider.Resizable;
             _statusLabelSetter = statusLabelSetter;
             _playerInfoProvider = playerInfoProvider;
             _characterProvider = characterProvider;
@@ -314,11 +311,16 @@ namespace EndlessClient.HUD.Panels
             for (int i = 0; i < 8; ++i)
             {
                 var offset = _functionKeyRow1Source.Width * i;
+                var labelSize = HudUiMetrics.ScalePoint(
+                    _functionKeyRow1Source.Width,
+                    _functionKeyRow1Source.Height,
+                    ResizableHud);
 
                 if (_scrollBar.ScrollOffset == 0)
                 {
+                    var topLeft = DrawPosition + HudUiMetrics.ScalePoint(100 + 45 * i, 8, ResizableHud);
                     _spriteBatch.Draw(_functionKeyLabelSheet,
-                        DrawPosition + new Vector2(100 + 45 * i, 8),
+                        new Rectangle((int)topLeft.X, (int)topLeft.Y, (int)labelSize.X, (int)labelSize.Y),
                         _functionKeyRow1Source.WithPosition((_functionKeyRow1Source.Location + new Point(offset, 0)).ToVector2()),
                         Color.White);
                 }
@@ -326,8 +328,9 @@ namespace EndlessClient.HUD.Panels
                 if (_scrollBar.ScrollOffset < 2)
                 {
                     var yCoord = _scrollBar.ScrollOffset == 0 ? 90 : 38;
+                    var topLeft = DrawPosition + HudUiMetrics.ScalePoint(100 + 45 * i, yCoord, ResizableHud);
                     _spriteBatch.Draw(_functionKeyLabelSheet,
-                        DrawPosition + new Vector2(100 + 45 * i, yCoord),
+                        new Rectangle((int)topLeft.X, (int)topLeft.Y, (int)labelSize.X, (int)labelSize.Y),
                         _functionKeyRow2Source.WithPosition((_functionKeyRow2Source.Location + new Point(offset, 0)).ToVector2()),
                         Color.White);
                 }

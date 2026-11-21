@@ -16,9 +16,12 @@ namespace EndlessClient.HUD.Panels
 
         public bool IsBeingDragged => _dragging.HasValue;
 
+        public bool ResizableHud { get; }
+
         public DraggableHudPanel(bool enableDragging)
         {
             _enableDragging = enableDragging;
+            ResizableHud = enableDragging;
         }
 
         protected override bool HandleMouseDown(IXNAControl control, MouseEventArgs eventArgs)

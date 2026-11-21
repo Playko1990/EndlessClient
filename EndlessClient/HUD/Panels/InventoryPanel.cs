@@ -67,8 +67,6 @@ namespace EndlessClient.HUD.Panels
 
         public INativeGraphicsManager NativeGraphicsManager { get; }
 
-        public bool ResizableHud => _clientWindowSizeProvider.Resizable;
-
         public int SlotPixelSize => HudUiMetrics.InventorySlotSize(_clientWindowSizeProvider.Resizable);
 
         public InventoryPanel(INativeGraphicsManager nativeGraphicsManager,

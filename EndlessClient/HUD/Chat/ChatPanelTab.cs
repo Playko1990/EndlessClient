@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using EndlessClient.ControlSets;
+using EndlessClient.HUD;
 using EndlessClient.HUD.Controls;
 using EndlessClient.HUD.Panels;
 using EndlessClient.Rendering.Chat;
@@ -26,6 +27,7 @@ namespace EndlessClient.HUD.Chat
         private readonly ScrollBar _scrollBar;
         private readonly ISpriteSheet _tabSheetSelected, _tabSheetUnselected;
         private readonly BitmapFont _chatFont;
+        private readonly bool _resizable;
 
         private readonly IXNAButton _closeButton, _tab;
         private readonly IXNALabel _label;
@@ -68,7 +70,8 @@ namespace EndlessClient.HUD.Chat
                             ChatTab whichTab,
                             ISpriteSheet tabSheetSelected,
                             ISpriteSheet tabSheetUnselected,
-                            BitmapFont chatFont)
+                            BitmapFont chatFont,
+                            bool resizable = false)
         {
             _chatProvider = chatProvider;
             _hudControlProvider = hudControlProvider;
@@ -80,6 +83,7 @@ namespace EndlessClient.HUD.Chat
             _tabSheetSelected = tabSheetSelected;
             _tabSheetUnselected = tabSheetUnselected;
             _chatFont = chatFont;
+            _resizable = resizable;
 
             DrawArea = GetTabClickableArea();
 
@@ -89,21 +93,21 @@ namespace EndlessClient.HUD.Chat
 
             if (Tab == ChatTab.Private1)
             {
-                _closeButton = new ClickableArea(new Rectangle(3, 3, 11, 11));
+                _closeButton = new ClickableArea(HudUiMetrics.ScaleRectangle(new Rectangle(3, 3, 11, 11), resizable));
                 _closeButton.OnMouseDown += (_, _) => CloseTab();
                 _closeButton.SetParentControl(this);
             }
             else if (Tab == ChatTab.Private2)
             {
-                _closeButton = new ClickableArea(new Rectangle(3, 3, 11, 11));
+                _closeButton = new ClickableArea(HudUiMetrics.ScaleRectangle(new Rectangle(3, 3, 11, 11), resizable));
                 _closeButton.OnMouseDown += (_, _) => CloseTab();
                 _closeButton.SetParentControl(this);
             }
 
-            _label = new XNALabel(Constants.FontSize08)
+            _label = new XNALabel(HudUiMetrics.ShouldEnlargeHud(resizable) ? Constants.FontSize10 : Constants.FontSize08)
             {
                 Text = GetTabTextLabel(),
-                DrawPosition = new Vector2(16, 2)
+                DrawPosition = HudUiMetrics.ScalePoint(16, 2, resizable)
             };
             _label.SetParentControl(this);
 
@@ -122,8 +126,9 @@ namespace EndlessClient.HUD.Chat
 
         public void HandleRightClick(MouseEventArgs eventArgs)
         {
+            var lineHeight = HudUiMetrics.Scale(13, _resizable);
             var clickedYRelativeToTopOfPanel = eventArgs.Position.Y - _parentPanel.DrawAreaWithParentOffset.Y;
-            var clickedChatRow = (int)Math.Round(clickedYRelativeToTopOfPanel / 13.0) - 1;
+            var clickedChatRow = (int)Math.Round(clickedYRelativeToTopOfPanel / (double)lineHeight) - 1;
 
             if (clickedChatRow >= 0 && _scrollBar.ScrollOffset + clickedChatRow < _cachedChat.Count)
             {
@@ -212,7 +217,7 @@ namespace EndlessClient.HUD.Chat
 
         private Rectangle GetTabClickableArea()
         {
-            return Tab switch
+            var native = Tab switch
             {
                 ChatTab.Private1 => new Rectangle(23, 102, 132, 16),
                 ChatTab.Private2 => new Rectangle(156, 102, 132, 16),
@@ -222,6 +227,7 @@ namespace EndlessClient.HUD.Chat
                 ChatTab.System => new Rectangle(289 + 44 * ((int)Tab - 2), 102, 43, 16),
                 _ => throw new ArgumentOutOfRangeException(nameof(Tab), Tab, null),
             };
+            return HudUiMetrics.ScaleRectangle(native, _resizable);
         }
 
         private string GetTabTextLabel()

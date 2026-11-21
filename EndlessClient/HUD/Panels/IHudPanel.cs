@@ -18,6 +18,11 @@ namespace EndlessClient.HUD.Panels
 
         bool IsBeingDragged { get; }
 
+        /// <summary>
+        /// True when HUD chrome uses the enlarged resizable layout.
+        /// </summary>
+        bool ResizableHud { get; }
+
         event Action DragCompleted;
     }
 }

@@ -167,6 +167,23 @@ namespace EndlessClient.HUD.SkillTree
             }
         }
 
+        private static bool IsTreeInk(Color c)
+        {
+            // Black / dark outline
+            if (c.R < 45 && c.G < 45 && c.B < 45)
+                return true;
+
+            // Forest canopy greens
+            if (c.G > c.R + 8 && c.G > c.B + 8 && c.G > 40)
+                return true;
+
+            // Trunk tan / brown
+            if (c.R > 90 && c.R > c.B + 20 && c.G > 50 && c.G < c.R + 25)
+                return true;
+
+            return false;
+        }
+
         private static void BlitCentered(
             Color[] dest,
             int stride,
@@ -193,7 +210,12 @@ namespace EndlessClient.HUD.SkillTree
                 {
                     var srcX = Math.Min(srcWidth - 1, x * srcWidth / destW);
                     var sc = src[srcY * srcWidth + srcX];
-                    if (sc.A == 0)
+                    if (sc.A < 200)
+                        continue;
+
+                    // Keep only canopy green, trunk brown, and black outline —
+                    // drop muddy fringe / leftover photo-artifact pixels.
+                    if (!IsTreeInk(sc))
                         continue;
 
                     var dx = destX0 + x;
@@ -201,22 +223,7 @@ namespace EndlessClient.HUD.SkillTree
                     if (dx < offsetX || dy < offsetY || dx >= offsetX + buttonWidth || dy >= offsetY + buttonHeight)
                         continue;
 
-                    var di = dy * stride + dx;
-                    if (sc.A >= 250)
-                    {
-                        dest[di] = new Color(sc.R, sc.G, sc.B, (byte)255);
-                    }
-                    else
-                    {
-                        var dc = dest[di];
-                        var a = sc.A / 255f;
-                        var inv = 1f - a;
-                        dest[di] = new Color(
-                            (int)(sc.R * a + dc.R * inv),
-                            (int)(sc.G * a + dc.G * inv),
-                            (int)(sc.B * a + dc.B * inv),
-                            255);
-                    }
+                    dest[dy * stride + dx] = new Color(sc.R, sc.G, sc.B, (byte)255);
                 }
             }
         }

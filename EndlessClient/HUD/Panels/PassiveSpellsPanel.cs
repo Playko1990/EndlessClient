@@ -19,11 +19,13 @@ namespace EndlessClient.HUD.Panels
 {
     public class PassiveSpellsPanel : DraggableHudPanel
     {
-        // Native coords for the left-rail header well (above the name at y=50).
-        // Larger than a normal selected-spell glyph (~36px) so the tree fills the box.
-        private const int HeaderIconNativeSize = 42;
-        private const int HeaderIconNativeX = 29;
-        private const int HeaderIconNativeY = 6;
+        // Left-rail header well (above the "Skill Tree" label at y=50).
+        // Icon is centered inside this box.
+        private const int HeaderWellNativeX = 9;
+        private const int HeaderWellNativeY = 4;
+        private const int HeaderWellNativeW = 81;
+        private const int HeaderWellNativeH = 44;
+        private const int HeaderIconNativeSize = 36;
 
         private readonly INativeGraphicsManager _nativeGraphicsManager;
         private readonly ITrainingController _trainingController;
@@ -168,10 +170,14 @@ namespace EndlessClient.HUD.Panels
             if (_headerIcon == null)
                 return;
 
-            // Larger than a normal selected-spell glyph so it fills the left header well.
+            // Center the cleaned tree symbol in the left-rail header well.
+            var wellX = DrawAreaWithParentOffset.X + HudUiMetrics.Scale(HeaderWellNativeX, _resizable);
+            var wellY = DrawAreaWithParentOffset.Y + HudUiMetrics.Scale(HeaderWellNativeY, _resizable);
+            var wellW = HudUiMetrics.Scale(HeaderWellNativeW, _resizable);
+            var wellH = HudUiMetrics.Scale(HeaderWellNativeH, _resizable);
             var size = HudUiMetrics.Scale(HeaderIconNativeSize, _resizable);
-            var x = DrawAreaWithParentOffset.X + HudUiMetrics.Scale(HeaderIconNativeX, _resizable);
-            var y = DrawAreaWithParentOffset.Y + HudUiMetrics.Scale(HeaderIconNativeY, _resizable);
+            var x = wellX + (wellW - size) / 2;
+            var y = wellY + (wellH - size) / 2;
             var dst = new Rectangle(x, y, size, size);
 
             _spriteBatch.Draw(_headerIcon, dst, Color.White);

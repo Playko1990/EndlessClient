@@ -16,8 +16,9 @@ namespace EndlessClient.Network
 {
     public class UnknownEntitiesRequester : GameComponent
     {
-        private const int UPPER_SEE_DISTANCE = 12;
-        private const int LOWER_SEE_DISTANCE = 15;
+        // Match MapRenderDistanceCalculator so NPCs/players stay for the whole on-screen map,
+        // not the classic ~12–15 tile Manhattan cull that hid them on large windows.
+        private const int BASE_SEE_DISTANCE = 22;
 
         private const int REQUEST_INTERVAL_MS = 1000;
 
@@ -81,8 +82,16 @@ namespace EndlessClient.Network
                 .Concat(_currentMapStateRepository.NPCs)
                 .Concat(_currentMapStateRepository.MapItems);
 
-            var seeDistanceUpper = (int)(_clientWindowSizeProvider.Height / 480.0 * UPPER_SEE_DISTANCE);
-            var seeDistanceLower = (int)(_clientWindowSizeProvider.Height / 480.0 * LOWER_SEE_DISTANCE);
+            // Same viewport scaling as MapRenderDistanceCalculator (iso Y uses Width/320).
+            var scaleX = _clientWindowSizeProvider.Resizable
+                ? _clientWindowSizeProvider.Width / 640.0
+                : 1.0;
+            var scaleY = _clientWindowSizeProvider.Resizable
+                ? _clientWindowSizeProvider.Width / 320.0
+                : 1.0;
+
+            var seeDistanceX = (int)Math.Ceiling(scaleX * BASE_SEE_DISTANCE);
+            var seeDistanceY = (int)Math.Ceiling(scaleY * BASE_SEE_DISTANCE);
 
             var entitiesToRemove = new List<IMapEntity>();
             foreach (var entity in entities)
@@ -90,15 +99,9 @@ namespace EndlessClient.Network
                 var xDiff = Math.Abs(mc.X - entity.X);
                 var yDiff = Math.Abs(mc.Y - entity.Y);
 
-                if (entity.X < mc.X || entity.Y < mc.Y)
-                {
-                    if (xDiff + yDiff > seeDistanceUpper)
-                        entitiesToRemove.Add(entity);
-                }
-                else if (xDiff + yDiff > seeDistanceLower)
-                {
+                // Chebyshev — keep anyone whose tile is still inside the drawn map bounds.
+                if (xDiff > seeDistanceX || yDiff > seeDistanceY)
                     entitiesToRemove.Add(entity);
-                }
             }
 
             foreach (var entity in entitiesToRemove)

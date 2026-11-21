@@ -15,7 +15,8 @@ namespace EndlessClient.Rendering.MapEntityRenderers
 
         public override MapRenderLayer RenderLayer => MapRenderLayer.Item;
 
-        protected override int RenderDistance => 16;
+        // Match map view bounds / UnknownEntitiesRequester so ground items draw for the full screen.
+        protected override int RenderDistance => 22;
 
         public MapItemLayerRenderer(ICharacterProvider characterProvider,
                                     IGridDrawCoordinateCalculator gridDrawCoordinateCalculator,

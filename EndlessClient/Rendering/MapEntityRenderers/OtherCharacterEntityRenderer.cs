@@ -26,7 +26,8 @@ namespace EndlessClient.Rendering.MapEntityRenderers
 
         public override MapRenderLayer RenderLayer => MapRenderLayer.OtherCharacters;
 
-        protected override int RenderDistance => 16;
+        // Match map view bounds / UnknownEntitiesRequester so other players draw for the full screen.
+        protected override int RenderDistance => 22;
 
         protected override bool ElementExistsAt(int row, int col)
         {

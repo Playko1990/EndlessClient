@@ -83,7 +83,8 @@ namespace EndlessClient.HUD.Chat
             _chatFont = chatFont;
             _resizable = resizable;
 
-            DrawArea = GetTabClickableArea();
+            var uiScale = PanelUiScale();
+            DrawArea = GetTabClickableArea(uiScale);
 
             _tab = new ClickableArea(new Rectangle(0, 0, DrawArea.Width, DrawArea.Height));
             _tab.OnMouseDown += (_, _) => SelectThisTab();
@@ -91,7 +92,7 @@ namespace EndlessClient.HUD.Chat
 
             if (Tab == ChatTab.Private1 || Tab == ChatTab.Private2)
             {
-                var closeRect = HudUiMetrics.ScaleRectangle(new Rectangle(3, 3, 11, 11), _resizable);
+                var closeRect = HudUiMetrics.ScaleRectangle(new Rectangle(3, 3, 11, 11), uiScale);
                 _closeButton = new ClickableArea(closeRect);
                 _closeButton.OnMouseDown += (_, _) => CloseTab();
                 _closeButton.SetParentControl(this);
@@ -100,7 +101,7 @@ namespace EndlessClient.HUD.Chat
             _label = new XNALabel(HudUiMetrics.ChatPanelFont(_resizable))
             {
                 Text = GetTabTextLabel(),
-                DrawPosition = HudUiMetrics.ScalePoint(16, 2, _resizable)
+                DrawPosition = HudUiMetrics.ScalePoint(16, 2, uiScale)
             };
             _label.SetParentControl(this);
 
@@ -119,7 +120,7 @@ namespace EndlessClient.HUD.Chat
 
         public void HandleRightClick(MouseEventArgs eventArgs)
         {
-            var lineHeight = HudUiMetrics.ChatLineHeight(_resizable);
+            var lineHeight = HudUiMetrics.Scale(HudUiMetrics.NativeChatLineHeight, PanelUiScale());
             var clickedYRelativeToTopOfPanel = eventArgs.Position.Y - _parentPanel.DrawAreaWithParentOffset.Y;
             var clickedChatRow = (int)Math.Round(clickedYRelativeToTopOfPanel / (double)lineHeight) - 1;
 
@@ -187,10 +188,11 @@ namespace EndlessClient.HUD.Chat
             {
                 _spriteBatch.End();
 
+                var uiScale = PanelUiScale();
                 foreach (var (ndx, renderable) in _renderables.Skip(_scrollBar.ScrollOffset).Take(_scrollBar.LinesToRender).Select((r, i) => (i, r)))
                 {
                     renderable.DisplayIndex = ndx;
-                    renderable.Render(_parentPanel, _spriteBatch, _chatFont, HudUiMetrics.UiScale(_resizable));
+                    renderable.Render(_parentPanel, _spriteBatch, _chatFont, uiScale);
                 }
 
                 _spriteBatch.Begin();
@@ -208,8 +210,13 @@ namespace EndlessClient.HUD.Chat
             _closeButtonClicked = false;
         }
 
-        private Rectangle GetTabClickableArea()
+        private float PanelUiScale() =>
+            HudUiMetrics.ScaleFromPanel(_parentPanel.BackgroundImage, _parentPanel.DrawArea, _resizable);
+
+        private Rectangle GetTabClickableArea(float uiScale)
         {
+            // Native tab strip is at y=102. Pin to the bottom of the stretched panel
+            // so scr/glb/grp/sys stay on the dark chrome even if texture metrics drift.
             var native = Tab switch
             {
                 ChatTab.Private1 => new Rectangle(23, 102, 132, 16),
@@ -221,7 +228,10 @@ namespace EndlessClient.HUD.Chat
                 _ => throw new ArgumentOutOfRangeException(nameof(Tab), Tab, null),
             };
 
-            return HudUiMetrics.ScaleRectangle(native, _resizable);
+            var scaled = HudUiMetrics.ScaleRectangle(native, uiScale);
+            var parentHeight = _parentPanel.DrawArea.Height;
+            var y = Math.Max(0, parentHeight - scaled.Height);
+            return new Rectangle(scaled.X, y, scaled.Width, scaled.Height);
         }
 
         private string GetTabTextLabel()

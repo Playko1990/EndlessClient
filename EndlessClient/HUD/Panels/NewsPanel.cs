@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using EndlessClient.Rendering;
 using EndlessClient.Rendering.Chat;
@@ -42,17 +43,6 @@ namespace EndlessClient.HUD.Panels
             _newsProvider = newsProvider;
             _resizable = clientWindowSizeProvider.Resizable;
 
-            var resizable = _resizable;
-            var scrollPos = HudUiMetrics.ScalePoint(467, 20, resizable);
-            var scrollSize = HudUiMetrics.ScalePoint(16, 97, resizable);
-            _scrollBar = new ScrollBar(scrollPos, scrollSize, ScrollBarColors.LightOnMed, _nativeGraphicsManager, HudUiMetrics.UiScale(resizable))
-            {
-                LinesToRender = HudUiMetrics.ChatLinesToRender(resizable),
-                Visible = true
-            };
-            _scrollBar.SetParentControl(this);
-            SetScrollWheelHandler(_scrollBar);
-
             _chatRenderables = new List<IChatRenderable>();
             _chatFont = chatFont;
 
@@ -61,7 +51,19 @@ namespace EndlessClient.HUD.Panels
             _cachedLinesToRender = -1;
 
             BackgroundImage = _nativeGraphicsManager.TextureFromResource(GFXTypes.PostLoginUI, 48);
-            DrawArea = HudUiMetrics.ScaledPanelDrawArea(BackgroundImage, resizable);
+            DrawArea = HudUiMetrics.ScaledPanelDrawArea(BackgroundImage, _resizable);
+
+            // News scrolls with the mouse wheel only (no in-panel arrows).
+            var uiScale = HudUiMetrics.ScaleFromPanel(BackgroundImage, DrawArea, _resizable);
+            var scrollPos = HudUiMetrics.ScalePoint(467, 20, uiScale);
+            var scrollSize = HudUiMetrics.ScalePoint(16, 97, uiScale);
+            _scrollBar = new ScrollBar(scrollPos, scrollSize, ScrollBarColors.LightOnMed, _nativeGraphicsManager, uiScale, showArrowButtons: false)
+            {
+                LinesToRender = HudUiMetrics.ChatLinesToRender(_resizable),
+                Visible = false
+            };
+            _scrollBar.SetParentControl(this);
+            SetScrollWheelHandler(_scrollBar);
         }
 
         public override void Initialize()
@@ -89,10 +91,7 @@ namespace EndlessClient.HUD.Panels
                 SetupRenderablesFromCachedValues(renderables);
 
                 if (_firstTime && renderables.Count > _scrollBar.LinesToRender)
-                {
-                    _scrollBar.SetDownArrowFlashSpeed(500);
                     _firstTime = false;
-                }
             }
 
             base.OnUpdateControl(gameTime);
@@ -105,7 +104,7 @@ namespace EndlessClient.HUD.Panels
             if (_chatRenderables == null)
                 return;
 
-            var uiScale = HudUiMetrics.UiScale(_resizable);
+            var uiScale = HudUiMetrics.ScaleFromPanel(BackgroundImage, DrawArea, _resizable);
             foreach (var renderable in _chatRenderables)
                 renderable.Render(this, _spriteBatch, _chatFont, uiScale);
         }

@@ -28,7 +28,6 @@ namespace EndlessClient.HUD.Panels
         private readonly IHudControlProvider _hudControlProvider;
 
         private readonly ScrollBar _scrollBar;
-        private readonly XNAButton _panelCycleUp, _panelCycleDown;
         private readonly Dictionary<ChatTab, ChatPanelTab> _tabs;
 
         public bool ResizableHud { get; }
@@ -56,14 +55,11 @@ namespace EndlessClient.HUD.Panels
             BackgroundImage = _nativeGraphicsManager.TextureFromResource(GFXTypes.PostLoginUI, 28);
             DrawArea = HudUiMetrics.ScaledPanelDrawArea(BackgroundImage, ResizableHud);
 
-            var scrollPos = HudUiMetrics.ScalePoint(467, 2, ResizableHud);
-            var scrollSize = HudUiMetrics.ScalePoint(16, 97, ResizableHud);
-            (_panelCycleUp, _panelCycleDown) = HudPanelCycleArrows.Create(
-                _nativeGraphicsManager, scrollPos, scrollSize, ResizableHud,
-                InGameStates.Chat, hudStateActions, sfxPlayer);
-
-            var (innerPos, innerSize) = HudPanelCycleArrows.InsetScrollBarArea(scrollPos, scrollSize, ResizableHud);
-            _scrollBar = new ScrollBar(innerPos, innerSize, ScrollBarColors.LightOnMed, _nativeGraphicsManager)
+            // Chat is the only docked panel that keeps in-panel scroll arrows.
+            var uiScale = HudUiMetrics.ScaleFromPanel(BackgroundImage, DrawArea, ResizableHud);
+            var scrollPos = HudUiMetrics.ScalePoint(467, 2, uiScale);
+            var scrollSize = HudUiMetrics.ScalePoint(16, 97, uiScale);
+            _scrollBar = new ScrollBar(scrollPos, scrollSize, ScrollBarColors.LightOnMed, _nativeGraphicsManager, uiScale)
             {
                 LinesToRender = HudUiMetrics.ChatLinesToRender(ResizableHud),
                 Visible = true
@@ -96,11 +92,6 @@ namespace EndlessClient.HUD.Panels
 
         public override void Initialize()
         {
-            _panelCycleUp.Initialize();
-            _panelCycleUp.SetParentControl(this);
-            _panelCycleDown.Initialize();
-            _panelCycleDown.SetParentControl(this);
-
             _scrollBar.Initialize();
 
             foreach (var tab in _tabs.Values)

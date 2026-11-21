@@ -74,6 +74,37 @@ namespace EndlessClient.HUD
         public static float UiScale(bool resizable) =>
             ShouldEnlargeHud(resizable) ? PanelScale : 1f;
 
+        /// <summary>
+        /// Prefer the panel's actual stretched size over the resizable flag so child
+        /// controls stay aligned when DrawArea and config get out of sync.
+        /// </summary>
+        public static float ScaleFromPanel(Texture2D background, Rectangle drawArea, bool resizable)
+        {
+            if (background != null && background.Height > 0 && drawArea.Height > 0)
+            {
+                var fromSize = (float)drawArea.Height / background.Height;
+                if (fromSize > 1.01f)
+                    return fromSize;
+            }
+
+            return UiScale(resizable);
+        }
+
+        public static Vector2 ScalePoint(float x, float y, float scale) =>
+            new Vector2(x * scale, y * scale);
+
+        public static Rectangle ScaleRectangle(Rectangle rect, float scale)
+        {
+            if (Math.Abs(scale - 1f) < 0.01f)
+                return rect;
+
+            return new Rectangle(
+                (int)Math.Round(rect.X * scale),
+                (int)Math.Round(rect.Y * scale),
+                Math.Max(1, (int)Math.Round(rect.Width * scale)),
+                Math.Max(1, (int)Math.Round(rect.Height * scale)));
+        }
+
         public static Rectangle ScaledPanelDrawArea(Texture2D background, bool resizable)
         {
             var width = background.Width;
@@ -88,22 +119,16 @@ namespace EndlessClient.HUD
         }
 
         public static Vector2 ScalePoint(float x, float y, bool resizable) =>
-            ShouldEnlargeHud(resizable) ? new Vector2(x * PanelScale, y * PanelScale) : new Vector2(x, y);
+            ScalePoint(x, y, UiScale(resizable));
 
-        public static Rectangle ScaleRectangle(Rectangle rect, bool resizable)
-        {
-            if (!ShouldEnlargeHud(resizable))
-                return rect;
-
-            return new Rectangle(
-                (int)(rect.X * PanelScale),
-                (int)(rect.Y * PanelScale),
-                (int)(rect.Width * PanelScale),
-                (int)(rect.Height * PanelScale));
-        }
+        public static Rectangle ScaleRectangle(Rectangle rect, bool resizable) =>
+            ScaleRectangle(rect, UiScale(resizable));
 
         public static int Scale(int value, bool resizable) =>
             ShouldEnlargeHud(resizable) ? (int)(value * PanelScale) : value;
+
+        public static int Scale(int value, float scale) =>
+            Math.Max(1, (int)Math.Round(value * scale));
 
         /// <summary>
         /// Scale only width/height of a control whose position is already correct.

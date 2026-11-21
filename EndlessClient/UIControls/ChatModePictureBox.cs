@@ -45,8 +45,9 @@ namespace EndlessClient.UIControls
             _endMuteTime = Option.None<DateTime>();
 
             Texture = nativeGraphicsManager.TextureFromResource(GFXTypes.PostLoginUI, 31);
+            StretchMode = StretchMode.CenterInFrame;
 
-            var iconHeight = Texture.Height / 8 - 2;
+            var iconHeight = FrameHeight;
             SourceRectangle = new Rectangle(0, 0, Texture.Width, iconHeight);
 
             if (clientWindowSizeProvider.Resizable)
@@ -60,6 +61,8 @@ namespace EndlessClient.UIControls
                 DrawArea = new Rectangle(16, 309, Texture.Width, iconHeight);
             }
         }
+
+        private int FrameHeight => Math.Max(1, Texture.Height / 8 - 2);
 
         public void SetMuted(DateTime endMuteTime)
         {
@@ -93,13 +96,20 @@ namespace EndlessClient.UIControls
 
         private void PlaceOnChatBar()
         {
-            // Sit on the left of the chat entry (Public/Private/…) — not a third bar above it.
+            // Public/Private/… mode icon lives on the left of the chat entry itself.
+            // Do not draw it as a separate strip above the bar (that was the "3rd bar").
             var chat = HudUiMetrics.ResizableChatBarArea(
                 _clientWindowSizeProvider.Width,
                 _clientWindowSizeProvider.Height);
-            var iconHeight = Texture.Height / 8 - 2;
+
+            var iconHeight = FrameHeight;
+            var iconWidth = Texture.Width;
+            // Fit inside the taller chat row without stretching into a second bar.
+            if (iconHeight > chat.Height - 4)
+                iconHeight = Math.Max(1, chat.Height - 4);
+
             var y = chat.Y + Math.Max(0, (chat.Height - iconHeight) / 2);
-            DrawArea = new Rectangle(chat.X + 4, y, Texture.Width, iconHeight);
+            DrawArea = new Rectangle(chat.X + 4, y, iconWidth, iconHeight);
         }
 
         private bool AtLeastOneCharTypedOrDeleted()
@@ -114,7 +124,7 @@ namespace EndlessClient.UIControls
             if (!SourceRectangle.HasValue)
                 throw new InvalidOperationException("SourceRectangle is expected to have a value.");
 
-            SourceRectangle = new Rectangle(0, (int)((int)mode * (Texture.Height / 8f)), Texture.Width, Texture.Height / 8 - 2);
+            SourceRectangle = new Rectangle(0, (int)((int)mode * (Texture.Height / 8f)), Texture.Width, FrameHeight);
         }
 
         private ChatTextBox ChatTextBox => _hudControlProvider.GetComponent<ChatTextBox>(HudControlIdentifier.ChatTextBox);

@@ -65,27 +65,24 @@ namespace EndlessClient.HUD
         public const int NativeScrollArrowSize = 15;
         public const int NativeScrollArrowWidth = 16;
 
-        // Resizable bottom chrome: thicker chat entry, shortened so it doesn't
-        // span edge-to-edge. Chat-mode (Public/Private/…) sits ON the left of
-        // this bar — never as a separate strip above it.
+        // Resizable bottom chrome: thicker chat entry, centered inset so it
+        // doesn't span edge-to-edge. Chat-mode (Public/Private/…) sits ON the
+        // left of this same bar — never as a separate strip above it.
         public const int ResizableChatBarHeight = 28;
         public const int ResizableStatusBarHeight = 16;
         public const int ResizableBottomChromeGap = 2;
-        public const int ResizableChatBarLeft = 8;
-        public const int ResizableChatBarRightMargin = 120;
+        public const int ResizableChatBarSideInset = 96;
         public const int ResizableChatBarMaxWidth = 920;
         public const int ResizableChatModeReserve = 44;
 
         public static Rectangle ResizableChatBarArea(int windowWidth, int windowHeight)
         {
-            var rightMargin = Math.Max(ResizableChatBarRightMargin, windowWidth / 6);
-            var width = windowWidth - ResizableChatBarLeft - rightMargin;
+            var width = Math.Max(420, windowWidth - ResizableChatBarSideInset * 2);
             width = Math.Min(width, ResizableChatBarMaxWidth);
-            width = Math.Max(420, width);
-            if (ResizableChatBarLeft + width > windowWidth - 8)
-                width = Math.Max(420, windowWidth - ResizableChatBarLeft - 8);
+            width = Math.Min(width, Math.Max(420, (int)(windowWidth * 0.72)));
+            var x = (windowWidth - width) / 2;
             var y = windowHeight - ResizableStatusBarHeight - ResizableBottomChromeGap - ResizableChatBarHeight;
-            return new Rectangle(ResizableChatBarLeft, y, width, ResizableChatBarHeight);
+            return new Rectangle(x, y, width, ResizableChatBarHeight);
         }
 
         public static Rectangle ResizableStatusBarArea(int windowWidth, int windowHeight)

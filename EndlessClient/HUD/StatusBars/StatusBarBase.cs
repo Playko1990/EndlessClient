@@ -25,7 +25,10 @@ namespace EndlessClient.HUD.StatusBars
 
         protected abstract int StatusBarIndex { get; }
 
-        protected float BarScale => _clientWindowSizeProvider.Resizable ? HudUiMetrics.StatusBarScale : 1f;
+        protected float BarScale =>
+            HudUiMetrics.ShouldEnlargeHud(_clientWindowSizeProvider.Resizable, _clientWindowSizeProvider.Width)
+                ? HudUiMetrics.StatusBarScale
+                : 1f;
 
         protected int ScaledBarWidth => (int)(_sourceRectangleArea.Width * BarScale);
         protected int ScaledBarHeight => (int)(_sourceRectangleArea.Height * BarScale);

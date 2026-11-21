@@ -3,12 +3,13 @@ using Microsoft.Xna.Framework;
 namespace EndlessClient.Rendering
 {
     /// <summary>
-    /// Slight world zoom used when drawing the map/characters so the view is not as close-up.
-    /// Values below 1 zoom out; keep close to 1 so gameplay feel stays familiar.
+    /// World zoom used when drawing the map/characters.
+    /// Values below 1 zoom out (show more of the map).
     /// </summary>
     public static class WorldCamera
     {
-        public const float Zoom = 0.88f;
+        // ~30% zoom-out so the cabin / map reads clearly less close-up.
+        public const float Zoom = 0.70f;
 
         public static Matrix GetTransform(int viewportWidth, int viewportHeight)
         {

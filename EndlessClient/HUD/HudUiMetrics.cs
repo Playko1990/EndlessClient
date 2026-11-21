@@ -1,3 +1,4 @@
+using EndlessClient.Rendering;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
@@ -8,19 +9,23 @@ namespace EndlessClient.HUD
     /// </summary>
     public static class HudUiMetrics
     {
-        public const float PanelScale = 1.35f;
-        public const float StatusBarScale = 1.7f;
+        // Large enough that the size jump is obvious on a maximized desktop window.
+        public const float PanelScale = 1.85f;
+        public const float StatusBarScale = 3.0f;
 
         public const int NativeInventorySlotSize = 26;
 
+        public static bool ShouldEnlargeHud(bool resizable, int windowWidth = 0) =>
+            resizable || windowWidth > ClientWindowSizeRepository.DEFAULT_BACKBUFFER_WIDTH;
+
         public static int InventorySlotSize(bool resizable) =>
-            resizable ? (int)(NativeInventorySlotSize * PanelScale) : NativeInventorySlotSize;
+            ShouldEnlargeHud(resizable) ? (int)(NativeInventorySlotSize * PanelScale) : NativeInventorySlotSize;
 
         public static Rectangle ScaledPanelDrawArea(Texture2D background, bool resizable)
         {
             var width = background.Width;
             var height = background.Height;
-            if (resizable)
+            if (ShouldEnlargeHud(resizable))
             {
                 width = (int)(width * PanelScale);
                 height = (int)(height * PanelScale);
@@ -30,11 +35,11 @@ namespace EndlessClient.HUD
         }
 
         public static Vector2 ScalePoint(float x, float y, bool resizable) =>
-            resizable ? new Vector2(x * PanelScale, y * PanelScale) : new Vector2(x, y);
+            ShouldEnlargeHud(resizable) ? new Vector2(x * PanelScale, y * PanelScale) : new Vector2(x, y);
 
         public static Rectangle ScaleRectangle(Rectangle rect, bool resizable)
         {
-            if (!resizable)
+            if (!ShouldEnlargeHud(resizable))
                 return rect;
 
             return new Rectangle(
@@ -45,6 +50,6 @@ namespace EndlessClient.HUD
         }
 
         public static int Scale(int value, bool resizable) =>
-            resizable ? (int)(value * PanelScale) : value;
+            ShouldEnlargeHud(resizable) ? (int)(value * PanelScale) : value;
     }
 }

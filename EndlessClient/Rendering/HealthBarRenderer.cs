@@ -13,6 +13,9 @@ namespace EndlessClient.Rendering
     {
         private const int DigitWidth = 9;
 
+        // Drawn above characters/NPCs — 2x native size for readability on large windows.
+        private const float DisplayScale = 2f;
+
         private readonly IMapActor _parentReference;
 
         private readonly SpriteBatch _spriteBatch;
@@ -100,38 +103,58 @@ namespace EndlessClient.Rendering
                 _doneCallback?.Invoke();
             }
 
+            var barW = _healthBarBackgroundSource.Width * DisplayScale;
+            var barH = _healthBarBackgroundSource.Height * DisplayScale;
+
             _healthBarPosition = new Vector2(
-                _parentReference.HorizontalCenter - _healthBarBackgroundSource.Width / 2f,
+                _parentReference.HorizontalCenter - barW / 2f,
                 _parentReference.NameLabelY);
 
             if (_isMiss)
             {
-                var xPos = _parentReference.HorizontalCenter - (_numberSourceRectangles[0].Width / 2f);
-                var yPos = _parentReference.NameLabelY - _frameOffset - _healthBarBackgroundSource.Height * 2f;
+                var missW = _numberSourceRectangles[0].Width * DisplayScale;
+                var xPos = _parentReference.HorizontalCenter - missW / 2f;
+                var yPos = _parentReference.NameLabelY - _frameOffset * DisplayScale - barH * 2f;
                 _damageCounterPosition = new Vector2(xPos, yPos);
             }
             else
             {
                 var digitCount = _numberSourceRectangles.Count;
-                var xPos = _parentReference.HorizontalCenter - (digitCount * DigitWidth / 2f);
-                var yPos = _parentReference.NameLabelY - _frameOffset - _healthBarBackgroundSource.Height * 2f;
+                var xPos = _parentReference.HorizontalCenter - (digitCount * DigitWidth * DisplayScale / 2f);
+                var yPos = _parentReference.NameLabelY - _frameOffset * DisplayScale - barH * 2f;
                 _damageCounterPosition = new Vector2(xPos, yPos);
             }
         }
 
         public override void Draw(GameTime gameTime)
         {
-            _spriteBatch.Begin();
+            _spriteBatch.Begin(samplerState: SamplerState.PointClamp);
 
             var numberNdx = 0;
             foreach (var numberSource in _numberSourceRectangles)
             {
-                _spriteBatch.Draw(_sourceTexture, _damageCounterPosition + new Vector2(numberNdx * DigitWidth, 0), numberSource, Color.White);
+                var dest = new Rectangle(
+                    (int)(_damageCounterPosition.X + numberNdx * DigitWidth * DisplayScale),
+                    (int)_damageCounterPosition.Y,
+                    (int)(numberSource.Width * DisplayScale),
+                    (int)(numberSource.Height * DisplayScale));
+                _spriteBatch.Draw(_sourceTexture, dest, numberSource, Color.White);
                 numberNdx++;
             }
 
-            _spriteBatch.Draw(_sourceTexture, _healthBarPosition, _healthBarBackgroundSource, Color.White);
-            _spriteBatch.Draw(_sourceTexture, _healthBarPosition, _healthBarSourceRectangle, Color.White);
+            var barBgDest = new Rectangle(
+                (int)_healthBarPosition.X,
+                (int)_healthBarPosition.Y,
+                (int)(_healthBarBackgroundSource.Width * DisplayScale),
+                (int)(_healthBarBackgroundSource.Height * DisplayScale));
+            _spriteBatch.Draw(_sourceTexture, barBgDest, _healthBarBackgroundSource, Color.White);
+
+            var barFillDest = new Rectangle(
+                (int)_healthBarPosition.X,
+                (int)_healthBarPosition.Y,
+                (int)(_healthBarSourceRectangle.Width * DisplayScale),
+                (int)(_healthBarSourceRectangle.Height * DisplayScale));
+            _spriteBatch.Draw(_sourceTexture, barFillDest, _healthBarSourceRectangle, Color.White);
 
             _spriteBatch.End();
         }

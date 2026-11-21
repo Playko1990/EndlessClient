@@ -927,7 +927,7 @@ namespace EndlessClient.HUD.Controls
         {
             return new ChatModePictureBox(_nativeGraphicsManager, _clientWindowSizeRepository, _chatModeCalculator, _hudControlProvider)
             {
-                // On top of the chat entry so Public/Private stays readable on the left.
+                // Beside (left of) the chat entry so Public/Private does not cover typed text.
                 DrawOrder = HUD_CONTROL_LAYER + 25
             };
         }

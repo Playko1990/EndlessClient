@@ -66,23 +66,39 @@ namespace EndlessClient.HUD
         public const int NativeScrollArrowWidth = 16;
 
         // Resizable bottom chrome: thicker chat entry, centered inset so it
-        // doesn't span edge-to-edge. Chat-mode (Public/Private/…) sits ON the
-        // left of this same bar — never as a separate strip above it.
+        // doesn't span edge-to-edge. Chat-mode (Public/Private/…) sits OUTSIDE
+        // to the left of the entry so it never covers typed text.
         public const int ResizableChatBarHeight = 28;
         public const int ResizableStatusBarHeight = 16;
         public const int ResizableBottomChromeGap = 2;
         public const int ResizableChatBarSideInset = 96;
         public const int ResizableChatBarMaxWidth = 920;
-        public const int ResizableChatModeReserve = 44;
+        // Width reserved left of the chat entry for the mode icon (Public/…).
+        public const int ResizableChatModeOutsideWidth = 52;
+        public const int ResizableChatModeGap = 4;
 
         public static Rectangle ResizableChatBarArea(int windowWidth, int windowHeight)
         {
-            var width = Math.Max(420, windowWidth - ResizableChatBarSideInset * 2);
+            var modeSlot = ResizableChatModeOutsideWidth + ResizableChatModeGap;
+            var width = Math.Max(420, windowWidth - ResizableChatBarSideInset * 2 - modeSlot);
             width = Math.Min(width, ResizableChatBarMaxWidth);
-            width = Math.Min(width, Math.Max(420, (int)(windowWidth * 0.72)));
-            var x = (windowWidth - width) / 2;
+            width = Math.Min(width, Math.Max(420, (int)(windowWidth * 0.72) - modeSlot));
+            // Center the [mode][chat] pair as a unit.
+            var pairWidth = modeSlot + width;
+            var pairX = (windowWidth - pairWidth) / 2;
+            var x = pairX + modeSlot;
             var y = windowHeight - ResizableStatusBarHeight - ResizableBottomChromeGap - ResizableChatBarHeight;
             return new Rectangle(x, y, width, ResizableChatBarHeight);
+        }
+
+        public static Rectangle ResizableChatModeArea(int windowWidth, int windowHeight, int iconWidth, int iconHeight)
+        {
+            var chat = ResizableChatBarArea(windowWidth, windowHeight);
+            var h = Math.Min(iconHeight, Math.Max(1, chat.Height - 4));
+            var w = Math.Min(iconWidth, ResizableChatModeOutsideWidth);
+            var x = chat.X - ResizableChatModeGap - w;
+            var y = chat.Y + Math.Max(0, (chat.Height - h) / 2);
+            return new Rectangle(x, y, w, h);
         }
 
         public static Rectangle ResizableStatusBarArea(int windowWidth, int windowHeight)

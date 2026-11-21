@@ -25,7 +25,7 @@ namespace EndlessClient.UIControls
 
         private readonly Rectangle? _leftSide, _background, _rightSide;
 
-        // Friend/ignore icons sit on the right; chat-mode (Public/…) sits on the left.
+        // Friend/ignore icons sit on the right; chat-mode sits outside to the left of this bar.
         private const int ResizableRightIconReserve = 52;
         private const int ResizableLeftCapPad = 12;
 
@@ -139,8 +139,8 @@ namespace EndlessClient.UIControls
             DrawArea = HudUiMetrics.ResizableChatBarArea(
                 _clientWindowSizeProvider.Width,
                 _clientWindowSizeProvider.Height);
-            // Leave room for the chat-mode icon on the left of this same bar.
-            LeftPadding = ResizableLeftCapPad + HudUiMetrics.ResizableChatModeReserve;
+            // Mode icon is outside this bar; only need a small left cap pad for text.
+            LeftPadding = ResizableLeftCapPad;
             MaxWidth = Math.Max(40, DrawArea.Width - LeftPadding - ResizableRightIconReserve);
         }
 

@@ -53,8 +53,8 @@ namespace EndlessClient.UIControls
             if (clientWindowSizeProvider.Resizable)
             {
                 KeepInClientWindowBounds = false;
-                PlaceOnChatBar();
-                clientWindowSizeProvider.GameWindowSizeChanged += (_, _) => PlaceOnChatBar();
+                PlaceBesideChatBar();
+                clientWindowSizeProvider.GameWindowSizeChanged += (_, _) => PlaceBesideChatBar();
             }
             else
             {
@@ -94,22 +94,14 @@ namespace EndlessClient.UIControls
             base.OnUpdateControl(gameTime);
         }
 
-        private void PlaceOnChatBar()
+        private void PlaceBesideChatBar()
         {
-            // Public/Private/… mode icon lives on the left of the chat entry itself.
-            // Do not draw it as a separate strip above the bar (that was the "3rd bar").
-            var chat = HudUiMetrics.ResizableChatBarArea(
+            // Outside the text entry — left of the bar — so Public/Private never covers typed words.
+            DrawArea = HudUiMetrics.ResizableChatModeArea(
                 _clientWindowSizeProvider.Width,
-                _clientWindowSizeProvider.Height);
-
-            var iconHeight = FrameHeight;
-            var iconWidth = Texture.Width;
-            // Fit inside the taller chat row without stretching into a second bar.
-            if (iconHeight > chat.Height - 4)
-                iconHeight = Math.Max(1, chat.Height - 4);
-
-            var y = chat.Y + Math.Max(0, (chat.Height - iconHeight) / 2);
-            DrawArea = new Rectangle(chat.X + 4, y, iconWidth, iconHeight);
+                _clientWindowSizeProvider.Height,
+                Texture.Width,
+                FrameHeight);
         }
 
         private bool AtLeastOneCharTypedOrDeleted()

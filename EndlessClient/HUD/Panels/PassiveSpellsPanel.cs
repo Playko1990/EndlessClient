@@ -7,7 +7,6 @@ using EndlessClient.Dialogs.Factories;
 using EndlessClient.HUD;
 using EndlessClient.HUD.SkillTree;
 using EndlessClient.Rendering;
-using EndlessClient.UIControls;
 using EOLib.Domain.Character;
 using EOLib.Graphics;
 using EOLib.Shared;
@@ -26,12 +25,10 @@ namespace EndlessClient.HUD.Panels
 
         private readonly IXNALabel _titleLabel;
         private readonly IXNALabel _availablePointsLabel;
-        private readonly ScrollBar _scrollBar;
         private readonly List<SkillTreePanelMember> _members;
 
         private int _cachedAvailablePoints = int.MinValue;
         private int _cachedTotalSpent = int.MinValue;
-        private int _cachedScrollOffset;
         private bool _confirmedTraining;
 
         public PassiveSpellsPanel(INativeGraphicsManager nativeGraphicsManager,
@@ -72,30 +69,18 @@ namespace EndlessClient.HUD.Panels
             };
             _availablePointsLabel.SetParentControl(this);
 
-            _scrollBar = new ScrollBar(
-                HudUiMetrics.ScalePoint(467, 20, resizable),
-                HudUiMetrics.ScalePoint(16, 97, resizable),
-                ScrollBarColors.LightOnMed,
-                _nativeGraphicsManager)
-            {
-                LinesToRender = 6,
-                Visible = true
-            };
-            _scrollBar.SetParentControl(this);
-            SetScrollWheelHandler(_scrollBar);
-
+            // One skill per grid box, filling left-to-right / top-to-bottom from slot 0.
             _members = Enum.GetValues(typeof(SkillTreeStat))
                 .Cast<SkillTreeStat>()
-                .Select(stat =>
+                .Select((stat, index) =>
                 {
-                    var member = new SkillTreePanelMember(_nativeGraphicsManager, stat, resizable);
+                    var member = new SkillTreePanelMember(_nativeGraphicsManager, stat, index, resizable);
                     member.TrainClicked += HandleTrainClicked;
                     member.SetParentControl(this);
                     return member;
                 })
                 .ToList();
 
-            _scrollBar.UpdateDimensions(_members.Count);
             _skillTreeActions.EnsureLoaded();
         }
 
@@ -103,12 +88,10 @@ namespace EndlessClient.HUD.Panels
         {
             _titleLabel.Initialize();
             _availablePointsLabel.Initialize();
-            _scrollBar.Initialize();
 
             foreach (var member in _members)
                 member.Initialize();
 
-            UpdateMemberVisibility();
             RefreshDisplays(force: true);
 
             base.Initialize();
@@ -122,12 +105,6 @@ namespace EndlessClient.HUD.Panels
             var spent = _skillTreeProvider.TotalSpent;
             if (available != _cachedAvailablePoints || spent != _cachedTotalSpent)
                 RefreshDisplays(force: false);
-
-            if (_cachedScrollOffset != _scrollBar.ScrollOffset)
-            {
-                _cachedScrollOffset = _scrollBar.ScrollOffset;
-                UpdateMemberVisibility();
-            }
 
             if (available <= 0)
                 _confirmedTraining = false;
@@ -158,17 +135,6 @@ namespace EndlessClient.HUD.Panels
             {
                 var rank = _skillTreeProvider.GetRank(member.Stat);
                 member.UpdateDisplay(rank, SkillTreePanelMember.FormatBonus(member.Stat, rank), available > 0);
-            }
-        }
-
-        private void UpdateMemberVisibility()
-        {
-            for (int i = 0; i < _members.Count; i++)
-            {
-                var visible = i >= _scrollBar.ScrollOffset && i < _scrollBar.ScrollOffset + _scrollBar.LinesToRender;
-                _members[i].Visible = visible;
-                if (visible)
-                    _members[i].DisplayIndex = i - _scrollBar.ScrollOffset;
             }
         }
 

@@ -284,7 +284,20 @@ namespace EndlessClient.Rendering.Character
             {
                 lock (_rt_locker_)
                 {
-                    spriteBatch.Draw(_charRenderTarget, new Vector2(0, GetSteppingStoneOffset(Character.RenderProperties)), GetAlphaColor());
+                    // Blit only the character footprint (+padding for weapon/hair swings).
+                    // Drawing the full-window RT could leave stray paperdoll pixels that
+                    // looked like floating "character sheets" above the player.
+                    const int pad = 64;
+                    var srcX = Math.Max(0, DrawArea.X - pad);
+                    var srcY = Math.Max(0, DrawArea.Y - pad);
+                    var srcW = Math.Min(_charRenderTarget.Width - srcX, DrawArea.Width + pad * 2);
+                    var srcH = Math.Min(_charRenderTarget.Height - srcY, DrawArea.Height + pad * 2);
+                    if (srcW > 0 && srcH > 0)
+                    {
+                        var source = new Rectangle(srcX, srcY, srcW, srcH);
+                        var dest = new Vector2(srcX, srcY + GetSteppingStoneOffset(Character.RenderProperties));
+                        spriteBatch.Draw(_charRenderTarget, dest, source, GetAlphaColor());
+                    }
                 }
             }
 

@@ -64,6 +64,8 @@ namespace EndlessClient.HUD.Panels
 
         public INativeGraphicsManager NativeGraphicsManager { get; }
 
+        public bool ResizableHud { get; }
+
         public ActiveSpellsPanel(INativeGraphicsManager nativeGraphicsManager,
                                  IStatusLabelSetter statusLabelSetter,
                                  IPlayerInfoProvider playerInfoProvider,
@@ -79,6 +81,7 @@ namespace EndlessClient.HUD.Panels
             : base(clientWindowSizeProvider.Resizable)
         {
             NativeGraphicsManager = nativeGraphicsManager;
+            ResizableHud = clientWindowSizeProvider.Resizable;
             _statusLabelSetter = statusLabelSetter;
             _playerInfoProvider = playerInfoProvider;
             _characterProvider = characterProvider;
@@ -99,9 +102,11 @@ namespace EndlessClient.HUD.Panels
             _functionKeyRow1Source = new Rectangle(148, 51, 18, 13);
             _functionKeyRow2Source = new Rectangle(148 + 18 * 8, 51, 18, 13);
 
+            var resizable = clientWindowSizeProvider.Resizable;
+
             _selectedSpellName = new XNALabel(Constants.FontSize08pt5)
             {
-                DrawArea = new Rectangle(9, 50, 81, 13),
+                DrawArea = HudUiMetrics.ScaleRectangle(new Rectangle(9, 50, 81, 13), resizable),
                 Visible = false,
                 Text = "",
                 AutoSize = false,
@@ -111,7 +116,7 @@ namespace EndlessClient.HUD.Panels
 
             _selectedSpellLevel = new XNALabel(Constants.FontSize08pt5)
             {
-                DrawArea = new Rectangle(32, 78, 42, 15),
+                DrawArea = HudUiMetrics.ScaleRectangle(new Rectangle(32, 78, 42, 15), resizable),
                 Visible = true,
                 Text = "0",
                 AutoSize = false,
@@ -122,7 +127,7 @@ namespace EndlessClient.HUD.Panels
             _skillTreeActions.EnsureLoaded();
             _totalSkillPoints = new XNALabel(Constants.FontSize08pt5)
             {
-                DrawArea = new Rectangle(32, 96, 42, 15),
+                DrawArea = HudUiMetrics.ScaleRectangle(new Rectangle(32, 96, 42, 15), resizable),
                 Visible = true,
                 Text = _skillTreeActions.GetAvailablePoints().ToString(),
                 AutoSize = false,
@@ -130,7 +135,9 @@ namespace EndlessClient.HUD.Panels
                 ForeColor = ColorConstants.LightGrayText,
             };
 
-            _scrollBar = new ScrollBar(new Vector2(467, 2), new Vector2(16, 115), ScrollBarColors.LightOnMed, NativeGraphicsManager)
+            var scrollPos = HudUiMetrics.ScalePoint(467, 2, resizable);
+            var scrollSize = HudUiMetrics.ScalePoint(16, 115, resizable);
+            _scrollBar = new ScrollBar(scrollPos, scrollSize, ScrollBarColors.LightOnMed, NativeGraphicsManager)
             {
                 LinesToRender = 2
             };

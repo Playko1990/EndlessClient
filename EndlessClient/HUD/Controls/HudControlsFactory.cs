@@ -199,14 +199,9 @@ namespace EndlessClient.HUD.Controls
             _hudChromeMinimized = false;
             if (_clientWindowSizeRepository.Resizable)
             {
+                // Always pin the docked HUD panel to bottom-center. Saved Dock:X/Y from
+                // earlier sessions left the panel mid-screen after the size increase.
                 _dockPanelPosition = GetDefaultDockPanelPosition();
-                var panelConfig = new IniReader(Constants.PanelLayoutFile);
-                if (panelConfig.Load() &&
-                    panelConfig.GetValue("PANELS", "Dock:X", out int dockX) &&
-                    panelConfig.GetValue("PANELS", "Dock:Y", out int dockY))
-                {
-                    _dockPanelPosition = new Vector2(dockX, dockY);
-                }
             }
 
             var controls = new Dictionary<HudControlIdentifier, IGameComponent>
@@ -551,26 +546,10 @@ namespace EndlessClient.HUD.Controls
                     if (_hudChromeMinimized)
                         return;
 
-                    // Keep the dock on-screen after resize; panels share one position.
-                    if (_clientWindowSizeRepository.Width < _dockPanelPosition.X + retPanel.DrawArea.Width)
-                        _dockPanelPosition = new Vector2(_clientWindowSizeRepository.Width - retPanel.DrawArea.Width, _dockPanelPosition.Y);
-                    if (_clientWindowSizeRepository.Height < _dockPanelPosition.Y + retPanel.DrawArea.Height)
-                        _dockPanelPosition = new Vector2(_dockPanelPosition.X, _clientWindowSizeRepository.Height - retPanel.DrawArea.Height);
-
+                    // Keep the docked panel bottom-center after every resize.
+                    _dockPanelPosition = GetDefaultDockPanelPosition();
                     ApplyDockPositionToChrome();
                 };
-
-                // Ignore per-panel saved layouts that stack multiple windows; one shared dock.
-                var panelConfig = new IniReader(Constants.PanelLayoutFile);
-                if (panelConfig.Load())
-                {
-                    if (panelConfig.GetValue("PANELS", "Dock:X", out int x) &&
-                        panelConfig.GetValue("PANELS", "Dock:Y", out int y))
-                    {
-                        _dockPanelPosition = new Vector2(x, y);
-                        retPanel.DrawPosition = _dockPanelPosition;
-                    }
-                }
             }
 
             return retPanel;
@@ -597,7 +576,8 @@ namespace EndlessClient.HUD.Controls
 
                 panel.DragCompleted += () =>
                 {
-                    _dockPanelPosition = panel.DrawPosition;
+                    // Snap back to bottom-center so the enlarged panel stays docked.
+                    _dockPanelPosition = GetDefaultDockPanelPosition();
                     ApplyDockPositionToChrome();
                     SaveDockPosition();
                 };

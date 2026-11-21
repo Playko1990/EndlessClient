@@ -59,13 +59,14 @@ namespace EndlessClient.HUD.Panels
             };
             _titleLabel.SetParentControl(this);
 
+            // Same left-rail "skp" slot as Active Spells (panel art already prints the label).
             _availablePointsLabel = new XNALabel(Constants.FontSize08pt5)
             {
                 AutoSize = false,
-                DrawArea = HudUiMetrics.ScaleRectangle(new Rectangle(300, 4, 150, 13), resizable),
+                DrawArea = HudUiMetrics.ScaleRectangle(new Rectangle(32, 96, 42, 15), resizable),
                 ForeColor = ColorConstants.LightGrayText,
-                TextAlign = LabelAlignment.MiddleRight,
-                Text = "sk.pts: 0"
+                TextAlign = LabelAlignment.MiddleLeft,
+                Text = "0"
             };
             _availablePointsLabel.SetParentControl(this);
 
@@ -129,7 +130,7 @@ namespace EndlessClient.HUD.Panels
 
             _cachedAvailablePoints = available;
             _cachedTotalSpent = spent;
-            _availablePointsLabel.Text = $"sk.pts: {available}";
+            _availablePointsLabel.Text = available.ToString();
 
             foreach (var member in _members)
             {

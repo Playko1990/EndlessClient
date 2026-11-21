@@ -1,3 +1,4 @@
+using EndlessClient.HUD;
 using EndlessClient.HUD.Panels;
 using EOLib.Domain.Chat;
 using EOLib.Extensions;
@@ -13,6 +14,7 @@ namespace EndlessClient.Rendering.Chat
     {
         private const int ICON_GRAPHIC_X_OFF = 3;
         private const int CHAT_MESSAGE_X_OFF = 20;
+        private const int NativeLineHeight = 13;
 
         private readonly INativeGraphicsManager _nativeGraphicsManager;
 
@@ -57,9 +59,15 @@ namespace EndlessClient.Rendering.Chat
         {
             spriteBatch.Begin();
 
-            var pos = parentPanel.DrawPosition + new Vector2(0, DisplayIndex * 13);
+            var resizable = parentPanel.ResizableHud;
+            var lineHeight = HudUiMetrics.Scale(NativeLineHeight, resizable);
+            var iconX = HudUiMetrics.Scale(ICON_GRAPHIC_X_OFF, resizable);
+            var messageX = HudUiMetrics.Scale(CHAT_MESSAGE_X_OFF, resizable);
+            var headerY = HudUiMetrics.Scale(HeaderYOffset, resizable);
+
+            var pos = parentPanel.DrawPosition + new Vector2(0, DisplayIndex * lineHeight);
             spriteBatch.Draw(_nativeGraphicsManager.TextureFromResource(GFXTypes.PostLoginUI, 32, true),
-                             new Vector2(pos.X + ICON_GRAPHIC_X_OFF, pos.Y + HeaderYOffset),
+                             new Vector2(pos.X + iconX, pos.Y + headerY),
                              GetChatIconRectangle(Data.Icon),
                              Color.White);
 
@@ -71,7 +79,7 @@ namespace EndlessClient.Rendering.Chat
 
             spriteBatch.DrawString(chatFont,
                                    strToDraw,
-                                   new Vector2(pos.X + CHAT_MESSAGE_X_OFF, pos.Y + HeaderYOffset),
+                                   new Vector2(pos.X + messageX, pos.Y + headerY),
                                    Data.ChatColor.ToColor());
 
             spriteBatch.End();

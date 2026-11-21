@@ -40,8 +40,12 @@ namespace EndlessClient.HUD.Panels
             _chatRenderableGenerator = chatRenderableGenerator;
             _newsProvider = newsProvider;
 
+            var resizable = clientWindowSizeProvider.Resizable;
+
             //abs coordiantes: 568 331
-            _scrollBar = new ScrollBar(new Vector2(467, 20), new Vector2(16, 97), ScrollBarColors.LightOnMed, _nativeGraphicsManager)
+            var scrollPos = HudUiMetrics.ScalePoint(467, 20, resizable);
+            var scrollSize = HudUiMetrics.ScalePoint(16, 97, resizable);
+            _scrollBar = new ScrollBar(scrollPos, scrollSize, ScrollBarColors.LightOnMed, _nativeGraphicsManager)
             {
                 LinesToRender = 7,
                 Visible = true
@@ -57,7 +61,7 @@ namespace EndlessClient.HUD.Panels
             _cachedLinesToRender = -1;
 
             BackgroundImage = _nativeGraphicsManager.TextureFromResource(GFXTypes.PostLoginUI, 48);
-            DrawArea = HudUiMetrics.ScaledPanelDrawArea(BackgroundImage, clientWindowSizeProvider.Resizable);
+            DrawArea = HudUiMetrics.ScaledPanelDrawArea(BackgroundImage, resizable);
         }
 
         public override void Initialize()

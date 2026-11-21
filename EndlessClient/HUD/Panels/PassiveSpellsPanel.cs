@@ -19,11 +19,10 @@ namespace EndlessClient.HUD.Panels
 {
     public class PassiveSpellsPanel : DraggableHudPanel
     {
-        // Native coords for the left-rail header well (above the name at y=50).
-        // Larger than a normal selected-spell glyph (~36px) so the tree fills the box.
-        private const int HeaderIconNativeSize = 42;
-        private const int HeaderIconNativeX = 29;
-        private const int HeaderIconNativeY = 6;
+        // Left-rail header well: title on top, tree icon at the bottom above lvl/skp.
+        private const int HeaderIconNativeSize = 36;
+        private const int HeaderIconNativeX = 32;
+        private const int HeaderIconNativeY = 38;
 
         private readonly INativeGraphicsManager _nativeGraphicsManager;
         private readonly ITrainingController _trainingController;
@@ -63,11 +62,11 @@ namespace EndlessClient.HUD.Panels
 
             var font = HudUiMetrics.PanelLabelFont(_resizable);
 
-            // Title + enlarged tree symbol live in the left-rail header box (not the panel corners).
+            // Title sits above the tree in the left-rail header box.
             _headerNameLabel = new XNALabel(font)
             {
                 AutoSize = false,
-                DrawArea = HudUiMetrics.ScaleRectangle(new Rectangle(9, 50, 81, 13), _resizable),
+                DrawArea = HudUiMetrics.ScaleRectangle(new Rectangle(9, 8, 81, 13), _resizable),
                 ForeColor = ColorConstants.LightGrayText,
                 TextAlign = LabelAlignment.MiddleCenter,
                 Text = "Skill Tree",

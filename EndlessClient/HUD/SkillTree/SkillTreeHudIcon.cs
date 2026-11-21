@@ -201,22 +201,11 @@ namespace EndlessClient.HUD.SkillTree
                     if (dx < offsetX || dy < offsetY || dx >= offsetX + buttonWidth || dy >= offsetY + buttonHeight)
                         continue;
 
-                    var di = dy * stride + dx;
-                    if (sc.A >= 250)
-                    {
-                        dest[di] = new Color(sc.R, sc.G, sc.B, (byte)255);
-                    }
-                    else
-                    {
-                        var dc = dest[di];
-                        var a = sc.A / 255f;
-                        var inv = 1f - a;
-                        dest[di] = new Color(
-                            (int)(sc.R * a + dc.R * inv),
-                            (int)(sc.G * a + dc.G * inv),
-                            (int)(sc.B * a + dc.B * inv),
-                            255);
-                    }
+                    // Hard pixel blit only — skip fringe/AA so no whitish halo on wood chrome.
+                    if (sc.A < 250)
+                        continue;
+
+                    dest[dy * stride + dx] = new Color(sc.R, sc.G, sc.B, (byte)255);
                 }
             }
         }

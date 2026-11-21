@@ -110,7 +110,12 @@ namespace EndlessClient.Rendering
             // again (already baked into DrawArea), which shoved bars off to the side.
             var drawArea = _parentReference.DrawArea;
             var centerX = drawArea.X + drawArea.Width / 2f;
-            var barTop = drawArea.Y - barH - 4f;
+
+            // Sit fully above the head: use the higher of name-label Y and sprite top
+            // (smaller Y), then lift by bar height + clearance so 2x bars don't cover hair/neck.
+            const float BarClearance = 14f;
+            var anchorTop = Math.Min(_parentReference.NameLabelY, drawArea.Y);
+            var barTop = anchorTop - barH - BarClearance;
 
             _healthBarPosition = new Vector2(centerX - barW / 2f, barTop);
 

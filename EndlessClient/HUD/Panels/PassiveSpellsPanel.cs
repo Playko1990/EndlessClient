@@ -18,11 +18,14 @@ namespace EndlessClient.HUD.Panels
 {
     public class PassiveSpellsPanel : DraggableHudPanel
     {
-        // Native coords for the left-rail header well (above the name at y=50).
-        // Larger than a normal selected-spell glyph (~36px) so the tree fills the box.
-        private const int HeaderIconNativeSize = 42;
-        private const int HeaderIconNativeX = 29;
-        private const int HeaderIconNativeY = 6;
+        // Left-rail header well on PostLoginUI #62: icon sits above the name row (~y=50),
+        // with lvl/skp slots below. Keep the tree square and centered in that well.
+        private const int HeaderWellNativeX = 9;
+        private const int HeaderWellNativeY = 4;
+        private const int HeaderWellNativeWidth = 81;
+        private const int HeaderWellNativeHeight = 44;
+        private const int HeaderTitleNativeY = 50;
+        private const int HeaderTitleNativeHeight = 13;
 
         private readonly INativeGraphicsManager _nativeGraphicsManager;
         private readonly ITrainingController _trainingController;
@@ -60,11 +63,13 @@ namespace EndlessClient.HUD.Panels
 
             var font = HudUiMetrics.PanelLabelFont(_resizable);
 
-            // Title + enlarged tree symbol live in the left-rail header box (not the panel corners).
+            // Title sits under the tree inside the left-rail header box (not panel corners).
             _headerNameLabel = new XNALabel(font)
             {
                 AutoSize = false,
-                DrawArea = HudUiMetrics.ScaleRectangle(new Rectangle(9, 50, 81, 13), _resizable),
+                DrawArea = HudUiMetrics.ScaleRectangle(
+                    new Rectangle(HeaderWellNativeX, HeaderTitleNativeY, HeaderWellNativeWidth, HeaderTitleNativeHeight),
+                    _resizable),
                 ForeColor = ColorConstants.LightGrayText,
                 TextAlign = LabelAlignment.MiddleCenter,
                 Text = "Skill Tree",
@@ -153,10 +158,14 @@ namespace EndlessClient.HUD.Panels
             if (_headerIcon == null)
                 return;
 
-            // Larger than a normal selected-spell glyph so it fills the left header well.
-            var size = HudUiMetrics.Scale(HeaderIconNativeSize, _resizable);
-            var x = DrawAreaWithParentOffset.X + HudUiMetrics.Scale(HeaderIconNativeX, _resizable);
-            var y = DrawAreaWithParentOffset.Y + HudUiMetrics.Scale(HeaderIconNativeY, _resizable);
+            // Center a nearly well-filling square icon above the title row.
+            var well = HudUiMetrics.ScaleRectangle(
+                new Rectangle(HeaderWellNativeX, HeaderWellNativeY, HeaderWellNativeWidth, HeaderWellNativeHeight),
+                _resizable);
+            var pad = HudUiMetrics.Scale(2, _resizable);
+            var size = Math.Max(1, Math.Min(well.Width, well.Height) - pad * 2);
+            var x = DrawAreaWithParentOffset.X + well.X + (well.Width - size) / 2;
+            var y = DrawAreaWithParentOffset.Y + well.Y + (well.Height - size) / 2;
             var dst = new Rectangle(x, y, size, size);
 
             _spriteBatch.Draw(_headerIcon, dst, Color.White);

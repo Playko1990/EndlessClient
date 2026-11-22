@@ -45,18 +45,10 @@ namespace EndlessClient.Rendering.NPC
         // Opaque-body mid-X / top-Y within the current frame (cached per frame/direction).
         private int _opaqueCenterInFrame = -1;
         private int _opaqueTopInFrame;
-        private int _opaqueMinXInFrame;
-        private int _opaqueMaxXInFrame;
-        private int _opaqueMinYInFrame;
-        private int _opaqueMaxYInFrame;
-        private int _opaqueFrameWidth;
         private NPCFrame _opaqueCenterFrame;
         private EODirection _opaqueCenterDirection;
         private int _opaqueCenterGraphic = -1;
 
-        // Small pad around the opaque body so clicks on the silhouette still count,
-        // without a huge empty box around tall quest frames.
-        private const int InteractionBoundsPad = 6;
 
         private XNALabel _nameLabel;
         private IChatBubble _chatBubble;
@@ -183,54 +175,8 @@ namespace EndlessClient.Rendering.NPC
 
         public Rectangle GetInteractionBounds()
         {
-            // Click target = visible body only (same rule for quest, shop, combat, every facing).
-            // Do not use the full DrawArea — EO frames are tall with empty padding, which made
-            // quest NPCs feel like they had a huge click box.
-            var opaque = GetOpaqueScreenBounds();
-            if (opaque.IsEmpty)
-            {
-                // Fallback: bottom of the frame where feet/body usually sit.
-                var h = Math.Max(24, DrawArea.Height / 3);
-                opaque = new Rectangle(DrawArea.X, DrawArea.Bottom - h, DrawArea.Width, h);
-            }
-
-            opaque.Inflate(InteractionBoundsPad, InteractionBoundsPad);
-            return opaque;
-        }
-
-        private Rectangle GetOpaqueScreenBounds()
-        {
-            if (_opaqueCenterInFrame < 0 || _opaqueFrameWidth <= 0 || DrawArea.IsEmpty)
-                return Rectangle.Empty;
-
-            var minX = _opaqueMinXInFrame;
-            var maxX = _opaqueMaxXInFrame;
-            var minY = _opaqueMinYInFrame;
-            var maxY = _opaqueMaxYInFrame;
-            if (maxX < minX || maxY < minY)
-                return Rectangle.Empty;
-
-            // Draw flips Up/Right — mirror opaque X into DrawArea space.
-            var flipped = NPC.IsFacing(EODirection.Up, EODirection.Right);
-            int screenMinX, screenMaxX;
-            if (flipped)
-            {
-                screenMinX = DrawArea.X + (_opaqueFrameWidth - 1 - maxX);
-                screenMaxX = DrawArea.X + (_opaqueFrameWidth - 1 - minX);
-            }
-            else
-            {
-                screenMinX = DrawArea.X + minX;
-                screenMaxX = DrawArea.X + maxX;
-            }
-
-            var screenMinY = DrawArea.Y + minY;
-            var screenMaxY = DrawArea.Y + maxY;
-            return new Rectangle(
-                screenMinX,
-                screenMinY,
-                Math.Max(1, screenMaxX - screenMinX + 1),
-                Math.Max(1, screenMaxY - screenMinY + 1));
+            // Click box = exact drawn sprite rectangle (same size as the NPC on screen).
+            return DrawArea;
         }
 
         public void DrawToSpriteBatch(SpriteBatch spriteBatch)
@@ -346,16 +292,10 @@ namespace EndlessClient.Rendering.NPC
             var fallbackTop = Math.Max(0, h - 48);
             var fallbackMid = Math.Max(0, w / 2);
 
-            _opaqueFrameWidth = w;
-
             if (frameTexture == null || w <= 0 || h <= 0)
             {
                 _opaqueCenterInFrame = fallbackMid;
                 _opaqueTopInFrame = fallbackTop;
-                _opaqueMinXInFrame = 0;
-                _opaqueMaxXInFrame = Math.Max(0, w - 1);
-                _opaqueMinYInFrame = fallbackTop;
-                _opaqueMaxYInFrame = Math.Max(fallbackTop, h - 1);
                 return;
             }
 
@@ -387,17 +327,8 @@ namespace EndlessClient.Rendering.NPC
             {
                 _opaqueCenterInFrame = fallbackMid;
                 _opaqueTopInFrame = fallbackTop;
-                _opaqueMinXInFrame = 0;
-                _opaqueMaxXInFrame = Math.Max(0, w - 1);
-                _opaqueMinYInFrame = fallbackTop;
-                _opaqueMaxYInFrame = Math.Max(fallbackTop, h - 1);
                 return;
             }
-
-            _opaqueMinXInFrame = minX;
-            _opaqueMaxXInFrame = maxX;
-            _opaqueMinYInFrame = minY;
-            _opaqueMaxYInFrame = maxY;
 
             var mid = (minX + maxX + 1) / 2;
             _opaqueTopInFrame = minY;

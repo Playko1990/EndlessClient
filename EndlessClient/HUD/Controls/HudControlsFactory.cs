@@ -96,10 +96,7 @@ namespace EndlessClient.HUD.Controls
         private bool _hudChromeMinimized;
         private XNAButton _hudMinimizeButton;
         private XNAButton _hudRestoreButton;
-        private XNAButton _windowSizeButton;
-        private Texture2D _windowSizeButtonSheet;
         private DraggableHudPanel _lastVisibleDockPanel;
-        private bool _windowIsDisplaySized = true;
 
         public HudControlsFactory(IHudButtonController hudButtonController,
                                   IHudPanelFactory hudPanelFactory,
@@ -249,7 +246,7 @@ namespace EndlessClient.HUD.Controls
 
                 {HudControlIdentifier.HudMinimizeButton, CreateHudMinimizeButton()},
                 {HudControlIdentifier.HudRestoreButton, CreateHudRestoreButton()},
-                {HudControlIdentifier.WindowSizeButton, CreateWindowSizeButton()},
+                // WindowSizeButton removed — nested chrome on the top-right exit button.
 
                 {HudControlIdentifier.SessionExpButton, CreateSessionExpButton()},
                 {HudControlIdentifier.QuestsButton, CreateQuestButton()},
@@ -439,57 +436,84 @@ namespace EndlessClient.HUD.Controls
 
         private IXNAButton CreateFriendListButton()
         {
-            Func<Vector2> getFriendListDrawPosition = () =>
-            {
-                var chat = HudUiMetrics.ResizableChatBarArea(
-                    _clientWindowSizeRepository.Width,
-                    _clientWindowSizeRepository.Height);
-                return new Vector2(chat.Right - 40, chat.Y + (chat.Height - 15) / 2f);
-            };
-            var button = new XNAButton(
-                _nativeGraphicsManager.TextureFromResource(GFXTypes.PostLoginUI, 27, false),
-                _clientWindowSizeRepository.Resizable ? getFriendListDrawPosition() : new Vector2(592, 312),
-                new Rectangle(0, 260, 17, 15),
-                new Rectangle(0, 276, 17, 15))
-            {
-                DrawOrder = HUD_CONTROL_LAYER + 10
-            };
-            button.OnMouseDown += (_, _) => _hudButtonController.ClickFriendList();
-            button.OnMouseDown += (_, _) => _sfxPlayer.PlaySfx(SoundEffectID.ButtonClick);
-            button.OnMouseOver += (o, e) => _statusLabelSetter.SetStatusLabel(EOResourceID.STATUS_LABEL_TYPE_BUTTON, EOResourceID.STATUS_LABEL_FRIEND_LIST);
-
-            if (_clientWindowSizeRepository.Resizable)
-            {
-                _clientWindowSizeRepository.GameWindowSizeChanged += (_, _) => button.DrawPosition = getFriendListDrawPosition();
-            }
-
-            return button;
+            return CreateFriendOrIgnoreButton(
+                outSource: new Rectangle(0, 260, 17, 15),
+                overSource: new Rectangle(0, 276, 17, 15),
+                classicPos: new Vector2(592, 312),
+                rightOffsetFromChat: 40,
+                onClick: () => _hudButtonController.ClickFriendList(),
+                hoverId: EOResourceID.STATUS_LABEL_FRIEND_LIST);
         }
 
         private IXNAButton CreateIgnoreListButton()
         {
-            Func<Vector2> getIgnoreListDrawPosition = () =>
+            return CreateFriendOrIgnoreButton(
+                outSource: new Rectangle(17, 260, 17, 15),
+                overSource: new Rectangle(17, 276, 17, 15),
+                classicPos: new Vector2(609, 312),
+                rightOffsetFromChat: 23,
+                onClick: () => _hudButtonController.ClickIgnoreList(),
+                hoverId: EOResourceID.STATUS_LABEL_IGNORE_LIST);
+        }
+
+        private IXNAButton CreateFriendOrIgnoreButton(
+            Rectangle outSource,
+            Rectangle overSource,
+            Vector2 classicPos,
+            int rightOffsetFromChat,
+            Action onClick,
+            EOResourceID hoverId)
+        {
+            var enlarge = HudUiMetrics.ShouldEnlargeHud(_clientWindowSizeRepository.Resizable);
+            var scale = enlarge ? HudUiMetrics.StatusSideTabScale : 1f;
+            var w = Math.Max(1, (int)Math.Round(outSource.Width * scale));
+            var h = Math.Max(1, (int)Math.Round(outSource.Height * scale));
+
+            Vector2 Position()
             {
+                if (!_clientWindowSizeRepository.Resizable)
+                    return classicPos;
+
                 var chat = HudUiMetrics.ResizableChatBarArea(
                     _clientWindowSizeRepository.Width,
                     _clientWindowSizeRepository.Height);
-                return new Vector2(chat.Right - 23, chat.Y + (chat.Height - 15) / 2f);
-            };
+                var offset = (int)Math.Round(rightOffsetFromChat * scale);
+                return new Vector2(chat.Right - offset, chat.Y + (chat.Height - h) / 2f);
+            }
+
             var button = new XNAButton(
                 _nativeGraphicsManager.TextureFromResource(GFXTypes.PostLoginUI, 27, false),
-                _clientWindowSizeRepository.Resizable ? getIgnoreListDrawPosition() : new Vector2(609, 312),
-                new Rectangle(17, 260, 17, 15),
-                new Rectangle(17, 276, 17, 15))
+                Position(),
+                outSource,
+                overSource)
             {
                 DrawOrder = HUD_CONTROL_LAYER + 10
             };
-            button.OnMouseDown += (_, _) => _hudButtonController.ClickIgnoreList();
+
+            if (enlarge)
+            {
+                button.DrawArea = new Rectangle((int)button.DrawPosition.X, (int)button.DrawPosition.Y, w, h);
+                button.ClickArea = new Rectangle(0, 0, w, h);
+            }
+
+            button.OnMouseDown += (_, _) => onClick();
             button.OnMouseDown += (_, _) => _sfxPlayer.PlaySfx(SoundEffectID.ButtonClick);
-            button.OnMouseOver += (o, e) => _statusLabelSetter.SetStatusLabel(EOResourceID.STATUS_LABEL_TYPE_BUTTON, EOResourceID.STATUS_LABEL_IGNORE_LIST);
+            button.OnMouseOver += (_, _) => _statusLabelSetter.SetStatusLabel(
+                EOResourceID.STATUS_LABEL_TYPE_BUTTON, hoverId);
 
             if (_clientWindowSizeRepository.Resizable)
             {
-                _clientWindowSizeRepository.GameWindowSizeChanged += (_, _) => button.DrawPosition = getIgnoreListDrawPosition();
+                _clientWindowSizeRepository.GameWindowSizeChanged += (_, _) =>
+                {
+                    button.DrawPosition = Position();
+                    if (HudUiMetrics.ShouldEnlargeHud(_clientWindowSizeRepository.Resizable))
+                    {
+                        var sw = Math.Max(1, (int)Math.Round(outSource.Width * HudUiMetrics.StatusSideTabScale));
+                        var sh = Math.Max(1, (int)Math.Round(outSource.Height * HudUiMetrics.StatusSideTabScale));
+                        button.DrawArea = new Rectangle((int)button.DrawPosition.X, (int)button.DrawPosition.Y, sw, sh);
+                        button.ClickArea = new Rectangle(0, 0, sw, sh);
+                    }
+                };
             }
 
             return button;
@@ -677,86 +701,6 @@ namespace EndlessClient.HUD.Controls
             }
         }
 
-        private Vector2 GetWindowSizeButtonPosition()
-        {
-            return new Vector2(_clientWindowSizeRepository.Width - 28, 6);
-        }
-
-        private XNAButton CreateWindowSizeButton()
-        {
-            var maximized = _clientWindowSizeRepository.IsMaximizedWindowed || _windowIsDisplaySized;
-            _windowSizeButtonSheet = WindowSizeButtonIcon.Create(
-                _graphicsDeviceProvider.GraphicsDevice,
-                maximized);
-            _windowSizeButton = new XNAButton(
-                _windowSizeButtonSheet,
-                GetWindowSizeButtonPosition(),
-                WindowSizeButtonIcon.OutSource,
-                WindowSizeButtonIcon.OverSource)
-            {
-                DrawOrder = HUD_CONTROL_LAYER + 30,
-                Visible = _clientWindowSizeRepository.Resizable,
-                KeepInClientWindowBounds = false
-            };
-
-            _clientWindowSizeRepository.GameWindowSizeChanged += (_, _) =>
-            {
-                _windowSizeButton.DrawPosition = GetWindowSizeButtonPosition();
-                _windowSizeButton.Visible = _clientWindowSizeRepository.Resizable;
-                RefreshWindowSizeButtonGlyph();
-            };
-
-            _windowSizeButton.OnMouseDown += (_, _) =>
-            {
-                _sfxPlayer.PlaySfx(SoundEffectID.ButtonClick);
-                ToggleWindowDisplaySize();
-            };
-
-            _windowSizeButton.OnMouseOver += (_, _) =>
-                _statusLabelSetter.SetStatusLabel(
-                    EOResourceID.STATUS_LABEL_TYPE_BUTTON,
-                    EOResourceID.STATUS_LABEL_HUD_BUTTON_HOVER_FIRST);
-
-            return _windowSizeButton;
-        }
-
-        private void RefreshWindowSizeButtonGlyph()
-        {
-            if (_windowSizeButtonSheet == null)
-                return;
-
-            var maximized = _clientWindowSizeRepository.IsMaximizedWindowed || _windowIsDisplaySized;
-            WindowSizeButtonIcon.SetMaximized(_windowSizeButtonSheet, maximized);
-        }
-
-        private void ToggleWindowDisplaySize()
-        {
-            if (!_clientWindowSizeRepository.Resizable)
-                return;
-
-            var windowedW = Math.Max(ClientWindowSizeRepository.DEFAULT_BACKBUFFER_WIDTH,
-                _configurationProvider.InGameWidth > 0 ? _configurationProvider.InGameWidth : 1280);
-            var windowedH = Math.Max(ClientWindowSizeRepository.DEFAULT_BACKBUFFER_HEIGHT,
-                _configurationProvider.InGameHeight > 0 ? _configurationProvider.InGameHeight : 720);
-
-            // Toggle between maximized-windowed (taskbar + title bar) and a smaller window.
-            if (_clientWindowSizeRepository.IsMaximizedWindowed || _windowIsDisplaySized)
-            {
-                _clientWindowSizeRepository.RestoreWindowed(windowedW, windowedH);
-                _windowIsDisplaySized = false;
-            }
-            else
-            {
-                _clientWindowSizeRepository.MaximizeWindowed();
-                _windowIsDisplaySized = true;
-            }
-
-            if (_windowSizeButton != null)
-                _windowSizeButton.DrawPosition = GetWindowSizeButtonPosition();
-
-            RefreshWindowSizeButtonGlyph();
-        }
-
         private XNAButton CreateHudMinimizeButton()
         {
             // Minimize bar — not the friend-list person glyph / up-chevron.
@@ -853,14 +797,9 @@ namespace EndlessClient.HUD.Controls
 
         private IGameComponent CreateSessionExpButton()
         {
-            var btn = new XNAButton(
-                _nativeGraphicsManager.TextureFromResource(GFXTypes.PostLoginUI, 58, transparent: true),
-                new Vector2(55, 0),
-                new Rectangle(331, 30, 22, 14),
-                new Rectangle(331, 30, 22, 14))
-            {
-                DrawOrder = HUD_CONTROL_LAYER
-            };
+            var btn = CreateStatusSideTabButton(
+                source: new Rectangle(331, 30, 22, 14),
+                tabIndex: 0);
             btn.OnMouseDown += (_, _) => _hudButtonController.ClickSessionExp();
             btn.OnMouseDown += (_, _) => _sfxPlayer.PlaySfx(SoundEffectID.HudStatusBarClick);
             return btn;
@@ -868,16 +807,63 @@ namespace EndlessClient.HUD.Controls
 
         private IGameComponent CreateQuestButton()
         {
+            var btn = CreateStatusSideTabButton(
+                source: new Rectangle(353, 30, 22, 14),
+                tabIndex: 1);
+            btn.OnMouseDown += (_, _) => _hudButtonController.ClickQuestStatus();
+            btn.OnMouseDown += (_, _) => _sfxPlayer.PlaySfx(SoundEffectID.HudStatusBarClick);
+            return btn;
+        }
+
+        /// <summary>
+        /// Gem (session EXP) and Q (quests) tabs — sit left of the HP status bar, scaled up.
+        /// </summary>
+        private XNAButton CreateStatusSideTabButton(Rectangle source, int tabIndex)
+        {
+            var enlarge = HudUiMetrics.ShouldEnlargeHud(_clientWindowSizeRepository.Resizable);
+            var scale = enlarge ? HudUiMetrics.StatusSideTabScale : 1f;
+            var w = Math.Max(1, (int)Math.Round(source.Width * scale));
+            var h = Math.Max(1, (int)Math.Round(source.Height * scale));
+
+            Vector2 Position()
+            {
+                // Left of HP bar (index -2): two tabs + a small gap.
+                var barW = enlarge
+                    ? (int)(110 * HudUiMetrics.StatusBarScale)
+                    : 110;
+                var hpX = (_clientWindowSizeRepository.Width / 2) + (-2) * barW;
+                var gap = enlarge ? 4 : 2;
+                var x = hpX - (2 - tabIndex) * (w + gap);
+                return new Vector2(x, 0);
+            }
+
             var btn = new XNAButton(
                 _nativeGraphicsManager.TextureFromResource(GFXTypes.PostLoginUI, 58, transparent: true),
-                new Vector2(77, 0),
-                new Rectangle(353, 30, 22, 14),
-                new Rectangle(353, 30, 22, 14))
+                Position(),
+                source,
+                source)
             {
                 DrawOrder = HUD_CONTROL_LAYER
             };
-            btn.OnMouseDown += (_, _) => _hudButtonController.ClickQuestStatus();
-            btn.OnMouseDown += (_, _) => _sfxPlayer.PlaySfx(SoundEffectID.HudStatusBarClick);
+
+            if (enlarge)
+            {
+                btn.DrawArea = new Rectangle((int)btn.DrawPosition.X, (int)btn.DrawPosition.Y, w, h);
+                btn.ClickArea = new Rectangle(0, 0, w, h);
+            }
+
+            _clientWindowSizeRepository.GameWindowSizeChanged += (_, _) =>
+            {
+                btn.DrawPosition = Position();
+                if (HudUiMetrics.ShouldEnlargeHud(_clientWindowSizeRepository.Resizable))
+                {
+                    var sw = Math.Max(1, (int)Math.Round(source.Width * HudUiMetrics.StatusSideTabScale));
+                    var sh = Math.Max(1, (int)Math.Round(source.Height * HudUiMetrics.StatusSideTabScale));
+                    btn.DrawArea = new Rectangle((int)btn.DrawPosition.X, (int)btn.DrawPosition.Y, sw, sh);
+                    btn.ClickArea = new Rectangle(0, 0, sw, sh);
+                }
+            };
+
             return btn;
         }
 

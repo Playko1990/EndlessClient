@@ -31,7 +31,7 @@ namespace EndlessClient.HUD.StatusBars
 
         protected override void UpdateLabelText()
         {
-            _label.Text = $"{ExpTable[Stats[CharacterStat.Level] + 1] - Stats[CharacterStat.Experience]}";
+            SetLabelText($"{ExpTable[Stats[CharacterStat.Level] + 1] - Stats[CharacterStat.Experience]}");
         }
 
         protected override void DrawStatusBar()

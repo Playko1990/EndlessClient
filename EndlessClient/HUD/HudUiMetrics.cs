@@ -17,6 +17,15 @@ namespace EndlessClient.HUD
         // Slightly enlarged vs classic 14px bars; less than the previous 3x pass.
         public const float StatusBarScale = 2.0f;
 
+        // HP/TP/SP/EXP numeric text under the bars.
+        public const float StatusBarTextScale = 2.0f;
+
+        // Floating paperdoll / character info dialog.
+        public const float PaperdollScale = 1.5f;
+
+        // Session-EXP (gem) + Quest (Q) tabs beside the status bars.
+        public const float StatusSideTabScale = 2.0f;
+
         // Native HUD side-button stride in classic layout.
         public const int NativeSideButtonStep = 20;
 

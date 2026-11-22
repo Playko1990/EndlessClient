@@ -40,15 +40,17 @@ namespace EndlessClient.ControlSets
 
         private XNAButton GetBackButton()
         {
+            var halfH = _backButtonTexture.Height / 2;
             var button = new XNAButton(
                 _backButtonTexture,
                 new Vector2(_clientWindowSizeRepository.Width - _backButtonTexture.Width, 0),
-                new Rectangle(0, 0, _backButtonTexture.Width, _backButtonTexture.Height / 2),
-                new Rectangle(0, _backButtonTexture.Height / 2, _backButtonTexture.Width, _backButtonTexture.Height / 2))
+                new Rectangle(0, 0, _backButtonTexture.Width, halfH),
+                new Rectangle(0, halfH, _backButtonTexture.Width, halfH))
             {
                 UpdateOrder = -1,
                 DrawOrder = 100,
-                ClickArea = new Rectangle(4, 16, 16, 16)
+                // Full glyph is clickable (nested window-size chrome was removed).
+                ClickArea = new Rectangle(0, 0, _backButtonTexture.Width, halfH)
             };
             button.OnMouseDown += DoBackButtonClick;
 

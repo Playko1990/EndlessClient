@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using EndlessClient.Dialogs.Services;
+using EndlessClient.HUD;
 using EndlessClient.UIControls;
 using EOLib.Domain.Character;
 using EOLib.Graphics;
@@ -42,6 +43,12 @@ namespace EndlessClient.Dialogs
             SetScrollWheelHandler(_scrollBar);
 
             BackgroundTexture = GraphicsManager.TextureFromResource(GFXTypes.PostLoginUI, 69);
+            if (_dialogScale > 1.01f)
+            {
+                SetSize(
+                    HudUiMetrics.Scale(BackgroundTexture.Width, _dialogScale),
+                    HudUiMetrics.Scale(BackgroundTexture.Height, _dialogScale));
+            }
 
             CenterInGameView();
 

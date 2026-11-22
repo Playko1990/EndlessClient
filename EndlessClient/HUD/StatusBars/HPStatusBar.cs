@@ -27,7 +27,7 @@ namespace EndlessClient.HUD.StatusBars
 
         protected override void UpdateLabelText()
         {
-            _label.Text = $"{Stats[CharacterStat.HP]}/{EffectiveMaxHp}";
+            SetLabelText($"{Stats[CharacterStat.HP]}/{EffectiveMaxHp}");
         }
 
         protected override void DrawStatusBar()

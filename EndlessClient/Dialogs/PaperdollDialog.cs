@@ -61,7 +61,17 @@ namespace EndlessClient.Dialogs
             _childItems = new List<PaperdollDialogItem>();
 
             BackgroundTexture = GraphicsManager.TextureFromResource(GFXTypes.PostLoginUI, 49);
-            BackgroundTextureSource = new Rectangle(0, BackgroundTexture.Height / 2 * Character.RenderProperties.Gender, DrawArea.Width, BackgroundTexture.Height / 2);
+            var nativeH = BackgroundTexture.Height / 2;
+            var nativeW = BackgroundTexture.Width;
+            BackgroundTextureSource = new Rectangle(
+                0,
+                nativeH * Character.RenderProperties.Gender,
+                nativeW,
+                nativeH);
+            // Stretch the dialog frame; child slots/labels use the same scale.
+            SetSize(
+                HudUiMetrics.Scale(nativeW, _dialogScale),
+                HudUiMetrics.Scale(nativeH, _dialogScale));
 
             CenterInGameView();
 
@@ -93,7 +103,7 @@ namespace EndlessClient.Dialogs
                 var eifRecord = id.SomeWhen(i => i > 0).Map(i => _pubFileProvider.EIFFile[i]);
                 var paperdollItem = new PaperdollDialogItem(GraphicsManager, _sfxPlayer, _inventoryPanel, this, _isMainCharacter, equipLocation, eifRecord)
                 {
-                    DrawArea = equipLocation.GetEquipLocationRectangle()
+                    DrawArea = HudUiMetrics.ScaleRectangle(equipLocation.GetEquipLocationRectangle(), _dialogScale)
                 };
 
                 paperdollItem.OnMouseEnter += (_, _) =>

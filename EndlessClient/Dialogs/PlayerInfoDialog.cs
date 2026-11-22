@@ -1,4 +1,5 @@
 ﻿using EndlessClient.Dialogs.Services;
+using EndlessClient.HUD;
 using EOLib.Domain.Character;
 using EOLib.Extensions;
 using EOLib.Graphics;
@@ -15,14 +16,16 @@ namespace EndlessClient.Dialogs
 {
     public class PlayerInfoDialog : BaseEODialog
     {
-        private static readonly Rectangle _iconDrawRect = new Rectangle(227, 258, 44, 21);
+        private static readonly Rectangle _nativeIconDrawRect = new Rectangle(227, 258, 44, 21);
 
         private readonly IPubFileProvider _pubFileProvider;
         private readonly IPaperdollProvider _paperdollProvider;
         protected readonly bool _isMainCharacter;
+        protected readonly float _dialogScale;
 
         private readonly Texture2D _characterIconSheet;
         private Option<Rectangle> _characterIconSourceRect;
+        private Rectangle _iconDrawRect;
 
         private readonly IXNALabel _name,
             _home,
@@ -50,39 +53,58 @@ namespace EndlessClient.Dialogs
             Character = character;
             _isMainCharacter = isMainCharacter;
 
+            _dialogScale = Game.Window.AllowUserResizing ? HudUiMetrics.PaperdollScale : 1f;
+            _iconDrawRect = HudUiMetrics.ScaleRectangle(_nativeIconDrawRect, _dialogScale);
+
             _characterIconSheet = GraphicsManager.TextureFromResource(GFXTypes.PostLoginUI, 32, true);
             _characterIconSourceRect = Option.None<Rectangle>();
 
-            _name = new XNALabel(Constants.FontSize08pt5) { DrawArea = new Rectangle(228, 22, 1, 1), ForeColor = ColorConstants.LightGrayText };
-            _name.SetParentControl(this);
+            _name = CreateInfoLabel(228, 22);
+            _home = CreateInfoLabel(228, 52);
+            _class = CreateInfoLabel(228, 82);
+            _partner = CreateInfoLabel(228, 112);
+            _title = CreateInfoLabel(228, 142);
+            _guild = CreateInfoLabel(228, 202);
+            _rank = CreateInfoLabel(228, 232);
 
-            _home = new XNALabel(Constants.FontSize08pt5) { DrawArea = new Rectangle(228, 52, 1, 1), ForeColor = ColorConstants.LightGrayText };
-            _home.SetParentControl(this);
-
-            _class = new XNALabel(Constants.FontSize08pt5) { DrawArea = new Rectangle(228, 82, 1, 1), ForeColor = ColorConstants.LightGrayText };
-            _class.SetParentControl(this);
-
-            _partner = new XNALabel(Constants.FontSize08pt5) { DrawArea = new Rectangle(228, 112, 1, 1), ForeColor = ColorConstants.LightGrayText };
-            _partner.SetParentControl(this);
-
-            _title = new XNALabel(Constants.FontSize08pt5) { DrawArea = new Rectangle(228, 142, 1, 1), ForeColor = ColorConstants.LightGrayText };
-            _title.SetParentControl(this);
-
-            _guild = new XNALabel(Constants.FontSize08pt5) { DrawArea = new Rectangle(228, 202, 1, 1), ForeColor = ColorConstants.LightGrayText };
-            _guild.SetParentControl(this);
-
-            _rank = new XNALabel(Constants.FontSize08pt5) { DrawArea = new Rectangle(228, 232, 1, 1), ForeColor = ColorConstants.LightGrayText };
-            _rank.SetParentControl(this);
-
-            var okButton = new XNAButton(eoDialogButtonService.SmallButtonSheet,
-            new Vector2(276, 253),
-                eoDialogButtonService.GetSmallDialogButtonOutSource(SmallButton.Ok),
-                eoDialogButtonService.GetSmallDialogButtonOverSource(SmallButton.Ok));
+            var okOut = eoDialogButtonService.GetSmallDialogButtonOutSource(SmallButton.Ok);
+            var okOver = eoDialogButtonService.GetSmallDialogButtonOverSource(SmallButton.Ok);
+            var okButton = new XNAButton(
+                eoDialogButtonService.SmallButtonSheet,
+                HudUiMetrics.ScalePoint(276, 253, _dialogScale),
+                okOut,
+                okOver);
+            if (_dialogScale > 1.01f)
+            {
+                var okPos = HudUiMetrics.ScalePoint(276, 253, _dialogScale);
+                okButton.DrawArea = new Rectangle(
+                    (int)okPos.X,
+                    (int)okPos.Y,
+                    HudUiMetrics.Scale(okOut.Width, _dialogScale),
+                    HudUiMetrics.Scale(okOut.Height, _dialogScale));
+                okButton.ClickArea = new Rectangle(0, 0, okButton.DrawArea.Width, okButton.DrawArea.Height);
+            }
             okButton.OnMouseDown += (_, _) => Close(XNADialogResult.OK);
             okButton.Initialize();
             okButton.SetParentControl(this);
 
             _paperdollData = Option.None<PaperdollData>();
+        }
+
+        private XNALabel CreateInfoLabel(int x, int y)
+        {
+            var font = _dialogScale > 1.01f ? Constants.FontSize10 : Constants.FontSize08pt5;
+            var label = new XNALabel(font)
+            {
+                DrawArea = new Rectangle(
+                    HudUiMetrics.Scale(x, _dialogScale),
+                    HudUiMetrics.Scale(y, _dialogScale),
+                    1,
+                    1),
+                ForeColor = ColorConstants.LightGrayText
+            };
+            label.SetParentControl(this);
+            return label;
         }
 
         public override void Initialize()

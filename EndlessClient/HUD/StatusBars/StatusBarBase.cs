@@ -1,4 +1,5 @@
 ﻿using System;
+using EndlessClient.HUD;
 using EndlessClient.Rendering;
 using EOLib.Domain.Character;
 using EOLib.Graphics;
@@ -17,7 +18,7 @@ namespace EndlessClient.HUD.StatusBars
         private readonly IClientWindowSizeProvider _clientWindowSizeProvider;
         private readonly ICharacterProvider _characterProvider;
 
-        protected readonly XNALabel _label;
+        private readonly HudScaledLabel _label;
         protected readonly Texture2D _texture;
 
         protected CharacterStats Stats => _characterProvider.MainCharacter.Stats;
@@ -28,6 +29,11 @@ namespace EndlessClient.HUD.StatusBars
         protected float BarScale =>
             HudUiMetrics.ShouldEnlargeHud(_clientWindowSizeProvider.Resizable, _clientWindowSizeProvider.Width)
                 ? HudUiMetrics.StatusBarScale
+                : 1f;
+
+        protected float TextScale =>
+            HudUiMetrics.ShouldEnlargeHud(_clientWindowSizeProvider.Resizable, _clientWindowSizeProvider.Width)
+                ? HudUiMetrics.StatusBarTextScale
                 : 1f;
 
         protected int ScaledBarWidth => (int)(_sourceRectangleArea.Width * BarScale);
@@ -48,11 +54,8 @@ namespace EndlessClient.HUD.StatusBars
 
             _texture = nativeGraphicsManager.TextureFromResource(GFXTypes.PostLoginUI, 58, true);
 
-            _label = new XNALabel(Constants.FontSize08)
+            _label = new HudScaledLabel(Constants.FontSize08, TextScale)
             {
-                AutoSize = false,
-                BackColor = Color.Transparent,
-                DrawPosition = new Vector2(6, 15),
                 ForeColor = ColorConstants.LightGrayText,
                 Visible = false
             };
@@ -66,6 +69,13 @@ namespace EndlessClient.HUD.StatusBars
 
         protected abstract void UpdateLabelText();
         protected abstract void DrawStatusBar();
+
+        protected void SetLabelText(string text)
+        {
+            _label.Text = text;
+            _label.ResizeToText(xPadding: 4, yPadding: 2);
+            _label.DrawPosition = new Vector2(6 * BarScale, ScaledBarHeight + 1);
+        }
 
         public override void Initialize()
         {
@@ -97,11 +107,14 @@ namespace EndlessClient.HUD.StatusBars
 
             if (_labelShowTime.HasValue)
             {
+                var dropH = Math.Max(
+                    (int)(DropDownSourceRectangle.Height * BarScale),
+                    _label.DrawArea.Height + 4);
                 var dest = new Rectangle(
                     DrawAreaWithParentOffset.X,
                     DrawAreaWithParentOffset.Y + ScaledBarHeight - 3,
-                    ScaledBarWidth,
-                    (int)(DropDownSourceRectangle.Height * BarScale));
+                    Math.Max(ScaledBarWidth, _label.DrawArea.Width + 8),
+                    dropH);
 
                 _spriteBatch.Begin();
                 _spriteBatch.Draw(_texture, dest, DropDownSourceRectangle, Color.White);

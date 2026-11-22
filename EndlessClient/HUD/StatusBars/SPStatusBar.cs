@@ -21,7 +21,7 @@ namespace EndlessClient.HUD.StatusBars
 
         protected override void UpdateLabelText()
         {
-            _label.Text = $"{Stats[CharacterStat.SP]}/{Stats[CharacterStat.MaxSP]}";
+            SetLabelText($"{Stats[CharacterStat.SP]}/{Stats[CharacterStat.MaxSP]}");
         }
 
         protected override void DrawStatusBar()

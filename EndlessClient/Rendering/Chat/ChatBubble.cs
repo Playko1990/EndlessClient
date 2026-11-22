@@ -166,9 +166,19 @@ namespace EndlessClient.Rendering.Chat
 
         private void SetLabelDrawPosition()
         {
+            // Bottom chrome + nubbin hang below the text label; keep the whole bubble
+            // clear of the sprite head (old +10 shoved short messages into the face).
+            const float HeadClearance = 20f;
+            var bottomExtra =
+                GetTexture(ChatBubbleTexture.BottomMiddle).Height +
+                GetTexture(ChatBubbleTexture.Nubbin).Height;
+
+            var spriteTop = Math.Min(_parent.NameLabelY, _parent.DrawArea.Y);
+            var labelBottom = spriteTop - HeadClearance - bottomExtra;
+
             _textLabel.DrawPosition = new Vector2(
                 _parent.HorizontalCenter - _textLabel.ActualWidth / 2.0f,
-                _parent.NameLabelY - _textLabel.ActualHeight + 10);
+                labelBottom - _textLabel.ActualHeight);
         }
 
         protected override void Dispose(bool disposing)

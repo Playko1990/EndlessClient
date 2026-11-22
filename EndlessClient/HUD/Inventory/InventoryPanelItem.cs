@@ -22,8 +22,8 @@ namespace EndlessClient.HUD.Inventory
     public class InventoryPanelItem : DraggablePanelItem<EIFRecord>
     {
         private const int MaxStatLines = 12;
-        private const float TooltipTextScale = 2f;
-        private const int StatLineHeight = 24; // 12px line * TooltipTextScale
+        private const float TooltipTextScale = 1.5f;
+        private const int StatLineHeight = 18; // 12px line * TooltipTextScale
 
         private readonly InventoryPanel _inventoryPanel;
         private readonly IActiveDialogProvider _activeDialogProvider;

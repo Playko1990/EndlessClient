@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using AutomaticTypeMapper;
 using EOLib.Domain.Character;
 using EOLib.IO;
@@ -82,7 +83,95 @@ namespace EndlessClient.HUD.Inventory
             AddStat(lines, "CON", hoveredItem.Con, equipped?.Con ?? 0, canCompare);
             AddStat(lines, "CHA", hoveredItem.Cha, equipped?.Cha ?? 0, canCompare);
 
+            // Pets often store combat stats on the matching NPC pub entry, not the item.
+            if (lines.Count == 0 || LooksLikePetItem(hoveredItem))
+                TryAddPetNpcStats(lines, hoveredItem);
+
             return lines;
+        }
+
+        private void TryAddPetNpcStats(List<ItemStatCompareLine> lines, EIFRecord hoveredItem)
+        {
+            var npc = FindNpcForPetItem(hoveredItem);
+            if (npc == null)
+                return;
+
+            // Prefer NPC combat sheet when the item itself has no ATT/HP lines yet.
+            var hasItemCombat = lines.Any(l =>
+                l.Text.StartsWith("ATT ", StringComparison.Ordinal) ||
+                l.Text.StartsWith("HP ", StringComparison.Ordinal));
+
+            if (hasItemCombat)
+                return;
+
+            if (npc.MinDam != 0 || npc.MaxDam != 0)
+                lines.Add(new ItemStatCompareLine($"ATT {npc.MinDam}-{npc.MaxDam}", ItemStatCompareKind.Neutral));
+            if (npc.HP != 0)
+                lines.Add(new ItemStatCompareLine($"HP {npc.HP}", ItemStatCompareKind.Neutral));
+            if (npc.Accuracy != 0)
+                lines.Add(new ItemStatCompareLine($"ACC {npc.Accuracy}", ItemStatCompareKind.Neutral));
+            if (npc.Evade != 0)
+                lines.Add(new ItemStatCompareLine($"EVA {npc.Evade}", ItemStatCompareKind.Neutral));
+            if (npc.Armor != 0)
+                lines.Add(new ItemStatCompareLine($"DEF {npc.Armor}", ItemStatCompareKind.Neutral));
+            if (npc.Exp != 0)
+                lines.Add(new ItemStatCompareLine($"EXP {npc.Exp}", ItemStatCompareKind.Neutral));
+        }
+
+        private ENFRecord FindNpcForPetItem(EIFRecord item)
+        {
+            var enf = _pubFileProvider.ENFFile;
+            if (enf == null || string.IsNullOrWhiteSpace(item.Name))
+                return null;
+
+            var itemName = item.Name.Trim();
+
+            // Exact name match first, then strip a leading "Pet " prefix.
+            var exact = enf.FirstOrDefault(n =>
+                !string.IsNullOrEmpty(n.Name) &&
+                string.Equals(n.Name.Trim(), itemName, StringComparison.OrdinalIgnoreCase));
+            if (exact != null)
+                return exact;
+
+            if (itemName.StartsWith("Pet ", StringComparison.OrdinalIgnoreCase))
+            {
+                var stripped = itemName.Substring(4).Trim();
+                exact = enf.FirstOrDefault(n =>
+                    !string.IsNullOrEmpty(n.Name) &&
+                    string.Equals(n.Name.Trim(), stripped, StringComparison.OrdinalIgnoreCase));
+                if (exact != null)
+                    return exact;
+            }
+
+            // DollGraphic sometimes stores the NPC id on custom pet items (1-based ENF id).
+            if (item.DollGraphic > 0 && item.DollGraphic <= enf.Length)
+            {
+                try
+                {
+                    var byId = enf[item.DollGraphic];
+                    if (byId != null && (byId.HP > 0 || byId.MinDam > 0 || byId.MaxDam > 0))
+                        return byId;
+                }
+                catch (ArgumentOutOfRangeException)
+                {
+                    // Not a valid NPC id — ignore.
+                }
+            }
+
+            return null;
+        }
+
+        private static bool LooksLikePetItem(EIFRecord item)
+        {
+            if (item == null || string.IsNullOrEmpty(item.Name))
+                return false;
+
+            var name = item.Name;
+            if (name.IndexOf("pet", StringComparison.OrdinalIgnoreCase) >= 0)
+                return true;
+
+            // Custom servers often put pets on the shield slot with a doll graphic.
+            return item.Type == ItemType.Shield && item.DollGraphic > 0;
         }
 
         private EIFRecord GetEquippedItemForCompare(EIFRecord hoveredItem)

@@ -9,6 +9,11 @@ namespace EndlessClient.Rendering
 
         int HorizontalCenter { get; }
 
+        /// <summary>
+        /// Screen Y used to park floating HP bars (sprite top / opaque top — not name label).
+        /// </summary>
+        int HealthBarAnchorY { get; }
+
         bool IsAlive { get; }
 
         ISpellTargetable SpellTarget { get; }

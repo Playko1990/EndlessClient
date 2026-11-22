@@ -106,15 +106,13 @@ namespace EndlessClient.Rendering
             var barW = _healthBarBackgroundSource.Width * DisplayScale;
             var barH = _healthBarBackgroundSource.Height * DisplayScale;
 
-            // HorizontalCenter is the opaque-body center (NPCs) / skin center (players).
-            var drawArea = _parentReference.DrawArea;
+            // HorizontalCenter = opaque-body / skin center. HealthBarAnchorY = sprite top
+            // (not NameLabelY — NPC name labels sit on tile X-1,Y-1 and were parking the
+            // 2x bar on an adjacent player's head).
             var centerX = (float)_parentReference.HorizontalCenter;
 
-            // Sit fully above the head: use the higher of name-label Y and sprite top
-            // (smaller Y), then lift by bar height + clearance so 2x bars clear the hair.
-            const float BarClearance = 24f;
-            var anchorTop = Math.Min(_parentReference.NameLabelY, drawArea.Y);
-            var barTop = anchorTop - barH - BarClearance;
+            const float BarClearance = 36f;
+            var barTop = _parentReference.HealthBarAnchorY - barH - BarClearance;
 
             _healthBarPosition = new Vector2(centerX - barW / 2f, barTop);
 

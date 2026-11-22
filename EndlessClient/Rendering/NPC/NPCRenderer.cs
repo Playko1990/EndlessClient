@@ -42,8 +42,9 @@ namespace EndlessClient.Rendering.NPC
         private int _fadeAwayAlpha;
         private bool _isDying, _isBlankSprite;
 
-        // Opaque-body X within the current frame (cached; refreshed on frame/direction change).
+        // Opaque-body mid-X / top-Y within the current frame (cached per frame/direction).
         private int _opaqueCenterInFrame = -1;
+        private int _opaqueTopInFrame;
         private NPCFrame _opaqueCenterFrame;
         private EODirection _opaqueCenterDirection;
         private int _opaqueCenterGraphic = -1;
@@ -54,6 +55,8 @@ namespace EndlessClient.Rendering.NPC
         public int NameLabelY { get; private set; }
 
         public int HorizontalCenter { get; private set; }
+
+        public int HealthBarAnchorY => OpaqueSpriteTop;
 
         public bool IsAlive => !_isDying && !IsDead;
 
@@ -292,16 +295,21 @@ namespace EndlessClient.Rendering.NPC
             var horizontalOffset = metaData.OffsetX * (NPC.IsFacing(EODirection.Down, EODirection.Left) ? -1 : 1);
 
             // Center HP/name on the opaque sprite body (frame padding is often asymmetric).
-            EnsureOpaqueCenter(data.Graphic, frameTexture);
+            EnsureOpaqueBounds(data.Graphic, frameTexture);
             HorizontalCenter = DrawArea.X + _opaqueCenterInFrame;
-
+            // Name label still uses classic tile offset; HP bars use DrawArea/opaque top instead.
             var nameLabelGridCoordinates = _gridDrawCoordinateCalculator.CalculateDrawCoordinates(NPC.WithX(NPC.X - 1).WithY(NPC.Y - 1));
             NameLabelY = (int)nameLabelGridCoordinates.Y - metaData.NameLabelOffset;
 
             EffectTargetArea = DrawArea.WithSize(DrawArea.Width + horizontalOffset * 2, DrawArea.Height);
         }
 
-        private void EnsureOpaqueCenter(int graphic, Texture2D frameTexture)
+        /// <summary>
+        /// Exposed for health bars: screen Y of the topmost opaque pixel in the current frame.
+        /// </summary>
+        public int OpaqueSpriteTop => DrawArea.Y + _opaqueTopInFrame;
+
+        private void EnsureOpaqueBounds(int graphic, Texture2D frameTexture)
         {
             if (_opaqueCenterInFrame >= 0
                 && _opaqueCenterGraphic == graphic
@@ -318,6 +326,7 @@ namespace EndlessClient.Rendering.NPC
             if (frameTexture == null || w <= 0 || h <= 0)
             {
                 _opaqueCenterInFrame = Math.Max(0, w / 2);
+                _opaqueTopInFrame = 0;
                 return;
             }
 
@@ -326,6 +335,7 @@ namespace EndlessClient.Rendering.NPC
 
             var minX = w;
             var maxX = -1;
+            var minY = h;
             for (int y = 0; y < h; y++)
             {
                 var row = y * w;
@@ -336,10 +346,19 @@ namespace EndlessClient.Rendering.NPC
 
                     if (x < minX) minX = x;
                     if (x > maxX) maxX = x;
+                    if (y < minY) minY = y;
                 }
             }
 
-            var mid = maxX < minX ? w / 2 : (minX + maxX + 1) / 2;
+            if (maxX < minX)
+            {
+                _opaqueCenterInFrame = w / 2;
+                _opaqueTopInFrame = 0;
+                return;
+            }
+
+            var mid = (minX + maxX + 1) / 2;
+            _opaqueTopInFrame = minY;
 
             // Draw flips Left/Down=None, Up/Right=FlipHorizontally — mirror opaque mid to match art.
             var flipped = NPC.IsFacing(EODirection.Up, EODirection.Right);

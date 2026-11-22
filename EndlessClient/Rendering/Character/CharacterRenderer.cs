@@ -94,6 +94,8 @@ namespace EndlessClient.Rendering.Character
 
         public int HorizontalCenter { get; private set; }
 
+        public int HealthBarAnchorY => DrawArea.Y;
+
         public bool IsAlive => !Character.RenderProperties.IsDead;
 
         public CharacterRenderer(Game game,

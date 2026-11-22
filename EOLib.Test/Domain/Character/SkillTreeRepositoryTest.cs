@@ -49,8 +49,8 @@ namespace EOLib.Test.Domain.Character
 
             Assert.That(bonuses.CritChancePercent, Is.EqualTo(1));
             Assert.That(bonuses.CritDamagePercent, Is.EqualTo(0.5));
-            Assert.That(bonuses.MoveSpeedPercent, Is.EqualTo(12));
-            Assert.That(bonuses.AttackSpeedPercent, Is.EqualTo(9));
+            Assert.That(bonuses.MoveSpeedPercent, Is.EqualTo(4));
+            Assert.That(bonuses.AttackSpeedPercent, Is.EqualTo(3));
             Assert.That(bonuses.GoldDropPercent, Is.EqualTo(2.5));
             Assert.That(bonuses.ExpGainPercent, Is.EqualTo(1));
             Assert.That(bonuses.LuckPercent, Is.EqualTo(0.7).Within(0.0001));
@@ -101,6 +101,8 @@ namespace EOLib.Test.Domain.Character
         {
             Assert.That(SkillTreeFormulas.GetMaxRank(SkillTreeStat.CritChance), Is.EqualTo(40));
             Assert.That(SkillTreeFormulas.GetMaxRank(SkillTreeStat.CritDamage), Is.EqualTo(50));
+            Assert.That(SkillTreeFormulas.GetMaxRank(SkillTreeStat.MoveSpeed), Is.EqualTo(100));
+            Assert.That(SkillTreeFormulas.GetMaxRank(SkillTreeStat.AttackSpeed), Is.EqualTo(100));
             Assert.That(SkillTreeFormulas.GetMaxRank(SkillTreeStat.GoldDrop), Is.EqualTo(100));
             Assert.That(SkillTreeFormulas.GetMaxRank(SkillTreeStat.ExpGain), Is.EqualTo(70));
             Assert.That(SkillTreeFormulas.GetMaxRank(SkillTreeStat.Luck), Is.EqualTo(200));

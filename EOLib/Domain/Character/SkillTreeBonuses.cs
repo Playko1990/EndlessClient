@@ -94,14 +94,14 @@ namespace EOLib.Domain.Character
         public const double CritDamageCapPercent = 25;
         public const int CritDamageMaxRank = 50; // 25 / 0.5
 
-        // Move / Atk Speed: +3%/pt, hard cap +100% (double)
-        public const double MoveSpeedPercentPerRank = 3;
+        // Move / Atk Speed: +1%/pt, hard cap +100% (double)
+        public const double MoveSpeedPercentPerRank = 1;
         public const double MoveSpeedCapPercent = 100;
-        public const int MoveSpeedMaxRank = 34; // clamps at 100%
+        public const int MoveSpeedMaxRank = 100; // 100 / 1
 
-        public const double AttackSpeedPercentPerRank = 3;
+        public const double AttackSpeedPercentPerRank = 1;
         public const double AttackSpeedCapPercent = 100;
-        public const int AttackSpeedMaxRank = 34;
+        public const int AttackSpeedMaxRank = 100;
 
         // Gold Drop: +0.5%/pt, hard cap 50%
         public const double GoldDropPercentPerRank = 0.5;

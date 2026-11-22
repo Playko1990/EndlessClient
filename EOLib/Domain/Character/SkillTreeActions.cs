@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using AutomaticTypeMapper;
 using EOLib.Config;
 using EOLib.Domain.Login;
@@ -40,6 +41,7 @@ namespace EOLib.Domain.Character
         public int GetAvailablePoints()
         {
             EnsureLoaded();
+            ReconcileWithServerPoints();
             return _skillTreeProvider.GetAvailablePoints(
                 _characterProvider.MainCharacter.Stats[CharacterStat.SkillPoints]);
         }
@@ -70,7 +72,7 @@ namespace EOLib.Domain.Character
             file.Load();
 
             if (!file.Sections.ContainsKey(key))
-                file.Sections[key] = new System.Collections.Generic.SortedList<string, string>();
+                file.Sections[key] = new SortedList<string, string>();
 
             var section = file.Sections[key];
             foreach (SkillTreeStat skillStat in Enum.GetValues(typeof(SkillTreeStat)))
@@ -78,6 +80,45 @@ namespace EOLib.Domain.Character
 
             file.Save();
             _skillTreeRepository.LoadedKey = key;
+        }
+
+        public void ClearForCharacter(Character character)
+        {
+            if (character == null)
+                return;
+
+            var host = _configurationProvider.Host;
+            var account = _playerInfoProvider.LoggedInAccountName;
+            if (string.IsNullOrEmpty(host) || string.IsNullOrEmpty(account))
+                return;
+
+            var keysToRemove = new List<string>
+            {
+                BuildKey(host, account, character.ID)
+            };
+
+            // Legacy key used character name; remove so a remade same-name char cannot inherit ranks.
+            if (!string.IsNullOrEmpty(character.Name))
+                keysToRemove.Add($"{host}:{account}:{character.Name}");
+
+            var file = new IniReader(Constants.SkillTreeFile);
+            if (!file.Load())
+            {
+                ResetIfLoaded(keysToRemove);
+                return;
+            }
+
+            var removed = false;
+            foreach (var key in keysToRemove)
+            {
+                if (file.Sections.Remove(key))
+                    removed = true;
+            }
+
+            if (removed)
+                file.Save();
+
+            ResetIfLoaded(keysToRemove);
         }
 
         private void Load(string key)
@@ -101,18 +142,62 @@ namespace EOLib.Domain.Character
                         Math.Min(rank, SkillTreeFormulas.GetMaxRank(skillStat)));
                 }
             }
+
+            ReconcileWithServerPoints();
+        }
+
+        /// <summary>
+        /// Local ranks are client-only. If spent points exceed what the server says the
+        /// character has earned (e.g. leftover data after a remade character), wipe them.
+        /// </summary>
+        private void ReconcileWithServerPoints()
+        {
+            var character = _characterProvider.MainCharacter;
+            if (character == null)
+                return;
+
+            var serverSkillPoints = character.Stats[CharacterStat.SkillPoints];
+            if (_skillTreeProvider.TotalSpent <= serverSkillPoints)
+                return;
+
+            _skillTreeRepository.ClearRanks();
+            Save();
         }
 
         private string CurrentKey()
         {
             var host = _configurationProvider.Host;
             var account = _playerInfoProvider.LoggedInAccountName;
-            var character = _characterProvider.MainCharacter?.Name;
+            var character = _characterProvider.MainCharacter;
 
-            if (string.IsNullOrEmpty(host) || string.IsNullOrEmpty(account) || string.IsNullOrEmpty(character))
+            if (string.IsNullOrEmpty(host) ||
+                string.IsNullOrEmpty(account) ||
+                character == null ||
+                character.ID <= 0)
+            {
                 return null;
+            }
 
-            return $"{host}:{account}:{character}";
+            return BuildKey(host, account, character.ID);
+        }
+
+        private static string BuildKey(string host, string account, int characterId) =>
+            $"{host}:{account}:{characterId}";
+
+        private void ResetIfLoaded(IEnumerable<string> keys)
+        {
+            var loaded = _skillTreeRepository.LoadedKey;
+            if (string.IsNullOrEmpty(loaded))
+                return;
+
+            foreach (var key in keys)
+            {
+                if (string.Equals(loaded, key, StringComparison.Ordinal))
+                {
+                    _skillTreeRepository.ResetState();
+                    return;
+                }
+            }
         }
     }
 
@@ -125,5 +210,7 @@ namespace EOLib.Domain.Character
         bool TrySpendPoint(SkillTreeStat stat);
 
         void Save();
+
+        void ClearForCharacter(Character character);
     }
 }

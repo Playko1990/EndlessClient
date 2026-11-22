@@ -26,6 +26,7 @@ namespace EndlessClient.Controllers
         private readonly IGameStateActions _gameStateActions;
         private readonly ICharacterSelectorRepository _characterSelectorRepository;
         private readonly ISfxPlayer _sfxPlayer;
+        private readonly ISkillTreeActions _skillTreeActions;
 
         public CharacterManagementController(ISafeNetworkOperationFactory safeNetworkOperationFactory,
                                              ICharacterManagementActions characterManagementActions,
@@ -35,7 +36,8 @@ namespace EndlessClient.Controllers
                                              INetworkConnectionActions networkConnectionActions,
                                              IGameStateActions gameStateActions,
                                              ICharacterSelectorRepository characterSelectorRepository,
-                                             ISfxPlayer sfxPlayer)
+                                             ISfxPlayer sfxPlayer,
+                                             ISkillTreeActions skillTreeActions)
         {
             _safeNetworkOperationFactory = safeNetworkOperationFactory;
             _characterManagementActions = characterManagementActions;
@@ -46,6 +48,7 @@ namespace EndlessClient.Controllers
             _gameStateActions = gameStateActions;
             _characterSelectorRepository = characterSelectorRepository;
             _sfxPlayer = sfxPlayer;
+            _skillTreeActions = skillTreeActions;
         }
 
         public async Task CreateCharacter()
@@ -124,6 +127,7 @@ namespace EndlessClient.Controllers
                 return;
             }
 
+            _skillTreeActions.ClearForCharacter(characterToDelete);
             _sfxPlayer.PlaySfx(SoundEffectID.DeleteCharacter);
             _gameStateActions.RefreshCurrentState();
         }

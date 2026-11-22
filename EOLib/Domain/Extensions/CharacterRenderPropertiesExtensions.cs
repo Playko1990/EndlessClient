@@ -55,7 +55,9 @@ namespace EOLib.Domain.Extensions
                 props.RenderWalkFrame = props.ActualWalkFrame;
             }
 
-            props.CurrentAction = props.RenderWalkFrame == 0 ? CharacterActionState.Standing : CharacterActionState.Walking;
+            props.CurrentAction = props.RenderWalkFrame == 0
+                ? StandingOrSittingAction(props.SitState)
+                : CharacterActionState.Walking;
 
             return props.ToImmutable();
         }
@@ -78,7 +80,9 @@ namespace EOLib.Domain.Extensions
                 props.RenderAttackFrame = System.Math.Min(props.RenderAttackFrame, CharacterRenderProperties.MAX_NUMBER_OF_ATTACK_FRAMES - 1);
             }
 
-            props.CurrentAction = props.ActualAttackFrame == 0 ? CharacterActionState.Standing : CharacterActionState.Attacking;
+            props.CurrentAction = props.ActualAttackFrame == 0
+                ? StandingOrSittingAction(props.SitState)
+                : CharacterActionState.Attacking;
 
             return props.ToImmutable();
         }
@@ -88,9 +92,8 @@ namespace EOLib.Domain.Extensions
             var props = rp.ToBuilder();
             props.EmoteFrame = (props.EmoteFrame + 1) % CharacterRenderProperties.MAX_NUMBER_OF_EMOTE_FRAMES;
 
-            var resetAction = props.SitState == SitState.Standing ? CharacterActionState.Standing : CharacterActionState.Sitting;
             props.CurrentAction = props.EmoteFrame == 0
-                ? resetAction
+                ? StandingOrSittingAction(props.SitState)
                 : props.CurrentAction == CharacterActionState.Attacking // when using an instrument keep the current state as "Attacking"
                     ? CharacterActionState.Attacking
                     : CharacterActionState.Emote;
@@ -102,7 +105,9 @@ namespace EOLib.Domain.Extensions
             // spell cast frame ticks: 0 0 1 1 1
             var props = rp.ToBuilder();
             props.ActualSpellCastFrame = (props.ActualSpellCastFrame + 1) % CharacterRenderProperties.MAX_NUMBER_OF_WALK_FRAMES;
-            props.CurrentAction = props.ActualSpellCastFrame == 0 ? CharacterActionState.Standing : CharacterActionState.SpellCast;
+            props.CurrentAction = props.ActualSpellCastFrame == 0
+                ? StandingOrSittingAction(props.SitState)
+                : CharacterActionState.SpellCast;
             return props.ToImmutable();
         }
 
@@ -113,9 +118,12 @@ namespace EOLib.Domain.Extensions
             props.ActualWalkFrame = 0;
             props.RenderAttackFrame = 0;
             props.EmoteFrame = 0;
-            props.CurrentAction = props.SitState == SitState.Standing ? CharacterActionState.Standing : CharacterActionState.Sitting;
+            props.CurrentAction = StandingOrSittingAction(props.SitState);
             return props.ToImmutable();
         }
+
+        private static CharacterActionState StandingOrSittingAction(SitState sitState)
+            => sitState == SitState.Standing ? CharacterActionState.Standing : CharacterActionState.Sitting;
 
         public static MapCoordinate Coordinates(this CharacterRenderProperties rp) => new MapCoordinate(rp.MapX, rp.MapY);
 

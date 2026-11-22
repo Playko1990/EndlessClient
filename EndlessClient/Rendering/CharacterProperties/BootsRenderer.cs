@@ -64,23 +64,23 @@ namespace EndlessClient.Rendering.CharacterProperties
             }
             else if (_renderProperties.SitState != SitState.Standing)
             {
+                // Bottom-align sit boot sprites with the sitting body instead of keeping the
+                // standing "lower third" anchor, which leaves boots floating on short sit gfx.
                 resX -= 3;
-                resY += _renderProperties.IsFacing(EODirection.Left, EODirection.Up) ? -3 : 2;
+                resY = parentCharacterDrawArea.Height - _bootsSheet.SourceRectangle.Height;
+                resY += (_renderProperties.IsFacing(EODirection.Left, EODirection.Up) ? 7 : 5) - _renderProperties.Gender;
 
                 if (_renderProperties.SitState == SitState.Floor)
                 {
                     var factor = _renderProperties.IsFacing(EODirection.Left, EODirection.Down) ? -1 : 1;
 
                     if (_renderProperties.Gender == 0)
-                    {
                         resX += (_renderProperties.IsFacing(EODirection.Right, EODirection.Down) ? 1 : -1) * factor;
-                        resY += _renderProperties.IsFacing(EODirection.Right, EODirection.Down) ? 2 : 3;
-                    }
                     else if (_renderProperties.Gender == 1)
-                    {
                         resX += (_renderProperties.IsFacing(EODirection.Right, EODirection.Down) ? 0 : -1) * factor;
-                        resY += 4;
-                    }
+
+                    if (_renderProperties.IsFacing(EODirection.Left, EODirection.Up))
+                        resY += 1;
                 }
             }
 

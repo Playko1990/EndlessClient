@@ -19,10 +19,10 @@ namespace EndlessClient.HUD.Panels
 {
     public class PassiveSpellsPanel : DraggableHudPanel
     {
-        // Left-rail header well: title on top, tree fills the box down toward lvl/skp.
-        // Top stays near the title; size grows downward to the bottom of the well.
-        private const int HeaderIconNativeSize = 56;
-        private const int HeaderIconNativeX = 21; // centered in the ~81px left rail
+        // Left-rail header well: title on top, tree below. Slightly smaller so the trunk
+        // clears the bottom edge without lifting into the "Skill Tree" title.
+        private const int HeaderIconNativeSize = 50;
+        private const int HeaderIconNativeX = 24; // centered in the ~81px left rail
         private const int HeaderIconNativeY = 18;
 
         private readonly INativeGraphicsManager _nativeGraphicsManager;

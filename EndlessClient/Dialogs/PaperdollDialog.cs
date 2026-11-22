@@ -73,10 +73,20 @@ namespace EndlessClient.Dialogs
                 HudUiMetrics.Scale(nativeW, _dialogScale),
                 HudUiMetrics.Scale(nativeH, _dialogScale));
 
-            CenterInGameView();
-
-            if (!Game.Window.AllowUserResizing)
+            if (Game.Window.AllowUserResizing)
+            {
+                var vp = Game.GraphicsDevice.Viewport;
+                DrawPosition = HudUiMetrics.CenterDialogAboveDockedHud(
+                    DrawArea.Width,
+                    DrawArea.Height,
+                    vp.Width,
+                    vp.Height);
+            }
+            else
+            {
+                CenterInGameView();
                 DrawPosition = new Vector2(DrawPosition.X, 15);
+            }
         }
 
         public bool NoItemsDragging() => !_childItems.Any(x => x.IsBeingDragged);

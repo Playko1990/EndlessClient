@@ -20,8 +20,32 @@ namespace EndlessClient.HUD
         // HP/TP/SP/EXP numeric text under the bars.
         public const float StatusBarTextScale = 2.0f;
 
-        // Floating paperdoll / character info dialog.
-        public const float PaperdollScale = 1.5f;
+        // Floating paperdoll / character info dialog (enlarged; kept above docked HUD).
+        public const float PaperdollScale = 1.75f;
+
+        // Classic PostLoginUI panel art height used to reserve bottom space for dialogs.
+        public const int NativeDockedPanelHeight = 116;
+
+        /// <summary>
+        /// Center a floating dialog in the window, clamped so its bottom stays above
+        /// the docked HUD panel + chat/status chrome.
+        /// </summary>
+        public static Vector2 CenterDialogAboveDockedHud(int dialogWidth, int dialogHeight, int windowWidth, int windowHeight)
+        {
+            var chatTop = ResizableChatBarTop(windowHeight);
+            var panelHeight = Scale(NativeDockedPanelHeight, resizable: true);
+            var maxBottom = chatTop - 5 - panelHeight - 12;
+            var x = (windowWidth - dialogWidth) / 2f;
+            var y = (windowHeight - dialogHeight) / 2f;
+            var maxY = maxBottom - dialogHeight;
+            if (maxY < 8)
+                maxY = 8;
+            if (y > maxY)
+                y = maxY;
+            if (y < 8)
+                y = 8;
+            return new Vector2(x, y);
+        }
 
         // Session-EXP (gem) + Quest (Q) tabs beside the status bars.
         public const float StatusSideTabScale = 2.0f;

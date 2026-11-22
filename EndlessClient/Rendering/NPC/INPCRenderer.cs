@@ -12,6 +12,12 @@ namespace EndlessClient.Rendering.NPC
 
         bool IsClickablePixel(Point currentMousePosition);
 
+        /// <summary>
+        /// Screen-space bounds covering the visible NPC for the current facing
+        /// (opaque body + full drawn frame). Use this for clicks so Left/Right/Up/Down feel the same.
+        /// </summary>
+        Rectangle GetInteractionBounds();
+
         void DrawToSpriteBatch(SpriteBatch spriteBatch);
 
         void StartDying();

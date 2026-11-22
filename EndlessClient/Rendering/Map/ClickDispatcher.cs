@@ -145,13 +145,12 @@ namespace EndlessClient.Rendering.Map
             if (!_npcRendererProvider.NPCRenderers.TryGetValue(npc.Index, out var renderer))
                 return Rectangle.Empty;
 
-            // Sprite frame + pad (covers full graphic including transparent padding).
-            var spriteArea = renderer.DrawArea;
+            // Facing-aware visible body + frame (same for Left/Right/Up/Down).
+            var spriteArea = renderer.GetInteractionBounds();
             spriteArea.Inflate(DialogNpcClickBoundsPad, DialogNpcClickBoundsPad);
 
             // Same large footing column for every dialog NPC (quest/shop/spell/bank/…).
-            // Shop graphics are often much smaller than quest ones; without this, shops
-            // only register clicks on a tiny opaque spot while quests feel easy.
+            // Keeps short shop sprites as easy as tall quest sprites.
             var foot = _gridDrawCoordinateCalculator
                 .CalculateBaseLayerDrawCoordinatesFromGridUnits(npc.X, npc.Y);
             var footingColumn = new Rectangle(
@@ -285,7 +284,8 @@ namespace EndlessClient.Rendering.Map
             if (IsDialogNpc(npc))
                 return GetDialogNpcClickArea(npc);
 
-            var area = renderer.DrawArea;
+            // Facing-aware bounds so combat/other NPCs also click the same no matter the facing.
+            var area = renderer.GetInteractionBounds();
             area.Inflate(NpcClickBoundsPad, NpcClickBoundsPad);
             return area;
         }
@@ -336,8 +336,8 @@ namespace EndlessClient.Rendering.Map
                 return true;
             }
 
-            // Combat/other NPCs still use the forgiving pixel test.
-            if (renderer.IsClickablePixel(currentMousePosition))
+            // Combat/other NPCs: click anywhere on the visible sprite (facing-aware bounds).
+            if (renderer.GetInteractionBounds().Contains(currentMousePosition))
             {
                 _npcInteractionController.ShowNPCDialog(n);
                 CancelPendingWalk();

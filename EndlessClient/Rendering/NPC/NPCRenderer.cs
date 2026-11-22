@@ -45,9 +45,17 @@ namespace EndlessClient.Rendering.NPC
         // Opaque-body mid-X / top-Y within the current frame (cached per frame/direction).
         private int _opaqueCenterInFrame = -1;
         private int _opaqueTopInFrame;
+        private int _opaqueMinXInFrame;
+        private int _opaqueMaxXInFrame;
+        private int _opaqueMinYInFrame;
+        private int _opaqueMaxYInFrame;
+        private int _opaqueFrameWidth;
         private NPCFrame _opaqueCenterFrame;
         private EODirection _opaqueCenterDirection;
         private int _opaqueCenterGraphic = -1;
+
+        // Extra padding so thin / offset NPC art stays easy to click in every facing.
+        private const int InteractionBoundsPad = 20;
 
         private XNALabel _nameLabel;
         private IChatBubble _chatBubble;
@@ -169,50 +177,69 @@ namespace EndlessClient.Rendering.NPC
             base.Update(gameTime);
         }
 
-        // How far from an opaque pixel a click still counts (makes thin quest/shop sprites easier).
-        private const int ClickPixelRadius = 12;
+        public bool IsClickablePixel(Point currentMousePosition) =>
+            GetInteractionBounds().Contains(currentMousePosition);
 
-        public bool IsClickablePixel(Point currentMousePosition)
+        public Rectangle GetInteractionBounds()
         {
-            // Whole sprite bounds (plus a little padding) — enough for dialog NPCs with sparse art.
-            var padded = DrawArea;
-            padded.Inflate(ClickPixelRadius, ClickPixelRadius);
-            if (!padded.Contains(currentMousePosition))
-                return false;
+            // DrawArea is where the (possibly horizontally flipped) sprite is drawn.
+            var bounds = DrawArea;
 
-            var cachedTexture = _npcSpriteDataCache.GetData(_enfFileProvider.ENFFile[NPC.ID].Graphic, NPC.Frame);
-            if (_isBlankSprite || cachedTexture.Length == 0)
-                return true;
+            // Opaque body in screen space — accounts for Left/Down vs Up/Right flip so
+            // the clickable body matches what you see for every facing.
+            var opaque = GetOpaqueScreenBounds();
+            if (!opaque.IsEmpty)
+                bounds = Rectangle.Union(bounds, opaque);
 
-            var currentFrame = _npcSpriteSheet.GetNPCTexture(_enfFileProvider.ENFFile[NPC.ID].Graphic, NPC.Frame, NPC.Direction);
-            var frameW = currentFrame.Width;
-            var frameH = currentFrame.Height;
-            if (frameW <= 0 || frameH <= 0)
-                return true;
-
-            var local = currentMousePosition - DrawArea.Location;
-
-            // Exact pixel or any opaque neighbor within radius.
-            for (int dy = -ClickPixelRadius; dy <= ClickPixelRadius; dy++)
+            // Metadata OffsetX shifts the frame by facing; expand both sides so the body
+            // never slides out of the hit box when the NPC turns.
+            try
             {
-                for (int dx = -ClickPixelRadius; dx <= ClickPixelRadius; dx++)
-                {
-                    if (dx * dx + dy * dy > ClickPixelRadius * ClickPixelRadius)
-                        continue;
-
-                    var x = local.X + dx;
-                    var y = local.Y + dy;
-                    if (x < 0 || y < 0 || x >= frameW || y >= frameH)
-                        continue;
-
-                    var index = y * frameW + x;
-                    if (index < cachedTexture.Length && cachedTexture[index].A > 0)
-                        return true;
-                }
+                var graphic = _enfFileProvider.ENFFile[NPC.ID].Graphic;
+                var offsetX = Math.Abs(_npcSpriteSheet.GetNPCMetadata(graphic).OffsetX);
+                bounds.Inflate(Math.Max(InteractionBoundsPad, offsetX + InteractionBoundsPad), InteractionBoundsPad);
+            }
+            catch
+            {
+                bounds.Inflate(InteractionBoundsPad, InteractionBoundsPad);
             }
 
-            // Fallback: still allow clicks anywhere in the padded sprite box for usability.
-            return DrawArea.Contains(currentMousePosition);
+            return bounds;
+        }
+
+        private Rectangle GetOpaqueScreenBounds()
+        {
+            if (_opaqueCenterInFrame < 0 || _opaqueFrameWidth <= 0 || DrawArea.IsEmpty)
+                return Rectangle.Empty;
+
+            var minX = _opaqueMinXInFrame;
+            var maxX = _opaqueMaxXInFrame;
+            var minY = _opaqueMinYInFrame;
+            var maxY = _opaqueMaxYInFrame;
+            if (maxX < minX || maxY < minY)
+                return Rectangle.Empty;
+
+            // Draw flips Up/Right — mirror opaque X into DrawArea space.
+            var flipped = NPC.IsFacing(EODirection.Up, EODirection.Right);
+            int screenMinX, screenMaxX;
+            if (flipped)
+            {
+                screenMinX = DrawArea.X + (_opaqueFrameWidth - 1 - maxX);
+                screenMaxX = DrawArea.X + (_opaqueFrameWidth - 1 - minX);
+            }
+            else
+            {
+                screenMinX = DrawArea.X + minX;
+                screenMaxX = DrawArea.X + maxX;
+            }
+
+            var screenMinY = DrawArea.Y + minY;
+            var screenMaxY = DrawArea.Y + maxY;
+            return new Rectangle(
+                screenMinX,
+                screenMinY,
+                Math.Max(1, screenMaxX - screenMinX + 1),
+                Math.Max(1, screenMaxY - screenMinY + 1));
         }
 
         public void DrawToSpriteBatch(SpriteBatch spriteBatch)
@@ -328,10 +355,16 @@ namespace EndlessClient.Rendering.NPC
             var fallbackTop = Math.Max(0, h - 48);
             var fallbackMid = Math.Max(0, w / 2);
 
+            _opaqueFrameWidth = w;
+
             if (frameTexture == null || w <= 0 || h <= 0)
             {
                 _opaqueCenterInFrame = fallbackMid;
                 _opaqueTopInFrame = fallbackTop;
+                _opaqueMinXInFrame = 0;
+                _opaqueMaxXInFrame = Math.Max(0, w - 1);
+                _opaqueMinYInFrame = fallbackTop;
+                _opaqueMaxYInFrame = Math.Max(fallbackTop, h - 1);
                 return;
             }
 
@@ -363,8 +396,17 @@ namespace EndlessClient.Rendering.NPC
             {
                 _opaqueCenterInFrame = fallbackMid;
                 _opaqueTopInFrame = fallbackTop;
+                _opaqueMinXInFrame = 0;
+                _opaqueMaxXInFrame = Math.Max(0, w - 1);
+                _opaqueMinYInFrame = fallbackTop;
+                _opaqueMaxYInFrame = Math.Max(fallbackTop, h - 1);
                 return;
             }
+
+            _opaqueMinXInFrame = minX;
+            _opaqueMaxXInFrame = maxX;
+            _opaqueMinYInFrame = minY;
+            _opaqueMaxYInFrame = maxY;
 
             var mid = (minX + maxX + 1) / 2;
             _opaqueTopInFrame = minY;

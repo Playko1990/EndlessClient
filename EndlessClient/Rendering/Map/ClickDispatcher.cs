@@ -145,21 +145,8 @@ namespace EndlessClient.Rendering.Map
             if (!_npcRendererProvider.NPCRenderers.TryGetValue(npc.Index, out var renderer))
                 return Rectangle.Empty;
 
-            // Facing-aware visible body + frame (same for Left/Right/Up/Down).
-            var spriteArea = renderer.GetInteractionBounds();
-            spriteArea.Inflate(DialogNpcClickBoundsPad, DialogNpcClickBoundsPad);
-
-            // Same large footing column for every dialog NPC (quest/shop/spell/bank/…).
-            // Keeps short shop sprites as easy as tall quest sprites.
-            var foot = _gridDrawCoordinateCalculator
-                .CalculateBaseLayerDrawCoordinatesFromGridUnits(npc.X, npc.Y);
-            var footingColumn = new Rectangle(
-                (int)foot.X - DialogNpcFootingHalfWidth,
-                (int)foot.Y - DialogNpcFootingHeight,
-                DialogNpcFootingHalfWidth * 2,
-                DialogNpcFootingHeight + DialogNpcFootingBelow);
-
-            return Rectangle.Union(spriteArea, footingColumn);
+            // Same body-scaled hit box for quest/shop/spell/bank — click the sprite body only.
+            return renderer.GetInteractionBounds();
         }
 
         private bool CheckForMapItemClicks(IMapCellState cellState, MouseEventArgs eventArgs)
@@ -213,21 +200,7 @@ namespace EndlessClient.Rendering.Map
             if (eventArgs.Button != MouseButton.Left)
                 return false;
 
-            // Standing on / pointing at a dialog NPC's tile: open them, never walk into them.
-            var handledDialogNpc = false;
-            cellState.NPC.MatchSome(npc =>
-            {
-                if (!IsDialogNpc(npc))
-                    return;
-
-                _npcInteractionController.ShowNPCDialog(npc);
-                CancelPendingWalk();
-                handledDialogNpc = true;
-            });
-
-            if (handledDialogNpc)
-                return true;
-
+            // Dialog NPCs open only via body click (TryHandleDialogNpcClick) — not the whole tile.
             _mapInteractionController.LeftClick(cellState);
             return true;
         }
@@ -266,28 +239,13 @@ namespace EndlessClient.Rendering.Map
                     : Rectangle.Empty;
         }
 
-        // Extra hit padding so thin quest/shop/spell NPC sprites are easier to click.
-        private const int NpcClickBoundsPad = 28;
-        private const int DialogNpcClickBoundsPad = 72;
-        // Fixed column around the NPC's tile so short shop sprites get the same easy
-        // click target as tall quest sprites (DrawArea alone varies a lot by graphic).
-        private const int DialogNpcFootingHalfWidth = 72;
-        private const int DialogNpcFootingHeight = 180;
-        private const int DialogNpcFootingBelow = 40;
-
         private Rectangle GetNPCRendererArea(int npcIndex)
         {
             if (!_npcRendererProvider.NPCRenderers.TryGetValue(npcIndex, out var renderer))
                 return Rectangle.Empty;
 
-            var npc = renderer.NPC;
-            if (IsDialogNpc(npc))
-                return GetDialogNpcClickArea(npc);
-
-            // Facing-aware bounds so combat/other NPCs also click the same no matter the facing.
-            var area = renderer.GetInteractionBounds();
-            area.Inflate(NpcClickBoundsPad, NpcClickBoundsPad);
-            return area;
+            // Body-scaled bounds for every NPC type (dialog and combat).
+            return renderer.GetInteractionBounds();
         }
 
         private Rectangle GetObjectBounds(IMapEntity entity)

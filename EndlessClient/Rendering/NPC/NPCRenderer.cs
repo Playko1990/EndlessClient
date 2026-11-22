@@ -54,8 +54,9 @@ namespace EndlessClient.Rendering.NPC
         private EODirection _opaqueCenterDirection;
         private int _opaqueCenterGraphic = -1;
 
-        // Extra padding so thin / offset NPC art stays easy to click in every facing.
-        private const int InteractionBoundsPad = 20;
+        // Small pad around the opaque body so clicks on the silhouette still count,
+        // without a huge empty box around tall quest frames.
+        private const int InteractionBoundsPad = 6;
 
         private XNALabel _nameLabel;
         private IChatBubble _chatBubble;
@@ -182,29 +183,19 @@ namespace EndlessClient.Rendering.NPC
 
         public Rectangle GetInteractionBounds()
         {
-            // DrawArea is where the (possibly horizontally flipped) sprite is drawn.
-            var bounds = DrawArea;
-
-            // Opaque body in screen space — accounts for Left/Down vs Up/Right flip so
-            // the clickable body matches what you see for every facing.
+            // Click target = visible body only (same rule for quest, shop, combat, every facing).
+            // Do not use the full DrawArea — EO frames are tall with empty padding, which made
+            // quest NPCs feel like they had a huge click box.
             var opaque = GetOpaqueScreenBounds();
-            if (!opaque.IsEmpty)
-                bounds = Rectangle.Union(bounds, opaque);
-
-            // Metadata OffsetX shifts the frame by facing; expand both sides so the body
-            // never slides out of the hit box when the NPC turns.
-            try
+            if (opaque.IsEmpty)
             {
-                var graphic = _enfFileProvider.ENFFile[NPC.ID].Graphic;
-                var offsetX = Math.Abs(_npcSpriteSheet.GetNPCMetadata(graphic).OffsetX);
-                bounds.Inflate(Math.Max(InteractionBoundsPad, offsetX + InteractionBoundsPad), InteractionBoundsPad);
-            }
-            catch
-            {
-                bounds.Inflate(InteractionBoundsPad, InteractionBoundsPad);
+                // Fallback: bottom of the frame where feet/body usually sit.
+                var h = Math.Max(24, DrawArea.Height / 3);
+                opaque = new Rectangle(DrawArea.X, DrawArea.Bottom - h, DrawArea.Width, h);
             }
 
-            return bounds;
+            opaque.Inflate(InteractionBoundsPad, InteractionBoundsPad);
+            return opaque;
         }
 
         private Rectangle GetOpaqueScreenBounds()

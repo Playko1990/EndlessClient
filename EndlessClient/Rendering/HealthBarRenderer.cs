@@ -112,8 +112,8 @@ namespace EndlessClient.Rendering
             var centerX = drawArea.X + drawArea.Width / 2f;
 
             // Sit fully above the head: use the higher of name-label Y and sprite top
-            // (smaller Y), then lift by bar height + clearance so 2x bars don't cover hair/neck.
-            const float BarClearance = 14f;
+            // (smaller Y), then lift by bar height + clearance so 2x bars clear the hair.
+            const float BarClearance = 24f;
             var anchorTop = Math.Min(_parentReference.NameLabelY, drawArea.Y);
             var barTop = anchorTop - barH - BarClearance;
 

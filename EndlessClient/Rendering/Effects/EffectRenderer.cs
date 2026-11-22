@@ -191,8 +191,20 @@ namespace EndlessClient.Rendering.Effects
 
         private Vector2 GetNPCBasePosition(DomainNPC n)
         {
-            var walkExtra = new Vector2(_renderOffsetCalculator.CalculateWalkAdjustX(n), _renderOffsetCalculator.CalculateWalkAdjustY(n));
-            return _gridDrawCoordinateCalculator.CalculateBaseLayerDrawCoordinatesFromGridUnits(n.X, n.Y) + walkExtra;
+            // Prefer the live map-actor sprite box so spell GFX sit on the drawn NPC
+            // (tile-only math drifts for tall/offset monsters and padded frames).
+            return _targetActor.Match(
+                some: actor =>
+                {
+                    // EffectSpriteInfo expects a 64px-wide tile base; center under the opaque body.
+                    const int GridWidth = 64;
+                    return new Vector2(actor.HorizontalCenter - GridWidth / 2f, actor.DrawArea.Bottom - 32);
+                },
+                none: () =>
+                {
+                    var walkExtra = new Vector2(_renderOffsetCalculator.CalculateWalkAdjustX(n), _renderOffsetCalculator.CalculateWalkAdjustY(n));
+                    return _gridDrawCoordinateCalculator.CalculateBaseLayerDrawCoordinatesFromGridUnits(n.X, n.Y) + walkExtra;
+                });
         }
     }
 

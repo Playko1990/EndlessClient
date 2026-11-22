@@ -12,11 +12,6 @@ namespace EndlessClient.Rendering.NPC
 
         bool IsClickablePixel(Point currentMousePosition);
 
-        /// <summary>
-        /// Screen-space click box matching the drawn NPC sprite size.
-        /// </summary>
-        Rectangle GetInteractionBounds();
-
         void DrawToSpriteBatch(SpriteBatch spriteBatch);
 
         void StartDying();

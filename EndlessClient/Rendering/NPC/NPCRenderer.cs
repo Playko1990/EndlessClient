@@ -170,13 +170,10 @@ namespace EndlessClient.Rendering.NPC
             base.Update(gameTime);
         }
 
-        public bool IsClickablePixel(Point currentMousePosition) =>
-            GetInteractionBounds().Contains(currentMousePosition);
-
-        public Rectangle GetInteractionBounds()
+        public bool IsClickablePixel(Point currentMousePosition)
         {
-            // Click box = exact drawn sprite rectangle (same size as the NPC on screen).
-            return DrawArea;
+            // Click box matches the drawn NPC sprite size (same for every facing).
+            return DrawArea.Contains(currentMousePosition);
         }
 
         public void DrawToSpriteBatch(SpriteBatch spriteBatch)

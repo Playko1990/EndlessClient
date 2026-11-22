@@ -6,7 +6,6 @@ using EndlessClient.Rendering.Character;
 using EndlessClient.Rendering.NPC;
 using EOLib.Domain.Character;
 using EOLib.Domain.Map;
-using EOLib.IO.Repositories;
 
 namespace EndlessClient.Rendering.Map
 {
@@ -28,7 +27,6 @@ namespace EndlessClient.Rendering.Map
         private readonly IGridDrawCoordinateCalculator _gridDrawCoordinateCalculator;
         private readonly IMapInteractionController _mapInteractionController;
         private readonly INPCInteractionController _npcInteractionController;
-        private readonly IENFFileProvider _enfFileProvider;
 
         public ClickDispatcherFactory(IHudControlProvider hudControlProvider,
                                       IClientWindowSizeProvider clientWindowSizeProvider,
@@ -43,8 +41,7 @@ namespace EndlessClient.Rendering.Map
                                       IMapObjectBoundsCalculator mapObjectBoundsCalculator,
                                       IGridDrawCoordinateCalculator gridDrawCoordinateCalculator,
                                       IMapInteractionController mapInteractionController,
-                                      INPCInteractionController npcInteractionController,
-                                      IENFFileProvider enfFileProvider)
+                                      INPCInteractionController npcInteractionController)
         {
             _hudControlProvider = hudControlProvider;
             _clientWindowSizeProvider = clientWindowSizeProvider;
@@ -60,7 +57,6 @@ namespace EndlessClient.Rendering.Map
             _gridDrawCoordinateCalculator = gridDrawCoordinateCalculator;
             _mapInteractionController = mapInteractionController;
             _npcInteractionController = npcInteractionController;
-            _enfFileProvider = enfFileProvider;
         }
 
         public IClickDispatcher Create()
@@ -78,8 +74,7 @@ namespace EndlessClient.Rendering.Map
                 _mapObjectBoundsCalculator,
                 _gridDrawCoordinateCalculator,
                 _mapInteractionController,
-                _npcInteractionController,
-                _enfFileProvider);
+                _npcInteractionController);
         }
     }
 

@@ -22,8 +22,10 @@ namespace EndlessClient.HUD.Inventory
     public class InventoryPanelItem : DraggablePanelItem<EIFRecord>
     {
         private const int MaxStatLines = 12;
-        private const float TooltipTextScale = 1.5f;
-        private const int StatLineHeight = 18; // 12px line * TooltipTextScale
+        private const float TooltipTextScale = 1.1f;
+        private const int StatLineHeight = 13; // ~12px line * TooltipTextScale
+        private const uint TooltipTextPadX = 4;
+        private const uint TooltipTextPadY = 2;
 
         private readonly InventoryPanel _inventoryPanel;
         private readonly IActiveDialogProvider _activeDialogProvider;
@@ -58,7 +60,7 @@ namespace EndlessClient.HUD.Inventory
             set
             {
                 _nameLabel.Text = value;
-                _nameLabel.ResizeToText(16, 9);
+                _nameLabel.ResizeToText(TooltipTextPadX, TooltipTextPadY);
                 UpdateNameLabelPosition();
             }
         }
@@ -103,7 +105,7 @@ namespace EndlessClient.HUD.Inventory
             _highlightBackground = new Texture2D(Game.GraphicsDevice, 1, 1);
             _highlightBackground.SetData(new[] { Color.FromNonPremultiplied(200, 200, 200, 60) });
             _tooltipBackground = new Texture2D(Game.GraphicsDevice, 1, 1);
-            _tooltipBackground.SetData(new[] { Color.FromNonPremultiplied(20, 20, 20, 200) });
+            _tooltipBackground.SetData(new[] { Color.FromNonPremultiplied(16, 16, 16, 245) });
 
             _nameLabel = new HudScaledLabel(Constants.FontSize08, TooltipTextScale)
             {
@@ -158,7 +160,7 @@ namespace EndlessClient.HUD.Inventory
         {
             _nameLabel.Initialize();
             _nameLabel.SetParentControl(_parentContainer);
-            _nameLabel.ResizeToText(16, 9);
+            _nameLabel.ResizeToText(TooltipTextPadX, TooltipTextPadY);
 
             foreach (var label in _statLabels)
             {
@@ -256,7 +258,7 @@ namespace EndlessClient.HUD.Inventory
                     _statLabels[i].Text = lines[i].Text;
                     _statLabels[i].ForeColor = lines[i].Color;
                     _statLabels[i].Visible = true;
-                    _statLabels[i].ResizeToText(16, 9);
+                    _statLabels[i].ResizeToText(TooltipTextPadX, TooltipTextPadY);
                 }
                 else
                 {
@@ -295,9 +297,9 @@ namespace EndlessClient.HUD.Inventory
                     maxWidth = label.DrawArea.Width;
             }
 
-            var height = _nameLabel.DrawArea.Height + visibleStats * StatLineHeight + 6;
+            var height = _nameLabel.DrawArea.Height + visibleStats * StatLineHeight + 4;
             var pos = _nameLabel.DrawPositionWithParentOffset;
-            return new Rectangle((int)pos.X - 3, (int)pos.Y - 2, maxWidth + 10, height);
+            return new Rectangle((int)pos.X - 2, (int)pos.Y - 1, maxWidth + 6, height);
         }
 
         private void UpdateNameLabelPosition()

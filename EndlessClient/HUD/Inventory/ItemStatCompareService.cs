@@ -121,41 +121,72 @@ namespace EndlessClient.HUD.Inventory
         private ENFRecord FindNpcForPetItem(EIFRecord item)
         {
             var enf = _pubFileProvider.ENFFile;
-            if (enf == null || string.IsNullOrWhiteSpace(item.Name))
+            if (enf == null)
                 return null;
 
-            var itemName = item.Name.Trim();
-
-            // Exact name match first, then strip a leading "Pet " prefix.
-            var exact = enf.FirstOrDefault(n =>
-                !string.IsNullOrEmpty(n.Name) &&
-                string.Equals(n.Name.Trim(), itemName, StringComparison.OrdinalIgnoreCase));
-            if (exact != null)
-                return exact;
-
-            if (itemName.StartsWith("Pet ", StringComparison.OrdinalIgnoreCase))
+            if (!string.IsNullOrWhiteSpace(item.Name))
             {
-                var stripped = itemName.Substring(4).Trim();
-                exact = enf.FirstOrDefault(n =>
-                    !string.IsNullOrEmpty(n.Name) &&
-                    string.Equals(n.Name.Trim(), stripped, StringComparison.OrdinalIgnoreCase));
+                var itemName = item.Name.Trim();
+
+                var exact = FindNpcByName(enf, itemName);
                 if (exact != null)
                     return exact;
+
+                if (itemName.StartsWith("Pet ", StringComparison.OrdinalIgnoreCase))
+                {
+                    exact = FindNpcByName(enf, itemName.Substring(4).Trim());
+                    if (exact != null)
+                        return exact;
+                }
+
+                // "Baby Dragon Egg" → try "Baby Dragon", "Dragon"
+                foreach (var suffix in new[] { " Egg", " Pet", " Scroll", " Whistle" })
+                {
+                    if (itemName.EndsWith(suffix, StringComparison.OrdinalIgnoreCase))
+                    {
+                        exact = FindNpcByName(enf, itemName[..^suffix.Length].Trim());
+                        if (exact != null)
+                            return exact;
+                    }
+                }
             }
 
-            // DollGraphic sometimes stores the NPC id on custom pet items (1-based ENF id).
-            if (item.DollGraphic > 0 && item.DollGraphic <= enf.Length)
+            // Custom pet items often stash the NPC id in one of these fields.
+            foreach (var candidateId in new[] { item.DollGraphic, item.Effect, item.ScrollMap, item.Key, item.ExpReward })
             {
-                try
-                {
-                    var byId = enf[item.DollGraphic];
-                    if (byId != null && (byId.HP > 0 || byId.MinDam > 0 || byId.MaxDam > 0))
-                        return byId;
-                }
-                catch (ArgumentOutOfRangeException)
-                {
-                    // Not a valid NPC id — ignore.
-                }
+                var byId = TryGetNpc(enf, candidateId);
+                if (byId != null)
+                    return byId;
+            }
+
+            return null;
+        }
+
+        private static ENFRecord FindNpcByName(IPubFile<ENFRecord> enf, string name)
+        {
+            if (string.IsNullOrWhiteSpace(name))
+                return null;
+
+            return enf.FirstOrDefault(n =>
+                !string.IsNullOrEmpty(n.Name) &&
+                string.Equals(n.Name.Trim(), name, StringComparison.OrdinalIgnoreCase) &&
+                (n.HP > 0 || n.MinDam > 0 || n.MaxDam > 0));
+        }
+
+        private static ENFRecord TryGetNpc(IPubFile<ENFRecord> enf, int id)
+        {
+            if (id <= 0 || id > enf.Length)
+                return null;
+
+            try
+            {
+                var npc = enf[id];
+                if (npc != null && (npc.HP > 0 || npc.MinDam > 0 || npc.MaxDam > 0))
+                    return npc;
+            }
+            catch (ArgumentOutOfRangeException)
+            {
+                // Not a valid NPC id.
             }
 
             return null;
@@ -169,9 +200,20 @@ namespace EndlessClient.HUD.Inventory
             var name = item.Name;
             if (name.IndexOf("pet", StringComparison.OrdinalIgnoreCase) >= 0)
                 return true;
+            if (name.IndexOf("egg", StringComparison.OrdinalIgnoreCase) >= 0)
+                return true;
 
-            // Custom servers often put pets on the shield slot with a doll graphic.
-            return item.Type == ItemType.Shield && item.DollGraphic > 0;
+            // Custom servers often put pets on the shield slot with a doll/effect graphic.
+            if (item.Type == ItemType.Shield && (item.DollGraphic > 0 || item.Effect > 0))
+                return true;
+
+            if (item.Type is ItemType.Static or ItemType.UnknownType1 &&
+                (item.DollGraphic > 0 || item.Effect > 0 || item.ScrollMap > 0))
+            {
+                return true;
+            }
+
+            return false;
         }
 
         private EIFRecord GetEquippedItemForCompare(EIFRecord hoveredItem)
@@ -223,8 +265,9 @@ namespace EndlessClient.HUD.Inventory
                 : diff < 0 ? ItemStatCompareKind.Worse
                 : ItemStatCompareKind.Equal;
 
-            var diffText = diff > 0 ? $"(+{diff})" : diff < 0 ? $"({diff})" : "(=)";
-            lines.Add(new ItemStatCompareLine($"{label} {hovered} {diffText}", kind));
+            // Short delta keeps the hover box narrow: "HP 5000 +5000"
+            var diffText = diff > 0 ? $" +{diff}" : diff < 0 ? $" {diff}" : string.Empty;
+            lines.Add(new ItemStatCompareLine($"{label} {hovered}{diffText}", kind));
         }
 
         private static void AddRangeStat(List<ItemStatCompareLine> lines, string label,
@@ -253,12 +296,13 @@ namespace EndlessClient.HUD.Inventory
             else
                 kind = minDiff + maxDiff >= 0 ? ItemStatCompareKind.Better : ItemStatCompareKind.Worse;
 
-            string Format(int d) => d > 0 ? $"+{d}" : d.ToString();
-            var diffText = (minDiff == 0 && maxDiff == 0)
-                ? "(=)"
-                : $"({Format(minDiff)}-{Format(maxDiff)})";
+            // Prefer a single max-damage delta so lines stay short.
+            var primaryDiff = maxDiff != 0 ? maxDiff : minDiff;
+            string diffText = primaryDiff > 0 ? $" +{primaryDiff}"
+                : primaryDiff < 0 ? $" {primaryDiff}"
+                : string.Empty;
 
-            lines.Add(new ItemStatCompareLine($"{label} {hoveredMin}-{hoveredMax} {diffText}", kind));
+            lines.Add(new ItemStatCompareLine($"{label} {hoveredMin}-{hoveredMax}{diffText}", kind));
         }
     }
 }

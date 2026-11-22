@@ -1,3 +1,5 @@
+using System;
+
 namespace EOLib.Domain.Character
 {
     public sealed class SkillTreeBonuses
@@ -8,8 +10,8 @@ namespace EOLib.Domain.Character
         public double AttackSpeedPercent { get; }
         public double GoldDropPercent { get; }
         public double ExpGainPercent { get; }
-        public int Luck { get; }
-        public int MaxHp { get; }
+        public double LuckPercent { get; }
+        public double MaxHpPercent { get; }
         public double HeavyDamagePercent { get; }
         public double MaxTpPercent { get; }
         public double SpellAttackPercent { get; }
@@ -26,8 +28,8 @@ namespace EOLib.Domain.Character
             double attackSpeedPercent,
             double goldDropPercent,
             double expGainPercent,
-            int luck,
-            int maxHp,
+            double luckPercent,
+            double maxHpPercent,
             double heavyDamagePercent,
             double maxTpPercent,
             double spellAttackPercent,
@@ -43,8 +45,8 @@ namespace EOLib.Domain.Character
             AttackSpeedPercent = attackSpeedPercent;
             GoldDropPercent = goldDropPercent;
             ExpGainPercent = expGainPercent;
-            Luck = luck;
-            MaxHp = maxHp;
+            LuckPercent = luckPercent;
+            MaxHpPercent = maxHpPercent;
             HeavyDamagePercent = heavyDamagePercent;
             MaxTpPercent = maxTpPercent;
             SpellAttackPercent = spellAttackPercent;
@@ -55,18 +57,18 @@ namespace EOLib.Domain.Character
             SpellHeal = spellHeal;
         }
 
-        public static SkillTreeBonuses FromRanks(System.Func<SkillTreeStat, int> getRank)
+        public static SkillTreeBonuses FromRanks(Func<SkillTreeStat, int> getRank)
         {
             return new SkillTreeBonuses(
-                critChancePercent: getRank(SkillTreeStat.CritChance) * SkillTreeFormulas.CritChancePercentPerRank,
-                critDamagePercent: getRank(SkillTreeStat.CritDamage) * SkillTreeFormulas.CritDamagePercentPerRank,
-                moveSpeedPercent: getRank(SkillTreeStat.MoveSpeed) * SkillTreeFormulas.MoveSpeedPercentPerRank,
-                attackSpeedPercent: getRank(SkillTreeStat.AttackSpeed) * SkillTreeFormulas.AttackSpeedPercentPerRank,
-                goldDropPercent: getRank(SkillTreeStat.GoldDrop) * SkillTreeFormulas.GoldDropPercentPerRank,
-                expGainPercent: getRank(SkillTreeStat.ExpGain) * SkillTreeFormulas.ExpGainPercentPerRank,
-                luck: getRank(SkillTreeStat.Luck) * SkillTreeFormulas.LuckPerRank,
-                maxHp: getRank(SkillTreeStat.MaxHP) * SkillTreeFormulas.MaxHpPerRank,
-                heavyDamagePercent: getRank(SkillTreeStat.HeavyDamage) * SkillTreeFormulas.HeavyDamagePercentPerRank,
+                critChancePercent: RankBonus(getRank, SkillTreeStat.CritChance, SkillTreeFormulas.CritChancePercentPerRank, SkillTreeFormulas.CritChanceCapPercent),
+                critDamagePercent: RankBonus(getRank, SkillTreeStat.CritDamage, SkillTreeFormulas.CritDamagePercentPerRank, SkillTreeFormulas.CritDamageCapPercent),
+                moveSpeedPercent: RankBonus(getRank, SkillTreeStat.MoveSpeed, SkillTreeFormulas.MoveSpeedPercentPerRank, SkillTreeFormulas.MoveSpeedCapPercent),
+                attackSpeedPercent: RankBonus(getRank, SkillTreeStat.AttackSpeed, SkillTreeFormulas.AttackSpeedPercentPerRank, SkillTreeFormulas.AttackSpeedCapPercent),
+                goldDropPercent: RankBonus(getRank, SkillTreeStat.GoldDrop, SkillTreeFormulas.GoldDropPercentPerRank, SkillTreeFormulas.GoldDropCapPercent),
+                expGainPercent: RankBonus(getRank, SkillTreeStat.ExpGain, SkillTreeFormulas.ExpGainPercentPerRank, SkillTreeFormulas.ExpGainCapPercent),
+                luckPercent: RankBonus(getRank, SkillTreeStat.Luck, SkillTreeFormulas.LuckPercentPerRank, SkillTreeFormulas.LuckCapPercent),
+                maxHpPercent: RankBonus(getRank, SkillTreeStat.MaxHP, SkillTreeFormulas.MaxHpPercentPerRank, SkillTreeFormulas.MaxHpCapPercent),
+                heavyDamagePercent: RankBonus(getRank, SkillTreeStat.HeavyDamage, SkillTreeFormulas.HeavyDamagePercentPerRank, SkillTreeFormulas.HeavyDamageCapPercent),
                 maxTpPercent: getRank(SkillTreeStat.MaxTP) * SkillTreeFormulas.MaxTpPercentPerRank,
                 spellAttackPercent: getRank(SkillTreeStat.SpellAttack) * SkillTreeFormulas.SpellAttackPercentPerRank,
                 petDamage: getRank(SkillTreeStat.PetDamage) * SkillTreeFormulas.PetDamagePerRank,
@@ -75,28 +77,102 @@ namespace EOLib.Domain.Character
                 spellPowerPercent: getRank(SkillTreeStat.SpellPower) * SkillTreeFormulas.SpellPowerPercentPerRank,
                 spellHeal: getRank(SkillTreeStat.SpellHeal) * SkillTreeFormulas.SpellHealPerRank);
         }
+
+        private static double RankBonus(Func<SkillTreeStat, int> getRank, SkillTreeStat stat, double perRank, double cap) =>
+            Math.Min(cap, getRank(stat) * perRank);
     }
 
     public static class SkillTreeFormulas
     {
-        /// <summary>Each skill can be trained this many times before it is maxed.</summary>
-        public const int MaxRankPerSkill = 10;
+        // Crit Chance: +0.5%/pt, hard cap 20%
+        public const double CritChancePercentPerRank = 0.5;
+        public const double CritChanceCapPercent = 20;
+        public const int CritChanceMaxRank = 40; // 20 / 0.5
 
-        public const double CritChancePercentPerRank = 1;
-        public const double CritDamagePercentPerRank = 5;
+        // Crit Damage: +0.5%/pt, hard cap 25%
+        public const double CritDamagePercentPerRank = 0.5;
+        public const double CritDamageCapPercent = 25;
+        public const int CritDamageMaxRank = 50; // 25 / 0.5
+
+        // Move / Atk Speed: +3%/pt, hard cap +100% (double)
         public const double MoveSpeedPercentPerRank = 3;
+        public const double MoveSpeedCapPercent = 100;
+        public const int MoveSpeedMaxRank = 34; // clamps at 100%
+
         public const double AttackSpeedPercentPerRank = 3;
-        public const double GoldDropPercentPerRank = 2;
-        public const double ExpGainPercentPerRank = 2;
-        public const int LuckPerRank = 1;
-        public const int MaxHpPerRank = 15;
-        public const double HeavyDamagePercentPerRank = 3;
+        public const double AttackSpeedCapPercent = 100;
+        public const int AttackSpeedMaxRank = 34;
+
+        // Gold Drop: +0.5%/pt, hard cap 50%
+        public const double GoldDropPercentPerRank = 0.5;
+        public const double GoldDropCapPercent = 50;
+        public const int GoldDropMaxRank = 100; // 50 / 0.5
+
+        // Exp Gain: +0.5%/pt, hard cap 35%
+        public const double ExpGainPercentPerRank = 0.5;
+        public const double ExpGainCapPercent = 35;
+        public const int ExpGainMaxRank = 70; // 35 / 0.5
+
+        // Luck: +0.1%/pt, hard cap 20%
+        public const double LuckPercentPerRank = 0.1;
+        public const double LuckCapPercent = 20;
+        public const int LuckMaxRank = 200; // 20 / 0.1
+
+        // Max HP: +0.3%/pt, max 100 points spent
+        public const double MaxHpPercentPerRank = 0.3;
+        public const double MaxHpCapPercent = 30; // 0.3 * 100
+        public const int MaxHpMaxRank = 100;
+
+        // Heavy Damage: +0.5%/pt, hard cap 20%
+        public const double HeavyDamagePercentPerRank = 0.5;
+        public const double HeavyDamageCapPercent = 20;
+        public const int HeavyDamageMaxRank = 40; // 20 / 0.5
+
+        // Max TP: +1%/pt, max 100 points spent
         public const double MaxTpPercentPerRank = 1;
-        public const double SpellAttackPercentPerRank = 1;
+        public const int MaxTpMaxRank = 100;
+
+        // Spell Atk: +0.5%/pt, max 40 points spent
+        public const double SpellAttackPercentPerRank = 0.5;
+        public const int SpellAttackMaxRank = 40;
+
+        // Pet Damage / Heal: +1 flat/pt, max 100 points
         public const int PetDamagePerRank = 1;
+        public const int PetDamageMaxRank = 100;
         public const int PetHealPerRank = 1;
-        public const double InstanceKillPercentPerRank = 0.5;
+        public const int PetHealMaxRank = 100;
+
+        // Instance Kill: +0.2%/pt, max 50 points spent
+        public const double InstanceKillPercentPerRank = 0.2;
+        public const int InstanceKillMaxRank = 50;
+
+        // Spell Damage: +1%/pt, max 100 points
         public const double SpellPowerPercentPerRank = 1;
+        public const int SpellPowerMaxRank = 100;
+
+        // Spell Heal: +2 flat/pt, max 100 points
         public const int SpellHealPerRank = 2;
+        public const int SpellHealMaxRank = 100;
+
+        public static int GetMaxRank(SkillTreeStat stat) => stat switch
+        {
+            SkillTreeStat.CritChance => CritChanceMaxRank,
+            SkillTreeStat.CritDamage => CritDamageMaxRank,
+            SkillTreeStat.MoveSpeed => MoveSpeedMaxRank,
+            SkillTreeStat.AttackSpeed => AttackSpeedMaxRank,
+            SkillTreeStat.GoldDrop => GoldDropMaxRank,
+            SkillTreeStat.ExpGain => ExpGainMaxRank,
+            SkillTreeStat.Luck => LuckMaxRank,
+            SkillTreeStat.MaxHP => MaxHpMaxRank,
+            SkillTreeStat.HeavyDamage => HeavyDamageMaxRank,
+            SkillTreeStat.MaxTP => MaxTpMaxRank,
+            SkillTreeStat.SpellAttack => SpellAttackMaxRank,
+            SkillTreeStat.PetDamage => PetDamageMaxRank,
+            SkillTreeStat.PetHeal => PetHealMaxRank,
+            SkillTreeStat.InstanceKill => InstanceKillMaxRank,
+            SkillTreeStat.SpellPower => SpellPowerMaxRank,
+            SkillTreeStat.SpellHeal => SpellHealMaxRank,
+            _ => 100
+        };
     }
 }

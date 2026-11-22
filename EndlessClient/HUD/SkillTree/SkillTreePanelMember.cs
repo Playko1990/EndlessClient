@@ -65,7 +65,7 @@ namespace EndlessClient.HUD.SkillTree
                 DrawArea = new Rectangle(pad, HudUiMetrics.Scale(14, resizable), innerWidth, HudUiMetrics.Scale(12, resizable)),
                 ForeColor = ColorConstants.LightGrayText,
                 TextAlign = LabelAlignment.MiddleCenter,
-                Text = $"0/{SkillTreeFormulas.MaxRankPerSkill}"
+                Text = $"0/{SkillTreeFormulas.GetMaxRank(stat)}"
             };
             _rankLabel.SetParentControl(this);
 
@@ -105,11 +105,12 @@ namespace EndlessClient.HUD.SkillTree
 
         public void UpdateDisplay(int rank, string bonusText, bool canTrain)
         {
-            _rank = Math.Max(0, Math.Min(rank, SkillTreeFormulas.MaxRankPerSkill));
-            _isMaxed = _rank >= SkillTreeFormulas.MaxRankPerSkill;
+            var maxRank = SkillTreeFormulas.GetMaxRank(Stat);
+            _rank = Math.Max(0, Math.Min(rank, maxRank));
+            _isMaxed = _rank >= maxRank;
             _canTrain = canTrain && !_isMaxed;
 
-            _rankLabel.Text = $"{_rank}/{SkillTreeFormulas.MaxRankPerSkill}";
+            _rankLabel.Text = $"{_rank}/{maxRank}";
             if (_isMaxed)
             {
                 _bonusLabel.Text = "MAXED";
@@ -155,7 +156,8 @@ namespace EndlessClient.HUD.SkillTree
             if (_rank <= 0)
                 return;
 
-            var fillWidth = Math.Max(1, (int)Math.Round(abs.Width * (_rank / (double)SkillTreeFormulas.MaxRankPerSkill)));
+            var maxRank = Math.Max(1, SkillTreeFormulas.GetMaxRank(Stat));
+            var fillWidth = Math.Max(1, (int)Math.Round(abs.Width * (_rank / (double)maxRank)));
             var fill = new Rectangle(abs.X, abs.Y, fillWidth, abs.Height);
             _spriteBatch.Draw(_pixel, fill, _isMaxed ? GaugeMaxed : GaugeFill);
         }
@@ -208,46 +210,40 @@ namespace EndlessClient.HUD.SkillTree
             return FormatBonusAmount(stat, rank);
         }
 
-        private static string FormatBonusAmount(SkillTreeStat stat, int rank) => stat switch
+        private static string FormatBonusAmount(SkillTreeStat stat, int rank)
         {
-            SkillTreeStat.CritChance => $"+{rank * SkillTreeFormulas.CritChancePercentPerRank:0}%",
-            SkillTreeStat.CritDamage => $"+{rank * SkillTreeFormulas.CritDamagePercentPerRank:0}%",
-            SkillTreeStat.MoveSpeed => $"+{rank * SkillTreeFormulas.MoveSpeedPercentPerRank:0}%",
-            SkillTreeStat.AttackSpeed => $"+{rank * SkillTreeFormulas.AttackSpeedPercentPerRank:0}%",
-            SkillTreeStat.GoldDrop => $"+{rank * SkillTreeFormulas.GoldDropPercentPerRank:0}%",
-            SkillTreeStat.ExpGain => $"+{rank * SkillTreeFormulas.ExpGainPercentPerRank:0}%",
-            SkillTreeStat.Luck => $"+{rank * SkillTreeFormulas.LuckPerRank}",
-            SkillTreeStat.MaxHP => $"+{rank * SkillTreeFormulas.MaxHpPerRank}",
-            SkillTreeStat.HeavyDamage => $"+{rank * SkillTreeFormulas.HeavyDamagePercentPerRank:0}%",
-            SkillTreeStat.MaxTP => $"+{rank * SkillTreeFormulas.MaxTpPercentPerRank:0}%",
-            SkillTreeStat.SpellAttack => $"+{rank * SkillTreeFormulas.SpellAttackPercentPerRank:0}%",
-            SkillTreeStat.PetDamage => $"+{rank * SkillTreeFormulas.PetDamagePerRank}",
-            SkillTreeStat.PetHeal => $"+{rank * SkillTreeFormulas.PetHealPerRank}",
-            SkillTreeStat.InstanceKill => $"+{rank * SkillTreeFormulas.InstanceKillPercentPerRank:0.#}%",
-            SkillTreeStat.SpellPower => $"+{rank * SkillTreeFormulas.SpellPowerPercentPerRank:0}%",
-            SkillTreeStat.SpellHeal => $"+{rank * SkillTreeFormulas.SpellHealPerRank}",
-            _ => string.Empty
-        };
+            var amount = GetBonusAmount(stat, rank);
+            return IsFlatBonus(stat) ? $"+{amount:0}" : $"+{amount:0.##}%";
+        }
 
-        private static string GetBonusHint(SkillTreeStat stat) => stat switch
+        private static string GetBonusHint(SkillTreeStat stat)
         {
-            SkillTreeStat.CritChance => $"+{SkillTreeFormulas.CritChancePercentPerRank:0}%/pt",
-            SkillTreeStat.CritDamage => $"+{SkillTreeFormulas.CritDamagePercentPerRank:0}%/pt",
-            SkillTreeStat.MoveSpeed => $"+{SkillTreeFormulas.MoveSpeedPercentPerRank:0}%/pt",
-            SkillTreeStat.AttackSpeed => $"+{SkillTreeFormulas.AttackSpeedPercentPerRank:0}%/pt",
-            SkillTreeStat.GoldDrop => $"+{SkillTreeFormulas.GoldDropPercentPerRank:0}%/pt",
-            SkillTreeStat.ExpGain => $"+{SkillTreeFormulas.ExpGainPercentPerRank:0}%/pt",
-            SkillTreeStat.Luck => $"+{SkillTreeFormulas.LuckPerRank}/pt",
-            SkillTreeStat.MaxHP => $"+{SkillTreeFormulas.MaxHpPerRank}/pt",
-            SkillTreeStat.HeavyDamage => $"+{SkillTreeFormulas.HeavyDamagePercentPerRank:0}%/pt",
-            SkillTreeStat.MaxTP => $"+{SkillTreeFormulas.MaxTpPercentPerRank:0}%/pt",
-            SkillTreeStat.SpellAttack => $"+{SkillTreeFormulas.SpellAttackPercentPerRank:0}%/pt",
-            SkillTreeStat.PetDamage => $"+{SkillTreeFormulas.PetDamagePerRank}/pt",
-            SkillTreeStat.PetHeal => $"+{SkillTreeFormulas.PetHealPerRank}/pt",
-            SkillTreeStat.InstanceKill => $"+{SkillTreeFormulas.InstanceKillPercentPerRank:0.#}%/pt",
-            SkillTreeStat.SpellPower => $"+{SkillTreeFormulas.SpellPowerPercentPerRank:0}%/pt",
-            SkillTreeStat.SpellHeal => $"+{SkillTreeFormulas.SpellHealPerRank}/pt",
-            _ => string.Empty
+            var per = GetBonusAmount(stat, 1);
+            return IsFlatBonus(stat) ? $"+{per:0}/pt" : $"+{per:0.##}%/pt";
+        }
+
+        private static bool IsFlatBonus(SkillTreeStat stat) =>
+            stat is SkillTreeStat.PetDamage or SkillTreeStat.PetHeal or SkillTreeStat.SpellHeal;
+
+        private static double GetBonusAmount(SkillTreeStat stat, int rank) => stat switch
+        {
+            SkillTreeStat.CritChance => Math.Min(SkillTreeFormulas.CritChanceCapPercent, rank * SkillTreeFormulas.CritChancePercentPerRank),
+            SkillTreeStat.CritDamage => Math.Min(SkillTreeFormulas.CritDamageCapPercent, rank * SkillTreeFormulas.CritDamagePercentPerRank),
+            SkillTreeStat.MoveSpeed => Math.Min(SkillTreeFormulas.MoveSpeedCapPercent, rank * SkillTreeFormulas.MoveSpeedPercentPerRank),
+            SkillTreeStat.AttackSpeed => Math.Min(SkillTreeFormulas.AttackSpeedCapPercent, rank * SkillTreeFormulas.AttackSpeedPercentPerRank),
+            SkillTreeStat.GoldDrop => Math.Min(SkillTreeFormulas.GoldDropCapPercent, rank * SkillTreeFormulas.GoldDropPercentPerRank),
+            SkillTreeStat.ExpGain => Math.Min(SkillTreeFormulas.ExpGainCapPercent, rank * SkillTreeFormulas.ExpGainPercentPerRank),
+            SkillTreeStat.Luck => Math.Min(SkillTreeFormulas.LuckCapPercent, rank * SkillTreeFormulas.LuckPercentPerRank),
+            SkillTreeStat.MaxHP => Math.Min(SkillTreeFormulas.MaxHpCapPercent, rank * SkillTreeFormulas.MaxHpPercentPerRank),
+            SkillTreeStat.HeavyDamage => Math.Min(SkillTreeFormulas.HeavyDamageCapPercent, rank * SkillTreeFormulas.HeavyDamagePercentPerRank),
+            SkillTreeStat.MaxTP => rank * SkillTreeFormulas.MaxTpPercentPerRank,
+            SkillTreeStat.SpellAttack => rank * SkillTreeFormulas.SpellAttackPercentPerRank,
+            SkillTreeStat.PetDamage => rank * SkillTreeFormulas.PetDamagePerRank,
+            SkillTreeStat.PetHeal => rank * SkillTreeFormulas.PetHealPerRank,
+            SkillTreeStat.InstanceKill => rank * SkillTreeFormulas.InstanceKillPercentPerRank,
+            SkillTreeStat.SpellPower => rank * SkillTreeFormulas.SpellPowerPercentPerRank,
+            SkillTreeStat.SpellHeal => rank * SkillTreeFormulas.SpellHealPerRank,
+            _ => 0
         };
     }
 }

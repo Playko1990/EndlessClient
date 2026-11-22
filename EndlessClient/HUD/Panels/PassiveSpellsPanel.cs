@@ -212,7 +212,8 @@ namespace EndlessClient.HUD.Panels
             foreach (var member in _members)
             {
                 var rank = _skillTreeProvider.GetRank(member.Stat);
-                var canTrain = available > 0 && rank < SkillTreeFormulas.MaxRankPerSkill;
+                var maxRank = SkillTreeFormulas.GetMaxRank(member.Stat);
+                var canTrain = available > 0 && rank < maxRank;
                 member.UpdateDisplay(rank, SkillTreePanelMember.FormatBonus(member.Stat, rank), canTrain);
             }
         }
@@ -223,7 +224,7 @@ namespace EndlessClient.HUD.Panels
                 return;
 
             var rank = _skillTreeProvider.GetRank(member.Stat);
-            if (rank >= SkillTreeFormulas.MaxRankPerSkill)
+            if (rank >= SkillTreeFormulas.GetMaxRank(member.Stat))
                 return;
 
             if (!_confirmedTraining)

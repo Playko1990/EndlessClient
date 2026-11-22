@@ -52,7 +52,7 @@ namespace EOLib.Domain.Character
                 return false;
 
             var currentRank = _skillTreeProvider.GetRank(stat);
-            if (currentRank >= SkillTreeFormulas.MaxRankPerSkill)
+            if (currentRank >= SkillTreeFormulas.GetMaxRank(stat))
                 return false;
 
             _skillTreeRepository.SetRank(stat, currentRank + 1);
@@ -98,7 +98,7 @@ namespace EOLib.Domain.Character
                 {
                     _skillTreeRepository.SetRank(
                         skillStat,
-                        Math.Min(rank, SkillTreeFormulas.MaxRankPerSkill));
+                        Math.Min(rank, SkillTreeFormulas.GetMaxRank(skillStat)));
                 }
             }
         }

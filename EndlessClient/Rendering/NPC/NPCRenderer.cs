@@ -42,6 +42,12 @@ namespace EndlessClient.Rendering.NPC
         private int _fadeAwayAlpha;
         private bool _isDying, _isBlankSprite;
 
+        // Opaque-body X within the current frame (cached; refreshed on frame/direction change).
+        private int _opaqueCenterInFrame = -1;
+        private NPCFrame _opaqueCenterFrame;
+        private EODirection _opaqueCenterDirection;
+        private int _opaqueCenterGraphic = -1;
+
         private XNALabel _nameLabel;
         private IChatBubble _chatBubble;
 
@@ -286,9 +292,8 @@ namespace EndlessClient.Rendering.NPC
             var horizontalOffset = metaData.OffsetX * (NPC.IsFacing(EODirection.Down, EODirection.Left) ? -1 : 1);
 
             // Center HP/name on the opaque sprite body (frame padding is often asymmetric).
-            var flipped = NPC.IsFacing(EODirection.Up, EODirection.Right);
-            var pixels = _npcSpriteDataCache.GetData(data.Graphic, NPC.Frame);
-            HorizontalCenter = DrawArea.X + GetOpaqueHorizontalCenter(frameTexture, pixels, flipped);
+            EnsureOpaqueCenter(data.Graphic, frameTexture);
+            HorizontalCenter = DrawArea.X + _opaqueCenterInFrame;
 
             var nameLabelGridCoordinates = _gridDrawCoordinateCalculator.CalculateDrawCoordinates(NPC.WithX(NPC.X - 1).WithY(NPC.Y - 1));
             NameLabelY = (int)nameLabelGridCoordinates.Y - metaData.NameLabelOffset;
@@ -296,12 +301,28 @@ namespace EndlessClient.Rendering.NPC
             EffectTargetArea = DrawArea.WithSize(DrawArea.Width + horizontalOffset * 2, DrawArea.Height);
         }
 
-        private static int GetOpaqueHorizontalCenter(Texture2D frameTexture, Color[] pixels, bool flipped)
+        private void EnsureOpaqueCenter(int graphic, Texture2D frameTexture)
         {
-            var w = frameTexture.Width;
-            var h = frameTexture.Height;
-            if (w <= 0 || h <= 0 || pixels == null || pixels.Length < w * h)
-                return Math.Max(0, w / 2);
+            if (_opaqueCenterInFrame >= 0
+                && _opaqueCenterGraphic == graphic
+                && _opaqueCenterFrame == NPC.Frame
+                && _opaqueCenterDirection == NPC.Direction)
+                return;
+
+            _opaqueCenterGraphic = graphic;
+            _opaqueCenterFrame = NPC.Frame;
+            _opaqueCenterDirection = NPC.Direction;
+
+            var w = frameTexture?.Width ?? 0;
+            var h = frameTexture?.Height ?? 0;
+            if (frameTexture == null || w <= 0 || h <= 0)
+            {
+                _opaqueCenterInFrame = Math.Max(0, w / 2);
+                return;
+            }
+
+            var pixels = new Color[w * h];
+            frameTexture.GetData(pixels);
 
             var minX = w;
             var maxX = -1;
@@ -318,12 +339,11 @@ namespace EndlessClient.Rendering.NPC
                 }
             }
 
-            if (maxX < minX)
-                return w / 2;
+            var mid = maxX < minX ? w / 2 : (minX + maxX + 1) / 2;
 
-            var mid = (minX + maxX + 1) / 2;
-            // Draw uses FlipHorizontally for Up/Right — mirror opaque center to match on-screen art.
-            return flipped ? w - mid : mid;
+            // Draw flips Left/Down=None, Up/Right=FlipHorizontally — mirror opaque mid to match art.
+            var flipped = NPC.IsFacing(EODirection.Up, EODirection.Right);
+            _opaqueCenterInFrame = flipped ? w - mid : mid;
         }
 
         private void UpdateStandingFrameAnimation()

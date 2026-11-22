@@ -6,7 +6,6 @@ using EOLib.Domain.Map;
 using EOLib.Domain.Spells;
 using EOLib.IO.Repositories;
 using EOLib.Net.Communication;
-using Moffat.EndlessOnline.SDK.Data;
 using Moffat.EndlessOnline.SDK.Protocol;
 using Moffat.EndlessOnline.SDK.Protocol.Net;
 using Moffat.EndlessOnline.SDK.Protocol.Net.Client;
@@ -20,6 +19,11 @@ namespace EOLib.Domain.Character
         private readonly ICharacterRepository _characterRepository;
         private readonly IESFFileProvider _spellFileProvider;
         private readonly IFixedTimeStepRepository _fixedTimeStepRepository;
+
+        // Timestamp sent with SPELL_REQUEST — SPELL_TARGET_OTHER must echo it as PreviousTimestamp
+        // or servers that enforce cast timestamps reject the cast (looks like "NPC spells don't work").
+        private int _spellRequestTimestamp;
+        private int _spellRequestSpellId;
 
         public CharacterActions(IPacketSendService packetSendService,
                                 ICharacterRepository characterRepository,
@@ -116,10 +120,13 @@ namespace EOLib.Domain.Character
 
         public void PrepareCastSpell(int spellId)
         {
+            _spellRequestTimestamp = (int)_fixedTimeStepRepository.TickCount;
+            _spellRequestSpellId = spellId;
+
             var packet = new SpellRequestClientPacket
             {
                 SpellId = spellId,
-                Timestamp = (int)_fixedTimeStepRepository.TickCount
+                Timestamp = _spellRequestTimestamp
             };
             _packetSendService.SendPacket(packet);
         }
@@ -132,13 +139,19 @@ namespace EOLib.Domain.Character
             var sp = Math.Max(0, c.Stats[CharacterStat.SP] - data.SP);
             _characterRepository.MainCharacter = c.WithStats(c.Stats.WithNewStat(CharacterStat.SP, sp));
 
+            var castTimestamp = (int)_fixedTimeStepRepository.TickCount;
+            // Prefer the matching SPELL_REQUEST timestamp; fall back if prep was skipped.
+            var previousTimestamp = _spellRequestSpellId == spellId
+                ? _spellRequestTimestamp
+                : castTimestamp;
+
             IPacket packet = data.Target switch
             {
                 IO.SpellTarget.Self => new SpellTargetSelfClientPacket
                 {
                     SpellId = spellId,
                     Direction = (Direction)c.RenderProperties.Direction,
-                    Timestamp = (int)_fixedTimeStepRepository.TickCount,
+                    Timestamp = castTimestamp,
                 },
                 IO.SpellTarget.Normal => new SpellTargetOtherClientPacket
                 {
@@ -149,14 +162,13 @@ namespace EOLib.Domain.Character
                         : target is Character
                             ? SpellTargetType.Player
                             : throw new InvalidOperationException("Unknown SpellTargetType (must be character or NPC)"),
-                    // todo: previous time stamp tracking. this was previously sent to eoserv as a char(1) and short (1)
-                    PreviousTimestamp = NumberEncoder.DecodeNumber(new byte[] { 2, 2, 254 }),
-                    Timestamp = (int)_fixedTimeStepRepository.TickCount,
+                    PreviousTimestamp = previousTimestamp,
+                    Timestamp = castTimestamp,
                 },
                 IO.SpellTarget.Group => new SpellTargetGroupClientPacket
                 {
                     SpellId = spellId,
-                    Timestamp = (int)_fixedTimeStepRepository.TickCount,
+                    Timestamp = castTimestamp,
                 },
                 _ => throw new ArgumentOutOfRangeException("Unknown spell target (should be Self, Normal, or Group)")
             };

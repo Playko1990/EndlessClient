@@ -80,14 +80,16 @@ namespace EndlessClient.Rendering.Effects
 
             var additionalX = _metadata.AnimationType switch
             {
-                EffectAnimationType.Position => positionMetadata.OffsetXByFrame.Count < _displayFrame ? positionMetadata.OffsetXByFrame[_displayFrame] : 0,
+                // Index must be in-range (Count > frame). The old `<` check inverted this so
+                // whirl/position spells never applied per-frame offsets.
+                EffectAnimationType.Position => positionMetadata.OffsetXByFrame.Count > _displayFrame ? positionMetadata.OffsetXByFrame[_displayFrame] : 0,
                 _ => 0
             };
 
             var additionalY = _metadata.AnimationType switch
             {
                 EffectAnimationType.VerticalSliding => slidingMetadata.FrameOffsetY * _displayFrame,
-                EffectAnimationType.Position => positionMetadata.OffsetYByFrame.Count < _displayFrame ? positionMetadata.OffsetYByFrame[_displayFrame] : 0,
+                EffectAnimationType.Position => positionMetadata.OffsetYByFrame.Count > _displayFrame ? positionMetadata.OffsetYByFrame[_displayFrame] : 0,
                 _ => 0
             };
 

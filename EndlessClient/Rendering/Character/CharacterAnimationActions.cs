@@ -176,6 +176,9 @@ namespace EndlessClient.Rendering.Character
 
         public void NotifyStartSpellCast(int playerId, int spellId)
         {
+            if (!_characterRendererProvider.CharacterRenderers.ContainsKey(playerId))
+                return;
+
             var shoutName = _pubFileProvider.ESFFile[spellId].Shout;
             _characterRendererProvider.CharacterRenderers[playerId].ShoutSpellPrep(shoutName.ToLower());
         }

@@ -283,13 +283,47 @@ namespace EndlessClient.Rendering.NPC
                 new Vector2(metaDataOffsetX - frameTexture.Width / 2, metaDataOffsetY - (frameTexture.Height - 23));
             DrawArea = frameTexture.Bounds.WithPosition(renderCoordinates);
 
-            var horizontalOffset = _npcSpriteSheet.GetNPCMetadata(data.Graphic).OffsetX * (NPC.IsFacing(EODirection.Down, EODirection.Left) ? -1 : 1);
-            HorizontalCenter = DrawArea.X + (DrawArea.Width / 2) + horizontalOffset;
+            var horizontalOffset = metaData.OffsetX * (NPC.IsFacing(EODirection.Down, EODirection.Left) ? -1 : 1);
+
+            // Center HP/name on the opaque sprite body (frame padding is often asymmetric).
+            var flipped = NPC.IsFacing(EODirection.Up, EODirection.Right);
+            var pixels = _npcSpriteDataCache.GetData(data.Graphic, NPC.Frame);
+            HorizontalCenter = DrawArea.X + GetOpaqueHorizontalCenter(frameTexture, pixels, flipped);
 
             var nameLabelGridCoordinates = _gridDrawCoordinateCalculator.CalculateDrawCoordinates(NPC.WithX(NPC.X - 1).WithY(NPC.Y - 1));
             NameLabelY = (int)nameLabelGridCoordinates.Y - metaData.NameLabelOffset;
 
             EffectTargetArea = DrawArea.WithSize(DrawArea.Width + horizontalOffset * 2, DrawArea.Height);
+        }
+
+        private static int GetOpaqueHorizontalCenter(Texture2D frameTexture, Color[] pixels, bool flipped)
+        {
+            var w = frameTexture.Width;
+            var h = frameTexture.Height;
+            if (w <= 0 || h <= 0 || pixels == null || pixels.Length < w * h)
+                return Math.Max(0, w / 2);
+
+            var minX = w;
+            var maxX = -1;
+            for (int y = 0; y < h; y++)
+            {
+                var row = y * w;
+                for (int x = 0; x < w; x++)
+                {
+                    if (pixels[row + x].A <= 16)
+                        continue;
+
+                    if (x < minX) minX = x;
+                    if (x > maxX) maxX = x;
+                }
+            }
+
+            if (maxX < minX)
+                return w / 2;
+
+            var mid = (minX + maxX + 1) / 2;
+            // Draw uses FlipHorizontally for Up/Right — mirror opaque center to match on-screen art.
+            return flipped ? w - mid : mid;
         }
 
         private void UpdateStandingFrameAnimation()

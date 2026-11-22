@@ -106,10 +106,9 @@ namespace EndlessClient.Rendering
             var barW = _healthBarBackgroundSource.Width * DisplayScale;
             var barH = _healthBarBackgroundSource.Height * DisplayScale;
 
-            // Center on the drawn sprite box. NPC HorizontalCenter adds metadata OffsetX
-            // again (already baked into DrawArea), which shoved bars off to the side.
+            // HorizontalCenter is the opaque-body center (NPCs) / skin center (players).
             var drawArea = _parentReference.DrawArea;
-            var centerX = drawArea.X + drawArea.Width / 2f;
+            var centerX = (float)_parentReference.HorizontalCenter;
 
             // Sit fully above the head: use the higher of name-label Y and sprite top
             // (smaller Y), then lift by bar height + clearance so 2x bars clear the hair.

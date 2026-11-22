@@ -198,6 +198,7 @@ namespace EndlessClient.HUD.Panels
                 _messageBoxFactory,
                 _skillTreeActions,
                 _skillTreeProvider,
+                _characterProvider,
                 _hudStateActions,
                 _sfxPlayer,
                 _clientWindowSizeProvider)

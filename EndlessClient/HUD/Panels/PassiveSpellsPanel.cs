@@ -30,15 +30,18 @@ namespace EndlessClient.HUD.Panels
         private readonly IEOMessageBoxFactory _messageBoxFactory;
         private readonly ISkillTreeActions _skillTreeActions;
         private readonly ISkillTreeProvider _skillTreeProvider;
+        private readonly ICharacterProvider _characterProvider;
         private readonly bool _resizable;
 
         private readonly IXNALabel _headerNameLabel;
-        private readonly IXNALabel _availablePointsLabel;
+        private readonly HudScaledLabel _levelLabel;
+        private readonly HudScaledLabel _availablePointsLabel;
         private readonly List<SkillTreePanelMember> _members;
         private readonly Texture2D _headerIcon;
 
         private int _cachedAvailablePoints = int.MinValue;
         private int _cachedTotalSpent = int.MinValue;
+        private int _cachedLevel = int.MinValue;
         private bool _confirmedTraining;
 
         public PassiveSpellsPanel(INativeGraphicsManager nativeGraphicsManager,
@@ -46,6 +49,7 @@ namespace EndlessClient.HUD.Panels
                                   IEOMessageBoxFactory messageBoxFactory,
                                   ISkillTreeActions skillTreeActions,
                                   ISkillTreeProvider skillTreeProvider,
+                                  ICharacterProvider characterProvider,
                                   IHudStateActions hudStateActions,
                                   ISfxPlayer sfxPlayer,
                                   IClientWindowSizeProvider clientWindowSizeProvider)
@@ -56,12 +60,14 @@ namespace EndlessClient.HUD.Panels
             _messageBoxFactory = messageBoxFactory;
             _skillTreeActions = skillTreeActions;
             _skillTreeProvider = skillTreeProvider;
+            _characterProvider = characterProvider;
             _resizable = clientWindowSizeProvider.Resizable;
 
             BackgroundImage = _nativeGraphicsManager.TextureFromResource(GFXTypes.PostLoginUI, 62);
             DrawArea = HudUiMetrics.ScaledPanelDrawArea(BackgroundImage, _resizable);
 
             var font = HudUiMetrics.PanelLabelFont(_resizable);
+            var valueScale = HudUiMetrics.PanelValueTextScale(_resizable);
 
             // Title sits above the tree in the left-rail header box.
             _headerNameLabel = new XNALabel(font)
@@ -75,10 +81,19 @@ namespace EndlessClient.HUD.Panels
             };
             _headerNameLabel.SetParentControl(this);
 
-            // Same left-rail "skp" slot as Active Spells (panel art already prints the label).
-            _availablePointsLabel = new XNALabel(font)
+            // Panel art already prints "lvl" — fill the value next to it (same slot as Active Spells).
+            _levelLabel = new HudScaledLabel(font, valueScale)
             {
-                AutoSize = false,
+                DrawArea = HudUiMetrics.ScaleRectangle(new Rectangle(32, 78, 42, 15), _resizable),
+                ForeColor = ColorConstants.LightGrayText,
+                TextAlign = LabelAlignment.MiddleLeft,
+                Text = "0"
+            };
+            _levelLabel.SetParentControl(this);
+
+            // Panel art already prints "skp" — fill available skill points.
+            _availablePointsLabel = new HudScaledLabel(font, valueScale)
+            {
                 DrawArea = HudUiMetrics.ScaleRectangle(new Rectangle(32, 96, 42, 15), _resizable),
                 ForeColor = ColorConstants.LightGrayText,
                 TextAlign = LabelAlignment.MiddleLeft,
@@ -101,11 +116,15 @@ namespace EndlessClient.HUD.Panels
                 .ToList();
 
             _skillTreeActions.EnsureLoaded();
+
+            _ = hudStateActions;
+            _ = sfxPlayer;
         }
 
         public override void Initialize()
         {
             _headerNameLabel.Initialize();
+            _levelLabel.Initialize();
             _availablePointsLabel.Initialize();
 
             foreach (var member in _members)
@@ -122,8 +141,13 @@ namespace EndlessClient.HUD.Panels
 
             var available = _skillTreeActions.GetAvailablePoints();
             var spent = _skillTreeProvider.TotalSpent;
-            if (available != _cachedAvailablePoints || spent != _cachedTotalSpent)
+            var level = _characterProvider.MainCharacter.Stats[CharacterStat.Level];
+            if (available != _cachedAvailablePoints ||
+                spent != _cachedTotalSpent ||
+                level != _cachedLevel)
+            {
                 RefreshDisplays(force: false);
+            }
 
             if (available <= 0)
                 _confirmedTraining = false;
@@ -170,23 +194,36 @@ namespace EndlessClient.HUD.Panels
         {
             var available = _skillTreeActions.GetAvailablePoints();
             var spent = _skillTreeProvider.TotalSpent;
-            if (!force && available == _cachedAvailablePoints && spent == _cachedTotalSpent)
+            var level = _characterProvider.MainCharacter.Stats[CharacterStat.Level];
+            if (!force &&
+                available == _cachedAvailablePoints &&
+                spent == _cachedTotalSpent &&
+                level == _cachedLevel)
+            {
                 return;
+            }
 
             _cachedAvailablePoints = available;
             _cachedTotalSpent = spent;
+            _cachedLevel = level;
+            _levelLabel.Text = level.ToString();
             _availablePointsLabel.Text = available.ToString();
 
             foreach (var member in _members)
             {
                 var rank = _skillTreeProvider.GetRank(member.Stat);
-                member.UpdateDisplay(rank, SkillTreePanelMember.FormatBonus(member.Stat, rank), available > 0);
+                var canTrain = available > 0 && rank < SkillTreeFormulas.MaxRankPerSkill;
+                member.UpdateDisplay(rank, SkillTreePanelMember.FormatBonus(member.Stat, rank), canTrain);
             }
         }
 
         private void HandleTrainClicked(object sender, EventArgs e)
         {
             if (!(sender is SkillTreePanelMember member))
+                return;
+
+            var rank = _skillTreeProvider.GetRank(member.Stat);
+            if (rank >= SkillTreeFormulas.MaxRankPerSkill)
                 return;
 
             if (!_confirmedTraining)

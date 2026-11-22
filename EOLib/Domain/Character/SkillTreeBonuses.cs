@@ -79,6 +79,9 @@ namespace EOLib.Domain.Character
 
     public static class SkillTreeFormulas
     {
+        /// <summary>Each skill can be trained this many times before it is maxed.</summary>
+        public const int MaxRankPerSkill = 10;
+
         public const double CritChancePercentPerRank = 1;
         public const double CritDamagePercentPerRank = 5;
         public const double MoveSpeedPercentPerRank = 3;

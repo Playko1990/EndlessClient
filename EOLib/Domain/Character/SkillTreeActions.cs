@@ -51,8 +51,11 @@ namespace EOLib.Domain.Character
             if (GetAvailablePoints() <= 0)
                 return false;
 
-            var nextRank = _skillTreeProvider.GetRank(stat) + 1;
-            _skillTreeRepository.SetRank(stat, nextRank);
+            var currentRank = _skillTreeProvider.GetRank(stat);
+            if (currentRank >= SkillTreeFormulas.MaxRankPerSkill)
+                return false;
+
+            _skillTreeRepository.SetRank(stat, currentRank + 1);
             Save();
             return true;
         }
@@ -93,7 +96,9 @@ namespace EOLib.Domain.Character
                     int.TryParse(value, out var rank) &&
                     rank > 0)
                 {
-                    _skillTreeRepository.SetRank(skillStat, rank);
+                    _skillTreeRepository.SetRank(
+                        skillStat,
+                        Math.Min(rank, SkillTreeFormulas.MaxRankPerSkill));
                 }
             }
         }

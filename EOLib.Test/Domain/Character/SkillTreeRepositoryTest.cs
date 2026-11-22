@@ -77,5 +77,11 @@ namespace EOLib.Test.Domain.Character
             Assert.That(_repository.TotalSpent, Is.EqualTo(0));
             Assert.That(_repository.GetRank(SkillTreeStat.Luck), Is.EqualTo(0));
         }
+
+        [Test]
+        public void MaxRankPerSkillIsTen()
+        {
+            Assert.That(SkillTreeFormulas.MaxRankPerSkill, Is.EqualTo(10));
+        }
     }
 }

@@ -37,6 +37,13 @@ namespace EOLib.Test.Domain.Character
             _repository.SetRank(SkillTreeStat.Luck, 7);
             _repository.SetRank(SkillTreeStat.MaxHP, 6);
             _repository.SetRank(SkillTreeStat.HeavyDamage, 2);
+            _repository.SetRank(SkillTreeStat.MaxTP, 3);
+            _repository.SetRank(SkillTreeStat.SpellAttack, 4);
+            _repository.SetRank(SkillTreeStat.PetDamage, 5);
+            _repository.SetRank(SkillTreeStat.PetHeal, 6);
+            _repository.SetRank(SkillTreeStat.InstanceKill, 2);
+            _repository.SetRank(SkillTreeStat.SpellPower, 3);
+            _repository.SetRank(SkillTreeStat.SpellHeal, 4);
 
             var bonuses = _repository.GetBonuses();
 
@@ -49,6 +56,13 @@ namespace EOLib.Test.Domain.Character
             Assert.That(bonuses.Luck, Is.EqualTo(7));
             Assert.That(bonuses.MaxHp, Is.EqualTo(90));
             Assert.That(bonuses.HeavyDamagePercent, Is.EqualTo(6));
+            Assert.That(bonuses.MaxTpPercent, Is.EqualTo(3));
+            Assert.That(bonuses.SpellAttackPercent, Is.EqualTo(4));
+            Assert.That(bonuses.PetDamage, Is.EqualTo(5));
+            Assert.That(bonuses.PetHeal, Is.EqualTo(6));
+            Assert.That(bonuses.InstanceKillPercent, Is.EqualTo(1));
+            Assert.That(bonuses.SpellPowerPercent, Is.EqualTo(3));
+            Assert.That(bonuses.SpellHeal, Is.EqualTo(8));
         }
 
         [Test]

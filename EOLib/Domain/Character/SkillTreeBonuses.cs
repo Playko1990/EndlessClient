@@ -11,6 +11,13 @@ namespace EOLib.Domain.Character
         public int Luck { get; }
         public int MaxHp { get; }
         public double HeavyDamagePercent { get; }
+        public double MaxTpPercent { get; }
+        public double SpellAttackPercent { get; }
+        public int PetDamage { get; }
+        public int PetHeal { get; }
+        public double InstanceKillPercent { get; }
+        public double SpellPowerPercent { get; }
+        public int SpellHeal { get; }
 
         public SkillTreeBonuses(
             double critChancePercent,
@@ -21,7 +28,14 @@ namespace EOLib.Domain.Character
             double expGainPercent,
             int luck,
             int maxHp,
-            double heavyDamagePercent)
+            double heavyDamagePercent,
+            double maxTpPercent,
+            double spellAttackPercent,
+            int petDamage,
+            int petHeal,
+            double instanceKillPercent,
+            double spellPowerPercent,
+            int spellHeal)
         {
             CritChancePercent = critChancePercent;
             CritDamagePercent = critDamagePercent;
@@ -32,6 +46,13 @@ namespace EOLib.Domain.Character
             Luck = luck;
             MaxHp = maxHp;
             HeavyDamagePercent = heavyDamagePercent;
+            MaxTpPercent = maxTpPercent;
+            SpellAttackPercent = spellAttackPercent;
+            PetDamage = petDamage;
+            PetHeal = petHeal;
+            InstanceKillPercent = instanceKillPercent;
+            SpellPowerPercent = spellPowerPercent;
+            SpellHeal = spellHeal;
         }
 
         public static SkillTreeBonuses FromRanks(System.Func<SkillTreeStat, int> getRank)
@@ -45,7 +66,14 @@ namespace EOLib.Domain.Character
                 expGainPercent: getRank(SkillTreeStat.ExpGain) * SkillTreeFormulas.ExpGainPercentPerRank,
                 luck: getRank(SkillTreeStat.Luck) * SkillTreeFormulas.LuckPerRank,
                 maxHp: getRank(SkillTreeStat.MaxHP) * SkillTreeFormulas.MaxHpPerRank,
-                heavyDamagePercent: getRank(SkillTreeStat.HeavyDamage) * SkillTreeFormulas.HeavyDamagePercentPerRank);
+                heavyDamagePercent: getRank(SkillTreeStat.HeavyDamage) * SkillTreeFormulas.HeavyDamagePercentPerRank,
+                maxTpPercent: getRank(SkillTreeStat.MaxTP) * SkillTreeFormulas.MaxTpPercentPerRank,
+                spellAttackPercent: getRank(SkillTreeStat.SpellAttack) * SkillTreeFormulas.SpellAttackPercentPerRank,
+                petDamage: getRank(SkillTreeStat.PetDamage) * SkillTreeFormulas.PetDamagePerRank,
+                petHeal: getRank(SkillTreeStat.PetHeal) * SkillTreeFormulas.PetHealPerRank,
+                instanceKillPercent: getRank(SkillTreeStat.InstanceKill) * SkillTreeFormulas.InstanceKillPercentPerRank,
+                spellPowerPercent: getRank(SkillTreeStat.SpellPower) * SkillTreeFormulas.SpellPowerPercentPerRank,
+                spellHeal: getRank(SkillTreeStat.SpellHeal) * SkillTreeFormulas.SpellHealPerRank);
         }
     }
 
@@ -60,5 +88,12 @@ namespace EOLib.Domain.Character
         public const int LuckPerRank = 1;
         public const int MaxHpPerRank = 15;
         public const double HeavyDamagePercentPerRank = 3;
+        public const double MaxTpPercentPerRank = 1;
+        public const double SpellAttackPercentPerRank = 1;
+        public const int PetDamagePerRank = 1;
+        public const int PetHealPerRank = 1;
+        public const double InstanceKillPercentPerRank = 0.5;
+        public const double SpellPowerPercentPerRank = 1;
+        public const int SpellHealPerRank = 2;
     }
 }

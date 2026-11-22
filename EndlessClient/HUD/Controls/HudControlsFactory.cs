@@ -876,7 +876,7 @@ namespace EndlessClient.HUD.Controls
 
         private IGameComponent CreateTPStatusBar()
         {
-            var statusBar = new TPStatusBar(_nativeGraphicsManager, _clientWindowSizeRepository, (ICharacterProvider)_characterRepository) { DrawOrder = HUD_CONTROL_LAYER };
+            var statusBar = new TPStatusBar(_nativeGraphicsManager, _clientWindowSizeRepository, (ICharacterProvider)_characterRepository, _skillTreeActions, _skillTreeProvider) { DrawOrder = HUD_CONTROL_LAYER };
             statusBar.StatusBarClicked += () => _sfxPlayer.PlaySfx(SoundEffectID.HudStatusBarClick);
             return statusBar;
         }

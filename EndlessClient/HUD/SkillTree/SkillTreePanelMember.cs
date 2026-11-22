@@ -128,6 +128,13 @@ namespace EndlessClient.HUD.SkillTree
             SkillTreeStat.Luck => "Luck",
             SkillTreeStat.MaxHP => "Max HP",
             SkillTreeStat.HeavyDamage => "Heavy Dmg",
+            SkillTreeStat.MaxTP => "Max TP",
+            SkillTreeStat.SpellAttack => "Spell Atk",
+            SkillTreeStat.PetDamage => "Pet Dmg",
+            SkillTreeStat.PetHeal => "Pet Heal",
+            SkillTreeStat.InstanceKill => "Inst Kill",
+            SkillTreeStat.SpellPower => "Spell Dmg",
+            SkillTreeStat.SpellHeal => "Spell Heal",
             _ => stat.ToString()
         };
 
@@ -147,6 +154,13 @@ namespace EndlessClient.HUD.SkillTree
                 SkillTreeStat.Luck => $"+{rank * SkillTreeFormulas.LuckPerRank}",
                 SkillTreeStat.MaxHP => $"+{rank * SkillTreeFormulas.MaxHpPerRank}",
                 SkillTreeStat.HeavyDamage => $"+{rank * SkillTreeFormulas.HeavyDamagePercentPerRank:0}%",
+                SkillTreeStat.MaxTP => $"+{rank * SkillTreeFormulas.MaxTpPercentPerRank:0}%",
+                SkillTreeStat.SpellAttack => $"+{rank * SkillTreeFormulas.SpellAttackPercentPerRank:0}%",
+                SkillTreeStat.PetDamage => $"+{rank * SkillTreeFormulas.PetDamagePerRank}",
+                SkillTreeStat.PetHeal => $"+{rank * SkillTreeFormulas.PetHealPerRank}",
+                SkillTreeStat.InstanceKill => $"+{rank * SkillTreeFormulas.InstanceKillPercentPerRank:0.#}%",
+                SkillTreeStat.SpellPower => $"+{rank * SkillTreeFormulas.SpellPowerPercentPerRank:0}%",
+                SkillTreeStat.SpellHeal => $"+{rank * SkillTreeFormulas.SpellHealPerRank}",
                 _ => string.Empty
             };
         }
@@ -162,6 +176,13 @@ namespace EndlessClient.HUD.SkillTree
             SkillTreeStat.Luck => $"+{SkillTreeFormulas.LuckPerRank}/pt",
             SkillTreeStat.MaxHP => $"+{SkillTreeFormulas.MaxHpPerRank}/pt",
             SkillTreeStat.HeavyDamage => $"+{SkillTreeFormulas.HeavyDamagePercentPerRank:0}%/pt",
+            SkillTreeStat.MaxTP => $"+{SkillTreeFormulas.MaxTpPercentPerRank:0}%/pt",
+            SkillTreeStat.SpellAttack => $"+{SkillTreeFormulas.SpellAttackPercentPerRank:0}%/pt",
+            SkillTreeStat.PetDamage => $"+{SkillTreeFormulas.PetDamagePerRank}/pt",
+            SkillTreeStat.PetHeal => $"+{SkillTreeFormulas.PetHealPerRank}/pt",
+            SkillTreeStat.InstanceKill => $"+{SkillTreeFormulas.InstanceKillPercentPerRank:0.#}%/pt",
+            SkillTreeStat.SpellPower => $"+{SkillTreeFormulas.SpellPowerPercentPerRank:0}%/pt",
+            SkillTreeStat.SpellHeal => $"+{SkillTreeFormulas.SpellHealPerRank}/pt",
             _ => string.Empty
         };
     }

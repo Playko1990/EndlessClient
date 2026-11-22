@@ -10,6 +10,13 @@ namespace EOLib.Domain.Character
         ExpGain,
         Luck,
         MaxHP,
-        HeavyDamage
+        HeavyDamage,
+        MaxTP,
+        SpellAttack,
+        PetDamage,
+        PetHeal,
+        InstanceKill,
+        SpellPower,
+        SpellHeal
     }
 }

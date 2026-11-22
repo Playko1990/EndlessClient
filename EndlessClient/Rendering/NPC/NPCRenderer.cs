@@ -294,10 +294,11 @@ namespace EndlessClient.Rendering.NPC
 
             var horizontalOffset = metaData.OffsetX * (NPC.IsFacing(EODirection.Down, EODirection.Left) ? -1 : 1);
 
-            // Center HP/name on the opaque sprite body (frame padding is often asymmetric).
+            // EO NPC frames are bottom-aligned with empty padding above the art. Center HP
+            // on opaque body pixels so bars sit over the animal, not the padded frame / player.
             EnsureOpaqueBounds(data.Graphic, frameTexture);
             HorizontalCenter = DrawArea.X + _opaqueCenterInFrame;
-            // Name label still uses classic tile offset; HP bars use DrawArea/opaque top instead.
+
             var nameLabelGridCoordinates = _gridDrawCoordinateCalculator.CalculateDrawCoordinates(NPC.WithX(NPC.X - 1).WithY(NPC.Y - 1));
             NameLabelY = (int)nameLabelGridCoordinates.Y - metaData.NameLabelOffset;
 
@@ -305,7 +306,7 @@ namespace EndlessClient.Rendering.NPC
         }
 
         /// <summary>
-        /// Exposed for health bars: screen Y of the topmost opaque pixel in the current frame.
+        /// Screen Y of the topmost opaque pixel — HP bars anchor here (not NameLabelY / frame top).
         /// </summary>
         public int OpaqueSpriteTop => DrawArea.Y + _opaqueTopInFrame;
 
@@ -323,10 +324,14 @@ namespace EndlessClient.Rendering.NPC
 
             var w = frameTexture?.Width ?? 0;
             var h = frameTexture?.Height ?? 0;
+            // Frames are bottom-aligned (~23px feet inset). If alpha scan fails, park near the body.
+            var fallbackTop = Math.Max(0, h - 48);
+            var fallbackMid = Math.Max(0, w / 2);
+
             if (frameTexture == null || w <= 0 || h <= 0)
             {
-                _opaqueCenterInFrame = Math.Max(0, w / 2);
-                _opaqueTopInFrame = 0;
+                _opaqueCenterInFrame = fallbackMid;
+                _opaqueTopInFrame = fallbackTop;
                 return;
             }
 
@@ -336,24 +341,28 @@ namespace EndlessClient.Rendering.NPC
             var minX = w;
             var maxX = -1;
             var minY = h;
+            var maxY = -1;
+            // Stricter alpha so faint sheet noise doesn't count as the whole frame.
+            const byte AlphaCut = 32;
             for (int y = 0; y < h; y++)
             {
                 var row = y * w;
                 for (int x = 0; x < w; x++)
                 {
-                    if (pixels[row + x].A <= 16)
+                    if (pixels[row + x].A < AlphaCut)
                         continue;
 
                     if (x < minX) minX = x;
                     if (x > maxX) maxX = x;
                     if (y < minY) minY = y;
+                    if (y > maxY) maxY = y;
                 }
             }
 
-            if (maxX < minX)
+            if (maxX < minX || maxY < minY)
             {
-                _opaqueCenterInFrame = w / 2;
-                _opaqueTopInFrame = 0;
+                _opaqueCenterInFrame = fallbackMid;
+                _opaqueTopInFrame = fallbackTop;
                 return;
             }
 

@@ -2,6 +2,8 @@
 using System.Collections.Generic;
 using System.Linq;
 using EndlessClient.GameExecution;
+using EndlessClient.Rendering.Character;
+using EndlessClient.Rendering.NPC;
 using EOLib.Graphics;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
@@ -17,6 +19,8 @@ namespace EndlessClient.Rendering
         private const float DisplayScale = 2f;
 
         private readonly IMapActor _parentReference;
+        private readonly ICharacterRendererProvider _characterRendererProvider;
+        private readonly bool _isNpc;
 
         private readonly SpriteBatch _spriteBatch;
         private readonly Texture2D _sourceTexture;
@@ -41,10 +45,13 @@ namespace EndlessClient.Rendering
 
         public HealthBarRenderer(IEndlessGameProvider endlessGameProvider,
                                  INativeGraphicsManager nativeGraphicsManager,
+                                 ICharacterRendererProvider characterRendererProvider,
                                  IMapActor parentReference)
             : base((Game)endlessGameProvider.Game)
         {
             _parentReference = parentReference;
+            _characterRendererProvider = characterRendererProvider;
+            _isNpc = parentReference is INPCRenderer;
 
             _spriteBatch = new SpriteBatch(Game.GraphicsDevice);
             _sourceTexture = nativeGraphicsManager.TextureFromResource(GFXTypes.PostLoginUI, 58, true);
@@ -106,30 +113,73 @@ namespace EndlessClient.Rendering
             var barW = _healthBarBackgroundSource.Width * DisplayScale;
             var barH = _healthBarBackgroundSource.Height * DisplayScale;
 
-            // HorizontalCenter = opaque-body / skin center. HealthBarAnchorY = sprite top
-            // (not NameLabelY — NPC name labels sit on tile X-1,Y-1 and were parking the
-            // 2x bar on an adjacent player's head).
+            // Players get more lift above the hair. NPCs stay tight over the opaque sprite
+            // top so adjacent bars don't float up onto the player's head.
+            var clearance = _isNpc ? 18f : 52f;
             var centerX = (float)_parentReference.HorizontalCenter;
+            var barTop = _parentReference.HealthBarAnchorY - barH - clearance;
 
-            const float BarClearance = 36f;
-            var barTop = _parentReference.HealthBarAnchorY - barH - BarClearance;
+            // Digits stack above the bar.
+            var digitsH = _isMiss
+                ? _numberSourceRectangles[0].Height * DisplayScale
+                : 11f * DisplayScale;
+            var stackTop = barTop - _frameOffset * DisplayScale - barH;
+            var stackBottom = barTop + barH;
+            var stackHeight = stackBottom - stackTop;
+
+            if (_isNpc)
+                centerX = NudgeNpcBarOffPlayer(centerX, barW, stackTop, stackHeight);
 
             _healthBarPosition = new Vector2(centerX - barW / 2f, barTop);
 
             if (_isMiss)
             {
                 var missW = _numberSourceRectangles[0].Width * DisplayScale;
-                var xPos = centerX - missW / 2f;
-                var yPos = barTop - _frameOffset * DisplayScale - barH;
-                _damageCounterPosition = new Vector2(xPos, yPos);
+                _damageCounterPosition = new Vector2(centerX - missW / 2f, stackTop);
             }
             else
             {
                 var digitCount = _numberSourceRectangles.Count;
-                var xPos = centerX - (digitCount * DigitWidth * DisplayScale / 2f);
-                var yPos = barTop - _frameOffset * DisplayScale - barH;
-                _damageCounterPosition = new Vector2(xPos, yPos);
+                _damageCounterPosition = new Vector2(
+                    centerX - (digitCount * DigitWidth * DisplayScale / 2f),
+                    stackTop);
             }
+        }
+
+        /// <summary>
+        /// Keep NPC damage/HP chrome from covering the main player's sprite at all.
+        /// Pushes the stack further onto the NPC's side until it clears the player box.
+        /// </summary>
+        private float NudgeNpcBarOffPlayer(float centerX, float barW, float stackTop, float stackHeight)
+        {
+            var player = _characterRendererProvider.MainCharacterRenderer.Match(
+                some: r => r,
+                none: () => (ICharacterRenderer)null);
+            if (player == null || ReferenceEquals(player, _parentReference))
+                return centerX;
+
+            var avoid = player.DrawArea;
+            // Include a little hair/weapon padding so the bar can't kiss the silhouette.
+            avoid.Inflate(12, 20);
+
+            var npcArea = _parentReference.DrawArea;
+            var pushAway = npcArea.Center.X <= avoid.Center.X ? -1f : 1f;
+
+            for (var i = 0; i < 40; i++)
+            {
+                var barRect = new Rectangle(
+                    (int)(centerX - barW / 2f),
+                    (int)stackTop,
+                    (int)Math.Ceiling(barW),
+                    (int)Math.Ceiling(stackHeight));
+
+                if (!barRect.Intersects(avoid))
+                    break;
+
+                centerX += pushAway * 4f;
+            }
+
+            return centerX;
         }
 
         public override void Draw(GameTime gameTime)

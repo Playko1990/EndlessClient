@@ -145,18 +145,22 @@ namespace EndlessClient.Rendering.Map
             if (!_npcRendererProvider.NPCRenderers.TryGetValue(npc.Index, out var renderer))
                 return Rectangle.Empty;
 
-            // Generous sprite box — visible on screen means clickable, no proximity gate.
-            var area = renderer.DrawArea;
-            area.Inflate(DialogNpcClickBoundsPad, DialogNpcClickBoundsPad);
+            // Sprite frame + pad (covers full graphic including transparent padding).
+            var spriteArea = renderer.DrawArea;
+            spriteArea.Inflate(DialogNpcClickBoundsPad, DialogNpcClickBoundsPad);
 
-            // Union the NPC's map tile (64×32 iso diamond footprint) so a click that would
-            // otherwise start walking onto that square opens the dialog instead.
-            var tileOrigin = _gridDrawCoordinateCalculator
-                .CalculateBaseLayerDrawCoordinatesFromGridUnits(npc.X, npc.Y)
-                .ToPoint();
-            var tileBounds = new Rectangle(tileOrigin.X - 16, tileOrigin.Y - 8, 96, 48);
+            // Same large footing column for every dialog NPC (quest/shop/spell/bank/…).
+            // Shop graphics are often much smaller than quest ones; without this, shops
+            // only register clicks on a tiny opaque spot while quests feel easy.
+            var foot = _gridDrawCoordinateCalculator
+                .CalculateBaseLayerDrawCoordinatesFromGridUnits(npc.X, npc.Y);
+            var footingColumn = new Rectangle(
+                (int)foot.X - DialogNpcFootingHalfWidth,
+                (int)foot.Y - DialogNpcFootingHeight,
+                DialogNpcFootingHalfWidth * 2,
+                DialogNpcFootingHeight + DialogNpcFootingBelow);
 
-            return Rectangle.Union(area, tileBounds);
+            return Rectangle.Union(spriteArea, footingColumn);
         }
 
         private bool CheckForMapItemClicks(IMapCellState cellState, MouseEventArgs eventArgs)
@@ -265,7 +269,12 @@ namespace EndlessClient.Rendering.Map
 
         // Extra hit padding so thin quest/shop/spell NPC sprites are easier to click.
         private const int NpcClickBoundsPad = 28;
-        private const int DialogNpcClickBoundsPad = 56;
+        private const int DialogNpcClickBoundsPad = 72;
+        // Fixed column around the NPC's tile so short shop sprites get the same easy
+        // click target as tall quest sprites (DrawArea alone varies a lot by graphic).
+        private const int DialogNpcFootingHalfWidth = 72;
+        private const int DialogNpcFootingHeight = 180;
+        private const int DialogNpcFootingBelow = 40;
 
         private Rectangle GetNPCRendererArea(int npcIndex)
         {

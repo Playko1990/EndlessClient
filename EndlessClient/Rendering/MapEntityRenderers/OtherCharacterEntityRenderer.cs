@@ -26,7 +26,11 @@ namespace EndlessClient.Rendering.MapEntityRenderers
 
         public override MapRenderLayer RenderLayer => MapRenderLayer.OtherCharacters;
 
-        protected override int RenderDistance => 16;
+        // Distance check is skipped in CanRender — MapRenderBounds already limits the
+        // tile walk, and actors must stay drawable across the full visible viewport.
+        protected override int RenderDistance => 64;
+
+        public override bool CanRender(int row, int col) => ElementExistsAt(row, col);
 
         protected override bool ElementExistsAt(int row, int col)
         {

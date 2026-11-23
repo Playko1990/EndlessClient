@@ -558,7 +558,7 @@ namespace EndlessClient.HUD.Controls
         private UnknownEntitiesRequester CreateUnknownEntitiesRequester()
         {
             return new UnknownEntitiesRequester(_endlessGameProvider, _clientWindowSizeRepository, (ICharacterProvider)_characterRepository, _currentMapStateRepository,
-                _npcRendererProvider, _characterRendererProvider, _unknownEntitiesRequestActions);
+                _unknownEntitiesRequestActions);
         }
 
         private StatusBarLabel CreateStatusLabel()

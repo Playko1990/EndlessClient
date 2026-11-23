@@ -304,9 +304,6 @@ namespace EndlessClient.Rendering.Sprites
 
         public ISpriteSheet GetSkinTexture(CharacterRenderProperties characterRenderProperties)
         {
-            // Vanilla EO uses 7 race rows. Custom packs may add rows; prefer exact cell height 58 when the sheet divides evenly.
-            const int VanillaSheetRows = 7;
-            const int PreferredStandingCellHeight = 58;
             var sheetColumns = 4;
             var gfxNum = 1;
 
@@ -345,11 +342,7 @@ namespace EndlessClient.Rendering.Sprites
             // Standing, walk, attack, and sit sheets all stack races vertically. Custom packs
             // often keep 58px rows but add races — using vanilla's 7 rows then makes each
             // "cell" span multiple races (a second body above the sit pose, other skins at the feet).
-            var sheetRows = VanillaSheetRows;
-            if (texture.Height % PreferredStandingCellHeight == 0)
-            {
-                sheetRows = System.Math.Max(1, texture.Height / PreferredStandingCellHeight);
-            }
+            var sheetRows = GetRaceRowCount(texture.Height);
 
             var heightDelta = System.Math.Max(1, texture.Height / sheetRows);
             var widthDelta = System.Math.Max(1, texture.Width / sheetColumns);
@@ -416,17 +409,29 @@ namespace EndlessClient.Rendering.Sprites
                 return new EmptySpriteSheet();
             }
 
-            //14 rows (7 female - 7 male) / 11 columns
-            const int ROWS = 14;
+            // Face sheet layout: female races in the top half, male races in the bottom half,
+            // 11 emote columns. Vanilla has 7 races per gender (14 rows total).
+            const int VanillaRacesPerGender = 7;
             const int COLS = 11;
 
             var texture = _gfxManager.TextureFromResource(GFXTypes.SkinSprites, 8, true);
+            var genderHalfHeight = System.Math.Max(1, texture.Height / 2);
+
+            // Prefer the standing skin pack's race count when the face sheet was expanded to match.
+            // Otherwise keep vanilla 7 so unexpanded face sheets don't get sliced too fine.
+            // Using vanilla's 14 rows on a taller custom face sheet makes each "cell" span
+            // multiple races, so other faces paint over the character during emotes.
+            var racesPerGender = VanillaRacesPerGender;
+            var standingTexture = _gfxManager.TextureFromResource(GFXTypes.SkinSprites, 1, true);
+            var skinRaces = GetRaceRowCount(standingTexture.Height);
+            if (genderHalfHeight % skinRaces == 0)
+                racesPerGender = skinRaces;
 
             var widthDelta = System.Math.Max(1, texture.Width / COLS);
-            var heightDelta = System.Math.Max(1, texture.Height / ROWS);
+            var heightDelta = System.Math.Max(1, genderHalfHeight / racesPerGender);
             var gender = System.Math.Clamp(characterRenderProperties.Gender, 0, 1);
-            var race = System.Math.Clamp(characterRenderProperties.Race, 0, (ROWS / 2) - 1);
-            var genderOffset = texture.Height / 2 * gender;
+            var race = System.Math.Clamp(characterRenderProperties.Race, 0, racesPerGender - 1);
+            var genderOffset = genderHalfHeight * gender;
             //'playful' is the last face in the gfx (ndx 10), even though it has enum value of 14 (ndx 13)
             var emote = characterRenderProperties.Emote == Emote.Playful ||
                         characterRenderProperties.Emote == Emote.Drunk
@@ -459,6 +464,18 @@ namespace EndlessClient.Rendering.Sprites
             var emoteRect = new Rectangle(startX, 0, eachFrame, emoteTexture.Height);
 
             return new SpriteSheet(emoteTexture, emoteRect);
+        }
+
+        // Vanilla EO uses 7 race rows. Custom packs often keep 58px rows but add races.
+        private const int VanillaSheetRows = 7;
+        private const int PreferredStandingCellHeight = 58;
+
+        private static int GetRaceRowCount(int textureHeight)
+        {
+            if (textureHeight % PreferredStandingCellHeight == 0)
+                return System.Math.Max(1, textureHeight / PreferredStandingCellHeight);
+
+            return VanillaSheetRows;
         }
 
         private int GetBaseBootGraphic(int bootsGraphic)

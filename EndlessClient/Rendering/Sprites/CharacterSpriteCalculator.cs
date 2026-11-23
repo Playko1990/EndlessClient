@@ -304,8 +304,17 @@ namespace EndlessClient.Rendering.Sprites
         {
             var sheetColumns = 4;
             var gfxNum = 1;
+            var sitting = characterRenderProperties.SitState != SitState.Standing;
 
-            if (characterRenderProperties.CurrentAction == CharacterActionState.Walking && characterRenderProperties.RenderWalkFrame > 0)
+            // SitState is the source of truth — same as armor/boots. Walk/attack/spell
+            // must not win while sitting: a stale walk frame on a 4-column sit sheet
+            // shifts X into the next pose and leaves a scrap "extra knee" on the lap.
+            if (sitting)
+            {
+                if (characterRenderProperties.SitState == SitState.Floor) gfxNum = 6;
+                else if (characterRenderProperties.SitState == SitState.Chair) gfxNum = 5;
+            }
+            else if (characterRenderProperties.CurrentAction == CharacterActionState.Walking && characterRenderProperties.RenderWalkFrame > 0)
             {
                 gfxNum = 2;
                 sheetColumns = 16;
@@ -326,11 +335,6 @@ namespace EndlessClient.Rendering.Sprites
             {
                 gfxNum = 4;
             }
-            else if (characterRenderProperties.SitState != SitState.Standing)
-            {
-                if (characterRenderProperties.SitState == SitState.Floor) gfxNum = 6;
-                else if (characterRenderProperties.SitState == SitState.Chair) gfxNum = 5;
-            }
 
             var texture = _gfxManager.TextureFromResource(GFXTypes.SkinSprites, gfxNum, true);
 
@@ -347,27 +351,33 @@ namespace EndlessClient.Rendering.Sprites
             var widthDelta = System.Math.Max(1, texture.Width / sheetColumns);
             var sectionDelta = texture.Width / 4;
 
-            var walkExtra = characterRenderProperties.RenderWalkFrame > 0 ? widthDelta * (characterRenderProperties.RenderWalkFrame - 1) : 0;
-            walkExtra = !BowIsEquipped(characterRenderProperties) && characterRenderProperties.RenderAttackFrame > 0 ? widthDelta * (characterRenderProperties.RenderAttackFrame - 1) : walkExtra;
+            var walkExtra = 0;
+            if (!sitting)
+            {
+                walkExtra = characterRenderProperties.RenderWalkFrame > 0 ? widthDelta * (characterRenderProperties.RenderWalkFrame - 1) : 0;
+                walkExtra = !BowIsEquipped(characterRenderProperties) && characterRenderProperties.RenderAttackFrame > 0
+                    ? widthDelta * (characterRenderProperties.RenderAttackFrame - 1)
+                    : walkExtra;
 
-            // Fix offsets for skins - the source rectangles are not at an evenly spaced interval
-            if (characterRenderProperties.Gender == 1)
-            {
-                if (characterRenderProperties.CurrentAction == CharacterActionState.Walking && !rotated)
+                // Fix offsets for skins - the source rectangles are not at an evenly spaced interval
+                if (characterRenderProperties.Gender == 1)
                 {
-                    walkExtra += 1;
+                    if (characterRenderProperties.CurrentAction == CharacterActionState.Walking && !rotated)
+                    {
+                        walkExtra += 1;
+                    }
+                    else if (characterRenderProperties.CurrentAction == CharacterActionState.Attacking &&
+                             characterRenderProperties.RenderAttackFrame == 1)
+                    {
+                        // This condition needs some shifting, but this must be done in SkinRenderLocationCalculator since it is a shift of the loaded sprite
+                    }
                 }
-                else if (characterRenderProperties.CurrentAction == CharacterActionState.Attacking &&
-                         characterRenderProperties.RenderAttackFrame == 1)
+                else if (characterRenderProperties.Gender == 0)
                 {
-                    // This condition needs some shifting, but this must be done in SkinRenderLocationCalculator since it is a shift of the loaded sprite
-                }
-            }
-            else if (characterRenderProperties.Gender == 0)
-            {
-                if (characterRenderProperties.CurrentAction == CharacterActionState.Attacking && characterRenderProperties.RenderAttackFrame > 0)
-                {
-                    walkExtra += 1;
+                    if (characterRenderProperties.CurrentAction == CharacterActionState.Attacking && characterRenderProperties.RenderAttackFrame > 0)
+                    {
+                        walkExtra += 1;
+                    }
                 }
             }
 
@@ -470,9 +480,9 @@ namespace EndlessClient.Rendering.Sprites
         // Vanilla EO uses 7 race rows. Custom packs often keep 58px rows but add races.
         private const int VanillaSheetRows = 7;
         private const int PreferredStandingCellHeight = 58;
-        // Sit cells are shorter than standing; reject "half-slice" sizes when a taller
+        // Sit cells are shorter than standing; reject scrap sizes when a taller
         // standing pack would otherwise divide an unexpanded sit sheet evenly.
-        private const int MinReasonableSkinCellHeight = 24;
+        private const int MinReasonableSkinCellHeight = 30;
 
         private static int GetRaceRowCount(int textureHeight)
         {
@@ -484,10 +494,17 @@ namespace EndlessClient.Rendering.Sprites
 
         private static int GetRaceRowCountForSheet(int textureHeight, int standingRaceCount)
         {
+            // Prefer native 58px race rows when present. An unexpanded sit sheet
+            // (e.g. 7×58) is evenly divisible by a taller standing pack (14), which
+            // would invent 14×29 half-cells — sliced torsos / floating knee scraps.
+            if (textureHeight % PreferredStandingCellHeight == 0)
+                return System.Math.Max(1, textureHeight / PreferredStandingCellHeight);
+
             if (standingRaceCount > 0 && textureHeight % standingRaceCount == 0)
             {
                 var cellHeight = textureHeight / standingRaceCount;
-                if (cellHeight >= MinReasonableSkinCellHeight)
+                if (cellHeight >= MinReasonableSkinCellHeight &&
+                    cellHeight * 2 != PreferredStandingCellHeight)
                     return standingRaceCount;
             }
 

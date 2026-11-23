@@ -410,32 +410,34 @@ namespace EndlessClient.Rendering.Sprites
             }
 
             // Face sheet layout: female races in the top half, male races in the bottom half,
-            // 11 emote columns. Vanilla has 7 races per gender (14 rows total).
+            // 11 emote columns. Vanilla has 7 races per gender (14px rows → 14 rows total).
             const int VanillaRacesPerGender = 7;
+            const int PreferredFaceCellHeight = 14;
             const int COLS = 11;
 
             var texture = _gfxManager.TextureFromResource(GFXTypes.SkinSprites, 8, true);
             var genderHalfHeight = System.Math.Max(1, texture.Height / 2);
 
-            // Prefer the standing skin pack's race count when the face sheet was expanded to match.
-            // Otherwise keep vanilla 7 so unexpanded face sheets don't get sliced too fine.
-            // Using vanilla's 14 rows on a taller custom face sheet makes each "cell" span
-            // multiple races, so other faces paint over the character during emotes.
+            // Slice by the face cell height (14px), NOT by the body skin race count.
+            // Coupling faces to body races is wrong when the body pack adds races but the
+            // face sheet stays vanilla: e.g. half=98 and skinRaces=14 → 7px "cells" that
+            // sample body-looking scraps from neighboring face rows into the face slot.
             var racesPerGender = VanillaRacesPerGender;
-            var standingTexture = _gfxManager.TextureFromResource(GFXTypes.SkinSprites, 1, true);
-            var skinRaces = GetRaceRowCount(standingTexture.Height);
-            if (genderHalfHeight % skinRaces == 0)
-                racesPerGender = skinRaces;
+            if (genderHalfHeight % PreferredFaceCellHeight == 0)
+            {
+                racesPerGender = System.Math.Max(1, genderHalfHeight / PreferredFaceCellHeight);
+            }
 
             var widthDelta = System.Math.Max(1, texture.Width / COLS);
             var heightDelta = System.Math.Max(1, genderHalfHeight / racesPerGender);
             var gender = System.Math.Clamp(characterRenderProperties.Gender, 0, 1);
             var race = System.Math.Clamp(characterRenderProperties.Race, 0, racesPerGender - 1);
             var genderOffset = genderHalfHeight * gender;
-            //'playful' is the last face in the gfx (ndx 10), even though it has enum value of 14 (ndx 13)
-            var emote = characterRenderProperties.Emote == Emote.Playful ||
-                        characterRenderProperties.Emote == Emote.Drunk
-                        ? 10 : (int)characterRenderProperties.Emote - 1;
+
+            // Face columns follow Emote values (Happy=col0 … Embarassed=col9), with
+            // Playful/Drunk sharing the last column. Do not use EmoteSpriteType order —
+            // that atlas is only for the overhead bubble.
+            var emote = GetFaceEmoteColumn(characterRenderProperties.Emote);
 
             var sourceRectangle = new Rectangle(widthDelta * emote, heightDelta * race + genderOffset, widthDelta, heightDelta);
 
@@ -476,6 +478,28 @@ namespace EndlessClient.Rendering.Sprites
                 return System.Math.Max(1, textureHeight / PreferredStandingCellHeight);
 
             return VanillaSheetRows;
+        }
+
+        private static int GetFaceEmoteColumn(Emote emote)
+        {
+            // Mirror the historic Emote-1 mapping with an explicit table so new emote
+            // values cannot silently shift face columns.
+            switch (emote)
+            {
+                case Emote.Happy: return 0;
+                case Emote.Depressed: return 1;
+                case Emote.Sad: return 2;
+                case Emote.Angry: return 3;
+                case Emote.Confused: return 4;
+                case Emote.Surprised: return 5;
+                case Emote.Hearts: return 6;
+                case Emote.Moon: return 7;
+                case Emote.Suicidal: return 8;
+                case Emote.Embarassed: return 9;
+                case Emote.Drunk:
+                case Emote.Playful: return 10;
+                default: return 0;
+            }
         }
 
         private int GetBaseBootGraphic(int bootsGraphic)

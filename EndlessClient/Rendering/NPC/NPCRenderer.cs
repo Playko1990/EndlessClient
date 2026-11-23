@@ -42,11 +42,15 @@ namespace EndlessClient.Rendering.NPC
         private int _fadeAwayAlpha;
         private bool _isDying, _isBlankSprite;
 
-        // Opaque-body mid-X within the current frame (cached per frame/direction).
+        // Opaque body bounds within the current drawn frame (cached per frame/direction).
         private int _opaqueCenterInFrame = -1;
-        private NPCFrame _opaqueCenterFrame;
-        private EODirection _opaqueCenterDirection;
-        private int _opaqueCenterGraphic = -1;
+        private int _opaqueTopInFrame = 0;
+        private Color[] _drawnFramePixels = Array.Empty<Color>();
+        private int _drawnFrameWidth;
+        private int _drawnFrameHeight;
+        private NPCFrame _opaqueBoundsFrame;
+        private EODirection _opaqueBoundsDirection;
+        private int _opaqueBoundsGraphic = -1;
 
         private XNALabel _nameLabel;
         private IChatBubble _chatBubble;
@@ -168,17 +172,24 @@ namespace EndlessClient.Rendering.NPC
 
         public bool IsClickablePixel(Point currentMousePosition)
         {
-            var cachedTexture = _npcSpriteDataCache.GetData(_enfFileProvider.ENFFile[NPC.ID].Graphic, NPC.Frame);
-            if (!_isBlankSprite && cachedTexture.Length > 0 && _npcRenderTarget.Bounds.Contains(currentMousePosition))
-            {
-                var currentFrame = _npcSpriteSheet.GetNPCTexture(_enfFileProvider.ENFFile[NPC.ID].Graphic, NPC.Frame, NPC.Direction);
+            if (_isBlankSprite || !_npcRenderTarget.Bounds.Contains(currentMousePosition))
+                return true;
 
-                var adjustedPos = currentMousePosition - DrawArea.Location;
-                var index = adjustedPos.Y * currentFrame.Width + adjustedPos.X;
-                return index < cachedTexture.Length && cachedTexture[index].A > 0;
-            }
+            if (_drawnFrameWidth <= 0 || _drawnFrameHeight <= 0 || _drawnFramePixels.Length == 0)
+                return true;
 
-            return true;
+            var adjustedPos = currentMousePosition - DrawArea.Location;
+            if (adjustedPos.X < 0 || adjustedPos.Y < 0 ||
+                adjustedPos.X >= _drawnFrameWidth || adjustedPos.Y >= _drawnFrameHeight)
+                return false;
+
+            // Sprite is FlipHorizontally for Up/Right — mirror pick X into source texels.
+            var srcX = NPC.IsFacing(EODirection.Up, EODirection.Right)
+                ? _drawnFrameWidth - 1 - adjustedPos.X
+                : adjustedPos.X;
+
+            var index = adjustedPos.Y * _drawnFrameWidth + srcX;
+            return index < _drawnFramePixels.Length && _drawnFramePixels[index].A > 0;
         }
 
         public void DrawToSpriteBatch(SpriteBatch spriteBatch)
@@ -260,43 +271,67 @@ namespace EndlessClient.Rendering.NPC
 
             var horizontalOffset = metaData.OffsetX * (NPC.IsFacing(EODirection.Down, EODirection.Left) ? -1 : 1);
 
-            // Center names/HP on the opaque sprite body — frame padding is often asymmetric
-            // (e.g. goats), so Width/2 alone parks the label beside the animal.
-            EnsureOpaqueCenter(data.Graphic, frameTexture);
+            // Names/HP must track the opaque sprite body. Frame Width/2 sits on the tile
+            // foot line; left-padded animals (bird/goat) then show the label a tile away.
+            EnsureOpaqueBounds(data.Graphic, frameTexture);
             HorizontalCenter = DrawArea.X + _opaqueCenterInFrame;
 
-            // NameLabelY is refreshed in GetNameLabelPosition from DrawArea (sprite top).
-            // Keep a sensible default here for HP bars / chat bubbles before the label exists.
-            NameLabelY = DrawArea.Y - 12 - metaData.NameLabelOffset;
+            // Default for HP/chat before the label measures itself — above opaque head.
+            NameLabelY = DrawArea.Y + _opaqueTopInFrame - 12;
 
             EffectTargetArea = DrawArea.WithSize(DrawArea.Width + horizontalOffset * 2, DrawArea.Height);
         }
 
-        private void EnsureOpaqueCenter(int graphic, Texture2D frameTexture)
+        private void EnsureOpaqueBounds(int graphic, Texture2D frameTexture)
         {
             if (_opaqueCenterInFrame >= 0
-                && _opaqueCenterGraphic == graphic
-                && _opaqueCenterFrame == NPC.Frame
-                && _opaqueCenterDirection == NPC.Direction)
+                && _opaqueBoundsGraphic == graphic
+                && _opaqueBoundsFrame == NPC.Frame
+                && _opaqueBoundsDirection == NPC.Direction)
                 return;
 
             var flipped = NPC.IsFacing(EODirection.Up, EODirection.Right);
-            var pixels = _npcSpriteDataCache.GetData(graphic, NPC.Frame);
-            _opaqueCenterInFrame = GetOpaqueHorizontalCenter(frameTexture, pixels, flipped);
-            _opaqueCenterGraphic = graphic;
-            _opaqueCenterFrame = NPC.Frame;
-            _opaqueCenterDirection = NPC.Direction;
+            // Sample the texture that is actually drawn (per-direction frame), not the
+            // Down-only sprite cache — mismatched sizes fell back to Width/2 and put
+            // labels on the tile instead of the animal.
+            CacheDrawnFramePixels(frameTexture);
+            GetOpaqueBounds(_drawnFramePixels, _drawnFrameWidth, _drawnFrameHeight, flipped,
+                out _opaqueCenterInFrame, out _opaqueTopInFrame);
+            _opaqueBoundsGraphic = graphic;
+            _opaqueBoundsFrame = NPC.Frame;
+            _opaqueBoundsDirection = NPC.Direction;
         }
 
-        private static int GetOpaqueHorizontalCenter(Texture2D frameTexture, ReadOnlySpan<Color> pixels, bool flipped)
+        private void CacheDrawnFramePixels(Texture2D frameTexture)
         {
             var w = frameTexture?.Width ?? 0;
             var h = frameTexture?.Height ?? 0;
-            if (w <= 0 || h <= 0 || pixels.Length < w * h)
-                return Math.Max(0, w / 2);
+            _drawnFrameWidth = w;
+            _drawnFrameHeight = h;
+
+            if (w <= 0 || h <= 0 || frameTexture == null)
+            {
+                _drawnFramePixels = Array.Empty<Color>();
+                return;
+            }
+
+            if (_drawnFramePixels.Length != w * h)
+                _drawnFramePixels = new Color[w * h];
+
+            frameTexture.GetData(_drawnFramePixels);
+        }
+
+        private static void GetOpaqueBounds(Color[] pixels, int w, int h, bool flipped, out int centerX, out int topY)
+        {
+            centerX = Math.Max(0, w / 2);
+            topY = 0;
+
+            if (w <= 0 || h <= 0 || pixels == null || pixels.Length < w * h)
+                return;
 
             var minX = w;
             var maxX = -1;
+            var minY = h;
             for (int y = 0; y < h; y++)
             {
                 var row = y * w;
@@ -307,15 +342,17 @@ namespace EndlessClient.Rendering.NPC
 
                     if (x < minX) minX = x;
                     if (x > maxX) maxX = x;
+                    if (y < minY) minY = y;
                 }
             }
 
             if (maxX < minX)
-                return w / 2;
+                return;
 
             var mid = (minX + maxX + 1) / 2;
             // Draw uses FlipHorizontally for Up/Right — mirror opaque center to match on-screen art.
-            return flipped ? w - mid : mid;
+            centerX = flipped ? w - mid : mid;
+            topY = minY < h ? minY : 0;
         }
 
         private void UpdateStandingFrameAnimation()
@@ -378,12 +415,11 @@ namespace EndlessClient.Rendering.NPC
 
         private Vector2 GetNameLabelPosition()
         {
-            // Match CharacterRenderer: park the label just above the sprite top, centered
-            // on the NPC. The old tile (X-1,Y-1) baseline drifted with camera/sprite size
-            // and often sat mid-body or away from the animal entirely.
+            // Anchor to opaque sprite bounds. Do NOT apply metadata NameLabelOffset here —
+            // that value was authored for the old tile (X-1,Y-1) baseline and pushes names
+            // far off sprites once Y is already relative to the graphic.
             var labelHeight = (int)(_nameLabel?.ActualHeight ?? 0);
-            var nameHeight = _npcSpriteSheet.GetNPCMetadata(_enfFileProvider.ENFFile[NPC.ID].Graphic).NameLabelOffset;
-            NameLabelY = DrawArea.Y - 12 - labelHeight - nameHeight;
+            NameLabelY = DrawArea.Y + _opaqueTopInFrame - 2 - labelHeight;
             return new Vector2(HorizontalCenter - (_nameLabel.ActualWidth / 2f), NameLabelY);
         }
 

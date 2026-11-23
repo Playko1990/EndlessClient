@@ -36,33 +36,35 @@ namespace EndlessClient.Rendering.Sprites
                 return new EmptySpriteSheet();
 
             var type = BootsSpriteType.Standing;
-            var currentAction = characterRenderProperties.CurrentAction;
-            if (currentAction == CharacterActionState.Emote && characterRenderProperties.SitState != SitState.Standing)
-                currentAction = CharacterActionState.Sitting;
 
-            switch (currentAction)
+            // SitState is the source of truth for sit appearance (matches skin selection).
+            // Prefer it over CurrentAction so emotes / brief action desyncs cannot show
+            // standing boots on a sitting body.
+            if (characterRenderProperties.SitState != SitState.Standing)
             {
-                case CharacterActionState.Walking:
-                    switch (characterRenderProperties.RenderWalkFrame)
-                    {
-                        case 1: type = BootsSpriteType.WalkFrame1; break;
-                        case 2: type = BootsSpriteType.WalkFrame2; break;
-                        case 3: type = BootsSpriteType.WalkFrame3; break;
-                        case 4: type = BootsSpriteType.WalkFrame4; break;
-                    }
-                    break;
-                case CharacterActionState.Attacking:
-                    if (!BowIsEquipped(characterRenderProperties) && characterRenderProperties.RenderAttackFrame == 2 ||
-                        BowIsEquipped(characterRenderProperties) && characterRenderProperties.RenderAttackFrame == 1)
-                        type = BootsSpriteType.Attack;
-                    break;
-                case CharacterActionState.Sitting:
-                    switch (characterRenderProperties.SitState)
-                    {
-                        case SitState.Chair: type = BootsSpriteType.SitChair; break;
-                        case SitState.Floor: type = BootsSpriteType.SitGround; break;
-                    }
-                    break;
+                type = characterRenderProperties.SitState == SitState.Chair
+                    ? BootsSpriteType.SitChair
+                    : BootsSpriteType.SitGround;
+            }
+            else
+            {
+                switch (characterRenderProperties.CurrentAction)
+                {
+                    case CharacterActionState.Walking:
+                        switch (characterRenderProperties.RenderWalkFrame)
+                        {
+                            case 1: type = BootsSpriteType.WalkFrame1; break;
+                            case 2: type = BootsSpriteType.WalkFrame2; break;
+                            case 3: type = BootsSpriteType.WalkFrame3; break;
+                            case 4: type = BootsSpriteType.WalkFrame4; break;
+                        }
+                        break;
+                    case CharacterActionState.Attacking:
+                        if (!BowIsEquipped(characterRenderProperties) && characterRenderProperties.RenderAttackFrame == 2 ||
+                            BowIsEquipped(characterRenderProperties) && characterRenderProperties.RenderAttackFrame == 1)
+                            type = BootsSpriteType.Attack;
+                        break;
+                }
             }
 
             var gfxFile = characterRenderProperties.Gender == 0 ? GFXTypes.FemaleShoes : GFXTypes.MaleShoes;
@@ -80,53 +82,49 @@ namespace EndlessClient.Rendering.Sprites
                 return new EmptySpriteSheet();
 
             var type = ArmorShieldSpriteType.Standing;
-            var currentAction = characterRenderProperties.CurrentAction;
-            if (currentAction == CharacterActionState.Emote && characterRenderProperties.SitState != SitState.Standing)
-                currentAction = CharacterActionState.Sitting;
 
-            switch (currentAction)
+            // SitState is the source of truth for sit appearance (matches skin selection).
+            if (characterRenderProperties.SitState != SitState.Standing)
             {
-                case CharacterActionState.Walking:
-                    switch (characterRenderProperties.RenderWalkFrame)
-                    {
-                        case 1: type = ArmorShieldSpriteType.WalkFrame1; break;
-                        case 2: type = ArmorShieldSpriteType.WalkFrame2; break;
-                        case 3: type = ArmorShieldSpriteType.WalkFrame3; break;
-                        case 4: type = ArmorShieldSpriteType.WalkFrame4; break;
-                    }
-                    break;
-                case CharacterActionState.Attacking:
-                    if (BowIsEquipped(characterRenderProperties))
-                    {
-                        switch (characterRenderProperties.RenderAttackFrame)
+                type = characterRenderProperties.SitState == SitState.Chair
+                    ? ArmorShieldSpriteType.SitChair
+                    : ArmorShieldSpriteType.SitGround;
+            }
+            else
+            {
+                switch (characterRenderProperties.CurrentAction)
+                {
+                    case CharacterActionState.Walking:
+                        switch (characterRenderProperties.RenderWalkFrame)
                         {
-                            case 1: type = ArmorShieldSpriteType.Bow; break;
-                            case 2: type = ArmorShieldSpriteType.Standing; break;
+                            case 1: type = ArmorShieldSpriteType.WalkFrame1; break;
+                            case 2: type = ArmorShieldSpriteType.WalkFrame2; break;
+                            case 3: type = ArmorShieldSpriteType.WalkFrame3; break;
+                            case 4: type = ArmorShieldSpriteType.WalkFrame4; break;
                         }
-                    }
-                    else
-                    {
-                        switch (characterRenderProperties.RenderAttackFrame)
+                        break;
+                    case CharacterActionState.Attacking:
+                        if (BowIsEquipped(characterRenderProperties))
                         {
-                            case 1: type = ArmorShieldSpriteType.PunchFrame1; break;
-                            case 2: type = ArmorShieldSpriteType.PunchFrame2; break;
+                            switch (characterRenderProperties.RenderAttackFrame)
+                            {
+                                case 1: type = ArmorShieldSpriteType.Bow; break;
+                                case 2: type = ArmorShieldSpriteType.Standing; break;
+                            }
                         }
-                    }
-                    break;
-                case CharacterActionState.SpellCast:
-                    type = ArmorShieldSpriteType.SpellCast;
-                    break;
-                case CharacterActionState.Sitting:
-                    switch (characterRenderProperties.SitState)
-                    {
-                        case SitState.Chair:
-                            type = ArmorShieldSpriteType.SitChair;
-                            break;
-                        case SitState.Floor:
-                            type = ArmorShieldSpriteType.SitGround;
-                            break;
-                    }
-                    break;
+                        else
+                        {
+                            switch (characterRenderProperties.RenderAttackFrame)
+                            {
+                                case 1: type = ArmorShieldSpriteType.PunchFrame1; break;
+                                case 2: type = ArmorShieldSpriteType.PunchFrame2; break;
+                            }
+                        }
+                        break;
+                    case CharacterActionState.SpellCast:
+                        type = ArmorShieldSpriteType.SpellCast;
+                        break;
+                }
             }
 
             var gfxFile = characterRenderProperties.Gender == 0 ? GFXTypes.FemaleArmor : GFXTypes.MaleArmor;

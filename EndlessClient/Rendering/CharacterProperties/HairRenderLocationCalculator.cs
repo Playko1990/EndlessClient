@@ -40,29 +40,37 @@ namespace EndlessClient.Rendering.CharacterProperties
                 resY += _renderProperties.IsFacing(EODirection.Up, EODirection.Left) ? 1 : 5;
                 resY -= _renderProperties.IsFacing(EODirection.Right, EODirection.Down) ? _renderProperties.Gender : 0;
             }
-            else if (_renderProperties.SitState != SitState.Standing)
-            {
-                resX -= 3;
-
-                var flootSitFactor = _renderProperties.SitState == SitState.Floor ? 2 : 1;
-                if (_renderProperties.IsFacing(EODirection.Right, EODirection.Down))
-                {
-                    resY += (9 + _renderProperties.Gender) * flootSitFactor;
-                }
-                else
-                {
-                    if (_renderProperties.SitState == SitState.Floor)
-                    {
-                        resX += _renderProperties.IsFacing(EODirection.Left) ? 2 : -2;
-                        resY -= 1;
-                    }
-
-                    resY += (11 + _renderProperties.Gender) * flootSitFactor;
-                }
-            }
 
             var flippedOffset = isFlipped ? 2 : 0;
             return parentCharacterDrawArea.Location.ToVector2() + new Vector2(resX + flippedOffset, resY);
+        }
+
+        /// <summary>
+        /// Positions hair relative to the already-computed sitting skin location so hair
+        /// stays on the head when equipment/skin use bottom-aligned sit sprites.
+        /// </summary>
+        public Vector2 CalculateDrawLocationOfCharacterHairFromSkin(Rectangle hairRectangle, Rectangle skinRectangle, Vector2 skinDrawLocation)
+        {
+            var isFlipped = _renderProperties.IsFacing(EODirection.Up, EODirection.Right);
+
+            // Center hair on the skin sprite horizontally, with the same X tweaks used before.
+            var resX = -(float)Math.Floor(Math.Abs((float)hairRectangle.Width - skinRectangle.Width) / 2) - 1;
+            resX -= 3;
+
+            if (_renderProperties.SitState == SitState.Floor &&
+                _renderProperties.IsFacing(EODirection.Left, EODirection.Up))
+            {
+                resX += _renderProperties.IsFacing(EODirection.Left) ? 2 : -2;
+            }
+
+            // Sitting skin sheets keep transparent padding above the head; place hair near the
+            // top of the opaque sit body rather than at the top of the source rectangle.
+            var headOffsetY = _renderProperties.SitState == SitState.Floor
+                ? (_renderProperties.IsFacing(EODirection.Right, EODirection.Down) ? 16 : 18) + _renderProperties.Gender
+                : (_renderProperties.IsFacing(EODirection.Right, EODirection.Down) ? 0 : 2) + _renderProperties.Gender;
+
+            var flippedOffset = isFlipped ? 2 : 0;
+            return skinDrawLocation + new Vector2(resX + flippedOffset, headOffsetY);
         }
     }
 }

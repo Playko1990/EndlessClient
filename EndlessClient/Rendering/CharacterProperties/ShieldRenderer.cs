@@ -60,24 +60,16 @@ namespace EndlessClient.Rendering.CharacterProperties
                 }
                 else if (_renderProperties.SitState != SitState.Standing)
                 {
-                    // These are the same offsets as hair
-
+                    // Bottom-align with the sitting body (same approach as armor/skin).
                     resX -= 3;
+                    resY = parentCharacterDrawArea.Height - _shieldSheet.SourceRectangle.Height;
+                    resY += (_renderProperties.IsFacing(EODirection.Left, EODirection.Up) ? 7 : 5) - _renderProperties.Gender;
 
-                    var flootSitFactor = _renderProperties.SitState == SitState.Floor ? 2 : 1;
-                    if (_renderProperties.IsFacing(EODirection.Right, EODirection.Down))
+                    if (_renderProperties.SitState == SitState.Floor &&
+                        _renderProperties.IsFacing(EODirection.Left, EODirection.Up))
                     {
-                        resY += (9 + _renderProperties.Gender) * flootSitFactor;
-                    }
-                    else
-                    {
-                        if (_renderProperties.SitState == SitState.Floor)
-                        {
-                            resX += _renderProperties.IsFacing(EODirection.Left) ? 2 : -2;
-                            resY -= 1;
-                        }
-
-                        resY += (11 + _renderProperties.Gender) * flootSitFactor;
+                        resX += _renderProperties.IsFacing(EODirection.Left) ? 2 : -2;
+                        resY += 1;
                     }
                 }
             }

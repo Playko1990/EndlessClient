@@ -31,8 +31,38 @@ namespace EndlessClient.Rendering.CharacterProperties
 
         private Vector2 GetOffsets(Vector2 parentCharacterSize, bool ranged)
         {
-            var resX = -(float)Math.Floor(Math.Abs(_armorSheet.SourceRectangle.Width - parentCharacterSize.X) / 2);
-            var resY = -(float)Math.Floor(Math.Abs(_armorSheet.SourceRectangle.Height - parentCharacterSize.Y) / 2);
+            float resX;
+            float resY;
+
+            if (_renderProperties.SitState != SitState.Standing)
+            {
+                // Sit armor bitmaps are cropped to content and shorter than the standing
+                // 18x58 DrawArea. Center-aligning them in that box leaves clothes floating
+                // above the bottom-aligned skin layer — bottom-align to match skin instead.
+                resX = -(float)Math.Floor(Math.Abs(_armorSheet.SourceRectangle.Width - parentCharacterSize.X) / 2);
+                resY = parentCharacterSize.Y - _armorSheet.SourceRectangle.Height;
+
+                if (_renderProperties.SitState == SitState.Chair)
+                {
+                    resX -= 1;
+                    resY += _renderProperties.IsFacing(EODirection.Left, EODirection.Up) ? 2 : 0;
+                }
+                else
+                {
+                    resX += _renderProperties.IsFacing(EODirection.Left) ? _renderProperties.Gender : _renderProperties.IsFacing(EODirection.Up) ? -_renderProperties.Gender : 0;
+                    resX -= _renderProperties.IsFacing(EODirection.Down, EODirection.Up) ? (2 - _renderProperties.Gender) : _renderProperties.Gender;
+
+                    // Same vertical nudge SkinRenderLocationCalculator applies when sitting
+                    resY += (_renderProperties.IsFacing(EODirection.Left, EODirection.Up) ? 7 : 5) - _renderProperties.Gender;
+                    if (_renderProperties.SitState == SitState.Floor && _renderProperties.IsFacing(EODirection.Left, EODirection.Up))
+                        resY += 1;
+                }
+
+                return new Vector2(resX, resY);
+            }
+
+            resX = -(float)Math.Floor(Math.Abs(_armorSheet.SourceRectangle.Width - parentCharacterSize.X) / 2);
+            resY = -(float)Math.Floor(Math.Abs(_armorSheet.SourceRectangle.Height - parentCharacterSize.Y) / 2);
 
             if ((_renderProperties.RenderAttackFrame == 2 && !ranged) ||
                 (_renderProperties.RenderAttackFrame == 1 && ranged))
@@ -49,27 +79,12 @@ namespace EndlessClient.Rendering.CharacterProperties
                     resY += _renderProperties.IsFacing(EODirection.Down, EODirection.Right) ? 1 : 0;
                 }
             }
-            else if (_renderProperties.SitState != SitState.Standing)
-            {
-                if (_renderProperties.SitState == SitState.Chair)
-                {
-                    resX -= 1;
-                    resY += _renderProperties.IsFacing(EODirection.Left, EODirection.Up) ? 2 : 0;
-                }
-                else
-                {
-                    resX += _renderProperties.IsFacing(EODirection.Left) ? _renderProperties.Gender : _renderProperties.IsFacing(EODirection.Up) ? -_renderProperties.Gender : 0;
-                    resX -= _renderProperties.IsFacing(EODirection.Down, EODirection.Up) ? (2 - _renderProperties.Gender) : _renderProperties.Gender;
-                    resY += _renderProperties.IsFacing(EODirection.Left, EODirection.Up) ? 12 : 9;
-                }
-            }
             else
             {
                 resX += 2;
             }
 
-            if (_renderProperties.SitState == SitState.Standing)
-                resY -= (_renderProperties.IsActing(CharacterActionState.Walking) ? 4 : 3) + _renderProperties.Gender;
+            resY -= (_renderProperties.IsActing(CharacterActionState.Walking) ? 4 : 3) + _renderProperties.Gender;
 
             return new Vector2(resX, resY);
         }

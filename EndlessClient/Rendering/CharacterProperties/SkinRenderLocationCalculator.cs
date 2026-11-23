@@ -17,34 +17,80 @@ namespace EndlessClient.Rendering.CharacterProperties
             _renderProperties = renderProperties;
         }
 
+        private const int SitHeadBandHeight = 14;
+
         /// <summary>
-        /// First opaque pixel row within the skin source rectangle, or -1 if none.
-        /// Used to pin hair/hats to the sit head instead of transparent padding.
+        /// First opaque pixel row within the sheet source rectangle, or -1 if none.
         /// </summary>
-        public static int FindOpaqueTopY(ISpriteSheet skinSheet)
+        public static int FindOpaqueTopY(ISpriteSheet sheet) =>
+            TryGetOpaqueBounds(sheet, headBandOnly: false, out _, out var topY) ? topY : -1;
+
+        /// <summary>
+        /// Horizontal mid of opaque pixels. For sit skins, limit to a band under the scalp
+        /// so hair aligns to the head — not the full sitting body (which is wider/offset).
+        /// </summary>
+        public static int FindOpaqueCenterX(ISpriteSheet sheet, bool headBandOnly = false) =>
+            TryGetOpaqueBounds(sheet, headBandOnly, out var centerX, out _) ? centerX : -1;
+
+        private static bool TryGetOpaqueBounds(ISpriteSheet sheet, bool headBandOnly, out int centerX, out int topY)
         {
-            if (skinSheet == null || !skinSheet.HasTexture)
-                return -1;
+            centerX = -1;
+            topY = -1;
 
-            var rect = skinSheet.SourceRectangle;
+            if (sheet == null || !sheet.HasTexture)
+                return false;
+
+            var rect = sheet.SourceRectangle;
             if (rect.Width <= 0 || rect.Height <= 0)
-                return -1;
+                return false;
 
-            var data = skinSheet.GetSourceTextureData<Color>();
+            var data = sheet.GetSourceTextureData<Color>();
             if (data.Length == 0)
-                return -1;
+                return false;
 
+            var minY = rect.Height;
             for (var y = 0; y < rect.Height; y++)
             {
                 var row = y * rect.Width;
                 for (var x = 0; x < rect.Width; x++)
                 {
-                    if (data[row + x].A > 0)
-                        return y;
+                    if (data[row + x].A > 16)
+                    {
+                        minY = y;
+                        y = rect.Height;
+                        break;
+                    }
                 }
             }
 
-            return -1;
+            if (minY >= rect.Height)
+                return false;
+
+            topY = minY;
+            var yEnd = headBandOnly
+                ? Math.Min(rect.Height, minY + SitHeadBandHeight)
+                : rect.Height;
+
+            var minX = rect.Width;
+            var maxX = -1;
+            for (var y = minY; y < yEnd; y++)
+            {
+                var row = y * rect.Width;
+                for (var x = 0; x < rect.Width; x++)
+                {
+                    if (data[row + x].A <= 16)
+                        continue;
+
+                    if (x < minX) minX = x;
+                    if (x > maxX) maxX = x;
+                }
+            }
+
+            if (maxX < minX)
+                return false;
+
+            centerX = (minX + maxX + 1) / 2;
+            return true;
         }
 
         public Vector2 CalculateDrawLocationOfCharacterSkin(Rectangle skinRectangle, Rectangle parentCharacterDrawArea, bool ranged)

@@ -54,29 +54,40 @@ namespace EndlessClient.Rendering.CharacterProperties
             Rectangle skinRectangle,
             Vector2 skinDrawLocation,
             int skinOpaqueTopY = -1,
-            int hairOpaqueTopY = -1)
+            int hairOpaqueTopY = -1,
+            int skinOpaqueCenterX = -1,
+            int hairOpaqueCenterX = -1)
         {
             var isFlipped = _renderProperties.IsFacing(EODirection.Up, EODirection.Right);
 
-            // Center hair on the skin sprite horizontally, with the same X tweaks used before.
-            var resX = -(float)Math.Floor(Math.Abs((float)hairRectangle.Width - skinRectangle.Width) / 2) - 1;
-            resX -= 3;
-
-            if (_renderProperties.SitState == SitState.Floor &&
-                _renderProperties.IsFacing(EODirection.Left, EODirection.Up))
+            float resX;
+            if (skinOpaqueCenterX >= 0 && hairOpaqueCenterX >= 0)
             {
-                resX += _renderProperties.IsFacing(EODirection.Left) ? 2 : -2;
+                // Align opaque body midpoints in source space. Both skin and hair FlipHorizontally
+                // together for Up/Right, so source-space alignment stays correct when flipped.
+                resX = skinOpaqueCenterX - hairOpaqueCenterX;
             }
+            else
+            {
+                resX = -(float)Math.Floor(Math.Abs((float)hairRectangle.Width - skinRectangle.Width) / 2) - 1;
+            }
+
+            // Small direction nudges — sit heads are not perfectly centered in the cell.
+            if (_renderProperties.IsFacing(EODirection.Left))
+                resX += 1;
+            else if (_renderProperties.IsFacing(EODirection.Down))
+                resX += 2;
+            else if (_renderProperties.IsFacing(EODirection.Right))
+                resX -= 1;
 
             float headOffsetY;
             if (skinOpaqueTopY >= 0)
             {
-                // Align the hair gfx's first opaque row with the sit scalp. Hair sheets often
-                // have transparent padding above the spikes — placing the texture top at the
-                // scalp leaves the bald sit head exposed above the hair (~8-12px too low).
+                // Align hair's first opaque row to the sit scalp. Hair sheets pad above the
+                // spikes — account for that pad, but do NOT add a large extra upward bias
+                // (that left bald crown exposed while hair floated above/left of the neck).
                 var hairPad = hairOpaqueTopY >= 0 ? hairOpaqueTopY : 0;
-                // Extra -4 so spikes cover the crown (sit skins bake a bald head underneath).
-                headOffsetY = skinOpaqueTopY - hairPad - 4 - _renderProperties.Gender;
+                headOffsetY = skinOpaqueTopY - hairPad + 1 - _renderProperties.Gender;
             }
             else
             {

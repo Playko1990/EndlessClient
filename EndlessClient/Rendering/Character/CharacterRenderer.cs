@@ -83,6 +83,11 @@ namespace EndlessClient.Rendering.Character
 
         public int HorizontalCenter { get; private set; }
 
+        /// <summary>
+        /// Top of the standing draw box — HP bars clear above the hair from here.
+        /// </summary>
+        public int HealthBarAnchorY => DrawArea.Y;
+
         public bool IsAlive => !Character.RenderProperties.IsDead;
 
         public CharacterRenderer(Game game,

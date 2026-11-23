@@ -59,6 +59,11 @@ namespace EndlessClient.Rendering.NPC
 
         public int HorizontalCenter { get; private set; }
 
+        /// <summary>
+        /// Topmost opaque pixel — HP bars park here (not NameLabelY / padded frame top).
+        /// </summary>
+        public int HealthBarAnchorY => DrawArea.Y + _opaqueTopInFrame;
+
         public bool IsAlive => !_isDying && !IsDead;
 
         public Rectangle DrawArea { get; private set; }

@@ -1,5 +1,6 @@
 ﻿using AutomaticTypeMapper;
 using EndlessClient.GameExecution;
+using EndlessClient.Rendering.Character;
 using EOLib.Graphics;
 
 namespace EndlessClient.Rendering.Factories
@@ -9,17 +10,24 @@ namespace EndlessClient.Rendering.Factories
     {
         private readonly IEndlessGameProvider _endlessGameProvider;
         private readonly INativeGraphicsManager _nativeGraphicsManager;
+        private readonly ICharacterRendererProvider _characterRendererProvider;
 
         public HealthBarRendererFactory(IEndlessGameProvider endlessGameProvider,
-                                        INativeGraphicsManager nativeGraphicsManager)
+                                        INativeGraphicsManager nativeGraphicsManager,
+                                        ICharacterRendererProvider characterRendererProvider)
         {
             _endlessGameProvider = endlessGameProvider;
             _nativeGraphicsManager = nativeGraphicsManager;
+            _characterRendererProvider = characterRendererProvider;
         }
 
         public IHealthBarRenderer CreateHealthBarRenderer(IMapActor parentReference)
         {
-            return new HealthBarRenderer(_endlessGameProvider, _nativeGraphicsManager, parentReference);
+            return new HealthBarRenderer(
+                _endlessGameProvider,
+                _nativeGraphicsManager,
+                _characterRendererProvider,
+                parentReference);
         }
     }
 

@@ -50,7 +50,7 @@ namespace EndlessClient.Rendering.CharacterProperties
             yield return new EmoteRenderer(renderProperties, textures.Emote, textures.Skin) { LayerDepth = BaseLayer * 6 };
 
             yield return new BootsRenderer(renderProperties, textures.Boots) { LayerDepth = BaseLayer * 7 };
-            yield return new ArmorRenderer(renderProperties, textures.Armor) { LayerDepth = BaseLayer * 8 };
+            yield return new ArmorRenderer(renderProperties, textures.Armor, textures.Skin) { LayerDepth = BaseLayer * 8 };
 
             var hatMaskType = GetHatMaskType(renderProperties.HatGraphic);
             yield return new HatRenderer(renderProperties, textures.Hat, textures.Hair, textures.Skin)

@@ -42,6 +42,12 @@ namespace EndlessClient.Rendering.NPC
         private int _fadeAwayAlpha;
         private bool _isDying, _isBlankSprite;
 
+        // Opaque-body mid-X within the current frame (cached per frame/direction).
+        private int _opaqueCenterInFrame = -1;
+        private NPCFrame _opaqueCenterFrame;
+        private EODirection _opaqueCenterDirection;
+        private int _opaqueCenterGraphic = -1;
+
         private XNALabel _nameLabel;
         private IChatBubble _chatBubble;
 
@@ -252,13 +258,64 @@ namespace EndlessClient.Rendering.NPC
                 new Vector2(metaDataOffsetX - frameTexture.Width / 2, metaDataOffsetY - (frameTexture.Height - 23));
             DrawArea = frameTexture.Bounds.WithPosition(renderCoordinates);
 
-            var horizontalOffset = _npcSpriteSheet.GetNPCMetadata(data.Graphic).OffsetX * (NPC.IsFacing(EODirection.Down, EODirection.Left) ? -1 : 1);
-            HorizontalCenter = DrawArea.X + (DrawArea.Width / 2) + horizontalOffset;
+            var horizontalOffset = metaData.OffsetX * (NPC.IsFacing(EODirection.Down, EODirection.Left) ? -1 : 1);
 
-            var nameLabelGridCoordinates = _gridDrawCoordinateCalculator.CalculateDrawCoordinates(NPC.WithX(NPC.X - 1).WithY(NPC.Y - 1));
-            NameLabelY = (int)nameLabelGridCoordinates.Y - metaData.NameLabelOffset;
+            // Center names/HP on the opaque sprite body — frame padding is often asymmetric
+            // (e.g. goats), so Width/2 alone parks the label beside the animal.
+            EnsureOpaqueCenter(data.Graphic, frameTexture);
+            HorizontalCenter = DrawArea.X + _opaqueCenterInFrame;
+
+            // NameLabelY is refreshed in GetNameLabelPosition from DrawArea (sprite top).
+            // Keep a sensible default here for HP bars / chat bubbles before the label exists.
+            NameLabelY = DrawArea.Y - 12 - metaData.NameLabelOffset;
 
             EffectTargetArea = DrawArea.WithSize(DrawArea.Width + horizontalOffset * 2, DrawArea.Height);
+        }
+
+        private void EnsureOpaqueCenter(int graphic, Texture2D frameTexture)
+        {
+            if (_opaqueCenterInFrame >= 0
+                && _opaqueCenterGraphic == graphic
+                && _opaqueCenterFrame == NPC.Frame
+                && _opaqueCenterDirection == NPC.Direction)
+                return;
+
+            var flipped = NPC.IsFacing(EODirection.Up, EODirection.Right);
+            var pixels = _npcSpriteDataCache.GetData(graphic, NPC.Frame);
+            _opaqueCenterInFrame = GetOpaqueHorizontalCenter(frameTexture, pixels, flipped);
+            _opaqueCenterGraphic = graphic;
+            _opaqueCenterFrame = NPC.Frame;
+            _opaqueCenterDirection = NPC.Direction;
+        }
+
+        private static int GetOpaqueHorizontalCenter(Texture2D frameTexture, ReadOnlySpan<Color> pixels, bool flipped)
+        {
+            var w = frameTexture?.Width ?? 0;
+            var h = frameTexture?.Height ?? 0;
+            if (w <= 0 || h <= 0 || pixels.Length < w * h)
+                return Math.Max(0, w / 2);
+
+            var minX = w;
+            var maxX = -1;
+            for (int y = 0; y < h; y++)
+            {
+                var row = y * w;
+                for (int x = 0; x < w; x++)
+                {
+                    if (pixels[row + x].A <= 16)
+                        continue;
+
+                    if (x < minX) minX = x;
+                    if (x > maxX) maxX = x;
+                }
+            }
+
+            if (maxX < minX)
+                return w / 2;
+
+            var mid = (minX + maxX + 1) / 2;
+            // Draw uses FlipHorizontally for Up/Right — mirror opaque center to match on-screen art.
+            return flipped ? w - mid : mid;
         }
 
         private void UpdateStandingFrameAnimation()
@@ -321,6 +378,12 @@ namespace EndlessClient.Rendering.NPC
 
         private Vector2 GetNameLabelPosition()
         {
+            // Match CharacterRenderer: park the label just above the sprite top, centered
+            // on the NPC. The old tile (X-1,Y-1) baseline drifted with camera/sprite size
+            // and often sat mid-body or away from the animal entirely.
+            var labelHeight = (int)(_nameLabel?.ActualHeight ?? 0);
+            var nameHeight = _npcSpriteSheet.GetNPCMetadata(_enfFileProvider.ENFFile[NPC.ID].Graphic).NameLabelOffset;
+            NameLabelY = DrawArea.Y - 12 - labelHeight - nameHeight;
             return new Vector2(HorizontalCenter - (_nameLabel.ActualWidth / 2f), NameLabelY);
         }
 

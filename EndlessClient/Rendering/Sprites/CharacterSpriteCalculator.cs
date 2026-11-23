@@ -338,9 +338,10 @@ namespace EndlessClient.Rendering.Sprites
                           characterRenderProperties.Direction == EODirection.Up;
 
             // Standing, walk, attack, and sit sheets all stack races vertically. Custom packs
-            // often keep 58px rows but add races — using vanilla's 7 rows then makes each
-            // "cell" span multiple races (a second body above the sit pose, other skins at the feet).
-            var sheetRows = GetRaceRowCount(texture.Height);
+            // often keep 58px standing rows but add races — sit sheets may use a shorter
+            // cell height with the same race count, so derive rows from the standing pack.
+            var standingTexture = _gfxManager.TextureFromResource(GFXTypes.SkinSprites, 1, true);
+            var sheetRows = GetRaceRowCountForSheet(texture.Height, GetRaceRowCount(standingTexture.Height));
 
             var heightDelta = System.Math.Max(1, texture.Height / sheetRows);
             var widthDelta = System.Math.Max(1, texture.Width / sheetColumns);
@@ -469,6 +470,9 @@ namespace EndlessClient.Rendering.Sprites
         // Vanilla EO uses 7 race rows. Custom packs often keep 58px rows but add races.
         private const int VanillaSheetRows = 7;
         private const int PreferredStandingCellHeight = 58;
+        // Sit cells are shorter than standing; reject "half-slice" sizes when a taller
+        // standing pack would otherwise divide an unexpanded sit sheet evenly.
+        private const int MinReasonableSkinCellHeight = 24;
 
         private static int GetRaceRowCount(int textureHeight)
         {
@@ -476,6 +480,18 @@ namespace EndlessClient.Rendering.Sprites
                 return System.Math.Max(1, textureHeight / PreferredStandingCellHeight);
 
             return VanillaSheetRows;
+        }
+
+        private static int GetRaceRowCountForSheet(int textureHeight, int standingRaceCount)
+        {
+            if (standingRaceCount > 0 && textureHeight % standingRaceCount == 0)
+            {
+                var cellHeight = textureHeight / standingRaceCount;
+                if (cellHeight >= MinReasonableSkinCellHeight)
+                    return standingRaceCount;
+            }
+
+            return GetRaceRowCount(textureHeight);
         }
 
         private static int GetFaceEmoteColumn(Emote emote)

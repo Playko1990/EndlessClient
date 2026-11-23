@@ -40,7 +40,10 @@ namespace EndlessClient.Rendering.CharacterProperties
                 var skinLoc = _skinRenderLocationCalculator.CalculateDrawLocationOfCharacterSkin(
                     _skinSheet.SourceRectangle, parentCharacterDrawArea, weaponMetadata.Ranged);
                 hairDrawLoc = _hairRenderLocationCalculator.CalculateDrawLocationOfCharacterHairFromSkin(
-                    _hairSheet.SourceRectangle, _skinSheet.SourceRectangle, skinLoc);
+                    _hairSheet.SourceRectangle,
+                    _skinSheet.SourceRectangle,
+                    skinLoc,
+                    SkinRenderLocationCalculator.FindOpaqueTopY(_skinSheet));
             }
             else
             {

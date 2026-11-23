@@ -49,7 +49,11 @@ namespace EndlessClient.Rendering.CharacterProperties
         /// Positions hair relative to the already-computed sitting skin location so hair
         /// stays on the head when equipment/skin use bottom-aligned sit sprites.
         /// </summary>
-        public Vector2 CalculateDrawLocationOfCharacterHairFromSkin(Rectangle hairRectangle, Rectangle skinRectangle, Vector2 skinDrawLocation)
+        public Vector2 CalculateDrawLocationOfCharacterHairFromSkin(
+            Rectangle hairRectangle,
+            Rectangle skinRectangle,
+            Vector2 skinDrawLocation,
+            int skinOpaqueTopY = -1)
         {
             var isFlipped = _renderProperties.IsFacing(EODirection.Up, EODirection.Right);
 
@@ -63,11 +67,20 @@ namespace EndlessClient.Rendering.CharacterProperties
                 resX += _renderProperties.IsFacing(EODirection.Left) ? 2 : -2;
             }
 
-            // Sitting skin sheets keep transparent padding above the head; place hair near the
-            // top of the opaque sit body rather than at the top of the source rectangle.
-            var headOffsetY = _renderProperties.SitState == SitState.Floor
-                ? (_renderProperties.IsFacing(EODirection.Right, EODirection.Down) ? 16 : 18) + _renderProperties.Gender
-                : (_renderProperties.IsFacing(EODirection.Right, EODirection.Down) ? 0 : 2) + _renderProperties.Gender;
+            // Prefer the first opaque row of the sit skin (true top of head). Fixed magic
+            // offsets float hair above shorter custom sit cells or leave a gap on taller ones.
+            float headOffsetY;
+            if (skinOpaqueTopY >= 0)
+            {
+                // Hair gfx includes forehead overlap; sit a couple px above the opaque scalp.
+                headOffsetY = skinOpaqueTopY - 2 - _renderProperties.Gender;
+            }
+            else
+            {
+                headOffsetY = _renderProperties.SitState == SitState.Floor
+                    ? (_renderProperties.IsFacing(EODirection.Right, EODirection.Down) ? 16 : 18) + _renderProperties.Gender
+                    : (_renderProperties.IsFacing(EODirection.Right, EODirection.Down) ? 0 : 2) + _renderProperties.Gender;
+            }
 
             var flippedOffset = isFlipped ? 2 : 0;
             return skinDrawLocation + new Vector2(resX + flippedOffset, headOffsetY);

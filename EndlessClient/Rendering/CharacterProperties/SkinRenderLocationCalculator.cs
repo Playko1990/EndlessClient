@@ -1,8 +1,10 @@
 using System;
+using EndlessClient.Rendering.Sprites;
 using EOLib;
 using EOLib.Domain.Character;
 using EOLib.Domain.Extensions;
 using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Graphics;
 
 namespace EndlessClient.Rendering.CharacterProperties
 {
@@ -13,6 +15,36 @@ namespace EndlessClient.Rendering.CharacterProperties
         public SkinRenderLocationCalculator(CharacterRenderProperties renderProperties)
         {
             _renderProperties = renderProperties;
+        }
+
+        /// <summary>
+        /// First opaque pixel row within the skin source rectangle, or -1 if none.
+        /// Used to pin hair/hats to the sit head instead of transparent padding.
+        /// </summary>
+        public static int FindOpaqueTopY(ISpriteSheet skinSheet)
+        {
+            if (skinSheet == null || !skinSheet.HasTexture)
+                return -1;
+
+            var rect = skinSheet.SourceRectangle;
+            if (rect.Width <= 0 || rect.Height <= 0)
+                return -1;
+
+            var data = skinSheet.GetSourceTextureData<Color>();
+            if (data.Length == 0)
+                return -1;
+
+            for (var y = 0; y < rect.Height; y++)
+            {
+                var row = y * rect.Width;
+                for (var x = 0; x < rect.Width; x++)
+                {
+                    if (data[row + x].A > 0)
+                        return y;
+                }
+            }
+
+            return -1;
         }
 
         public Vector2 CalculateDrawLocationOfCharacterSkin(Rectangle skinRectangle, Rectangle parentCharacterDrawArea, bool ranged)

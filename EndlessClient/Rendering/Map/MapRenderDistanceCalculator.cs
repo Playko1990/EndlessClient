@@ -7,7 +7,9 @@ namespace EndlessClient.Rendering.Map
     [AutoMappedType]
     public class MapRenderDistanceCalculator : IMapRenderDistanceCalculator
     {
-        private const int DEFAULT_BOUNDS_DISTANCE = 22;
+        // Must cover a large resizable viewport so NPCs/players near the screen edge
+        // are still visited by the map tile walk (see NPC/OtherCharacter CanRender).
+        private const int DEFAULT_BOUNDS_DISTANCE = 40;
         private readonly IClientWindowSizeProvider _clientWindowSizeProvider;
 
         public MapRenderDistanceCalculator(IClientWindowSizeProvider clientWindowSizeProvider)

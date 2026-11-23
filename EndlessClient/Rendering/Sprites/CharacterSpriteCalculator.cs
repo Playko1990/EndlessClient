@@ -36,33 +36,35 @@ namespace EndlessClient.Rendering.Sprites
                 return new EmptySpriteSheet();
 
             var type = BootsSpriteType.Standing;
-            var currentAction = characterRenderProperties.CurrentAction;
-            if (currentAction == CharacterActionState.Emote && characterRenderProperties.SitState != SitState.Standing)
-                currentAction = CharacterActionState.Sitting;
 
-            switch (currentAction)
+            // SitState is the source of truth for sit appearance (matches skin selection).
+            // Prefer it over CurrentAction so emotes / brief action desyncs cannot show
+            // standing boots on a sitting body.
+            if (characterRenderProperties.SitState != SitState.Standing)
             {
-                case CharacterActionState.Walking:
-                    switch (characterRenderProperties.RenderWalkFrame)
-                    {
-                        case 1: type = BootsSpriteType.WalkFrame1; break;
-                        case 2: type = BootsSpriteType.WalkFrame2; break;
-                        case 3: type = BootsSpriteType.WalkFrame3; break;
-                        case 4: type = BootsSpriteType.WalkFrame4; break;
-                    }
-                    break;
-                case CharacterActionState.Attacking:
-                    if (!BowIsEquipped(characterRenderProperties) && characterRenderProperties.RenderAttackFrame == 2 ||
-                        BowIsEquipped(characterRenderProperties) && characterRenderProperties.RenderAttackFrame == 1)
-                        type = BootsSpriteType.Attack;
-                    break;
-                case CharacterActionState.Sitting:
-                    switch (characterRenderProperties.SitState)
-                    {
-                        case SitState.Chair: type = BootsSpriteType.SitChair; break;
-                        case SitState.Floor: type = BootsSpriteType.SitGround; break;
-                    }
-                    break;
+                type = characterRenderProperties.SitState == SitState.Chair
+                    ? BootsSpriteType.SitChair
+                    : BootsSpriteType.SitGround;
+            }
+            else
+            {
+                switch (characterRenderProperties.CurrentAction)
+                {
+                    case CharacterActionState.Walking:
+                        switch (characterRenderProperties.RenderWalkFrame)
+                        {
+                            case 1: type = BootsSpriteType.WalkFrame1; break;
+                            case 2: type = BootsSpriteType.WalkFrame2; break;
+                            case 3: type = BootsSpriteType.WalkFrame3; break;
+                            case 4: type = BootsSpriteType.WalkFrame4; break;
+                        }
+                        break;
+                    case CharacterActionState.Attacking:
+                        if (!BowIsEquipped(characterRenderProperties) && characterRenderProperties.RenderAttackFrame == 2 ||
+                            BowIsEquipped(characterRenderProperties) && characterRenderProperties.RenderAttackFrame == 1)
+                            type = BootsSpriteType.Attack;
+                        break;
+                }
             }
 
             var gfxFile = characterRenderProperties.Gender == 0 ? GFXTypes.FemaleShoes : GFXTypes.MaleShoes;
@@ -80,53 +82,49 @@ namespace EndlessClient.Rendering.Sprites
                 return new EmptySpriteSheet();
 
             var type = ArmorShieldSpriteType.Standing;
-            var currentAction = characterRenderProperties.CurrentAction;
-            if (currentAction == CharacterActionState.Emote && characterRenderProperties.SitState != SitState.Standing)
-                currentAction = CharacterActionState.Sitting;
 
-            switch (currentAction)
+            // SitState is the source of truth for sit appearance (matches skin selection).
+            if (characterRenderProperties.SitState != SitState.Standing)
             {
-                case CharacterActionState.Walking:
-                    switch (characterRenderProperties.RenderWalkFrame)
-                    {
-                        case 1: type = ArmorShieldSpriteType.WalkFrame1; break;
-                        case 2: type = ArmorShieldSpriteType.WalkFrame2; break;
-                        case 3: type = ArmorShieldSpriteType.WalkFrame3; break;
-                        case 4: type = ArmorShieldSpriteType.WalkFrame4; break;
-                    }
-                    break;
-                case CharacterActionState.Attacking:
-                    if (BowIsEquipped(characterRenderProperties))
-                    {
-                        switch (characterRenderProperties.RenderAttackFrame)
+                type = characterRenderProperties.SitState == SitState.Chair
+                    ? ArmorShieldSpriteType.SitChair
+                    : ArmorShieldSpriteType.SitGround;
+            }
+            else
+            {
+                switch (characterRenderProperties.CurrentAction)
+                {
+                    case CharacterActionState.Walking:
+                        switch (characterRenderProperties.RenderWalkFrame)
                         {
-                            case 1: type = ArmorShieldSpriteType.Bow; break;
-                            case 2: type = ArmorShieldSpriteType.Standing; break;
+                            case 1: type = ArmorShieldSpriteType.WalkFrame1; break;
+                            case 2: type = ArmorShieldSpriteType.WalkFrame2; break;
+                            case 3: type = ArmorShieldSpriteType.WalkFrame3; break;
+                            case 4: type = ArmorShieldSpriteType.WalkFrame4; break;
                         }
-                    }
-                    else
-                    {
-                        switch (characterRenderProperties.RenderAttackFrame)
+                        break;
+                    case CharacterActionState.Attacking:
+                        if (BowIsEquipped(characterRenderProperties))
                         {
-                            case 1: type = ArmorShieldSpriteType.PunchFrame1; break;
-                            case 2: type = ArmorShieldSpriteType.PunchFrame2; break;
+                            switch (characterRenderProperties.RenderAttackFrame)
+                            {
+                                case 1: type = ArmorShieldSpriteType.Bow; break;
+                                case 2: type = ArmorShieldSpriteType.Standing; break;
+                            }
                         }
-                    }
-                    break;
-                case CharacterActionState.SpellCast:
-                    type = ArmorShieldSpriteType.SpellCast;
-                    break;
-                case CharacterActionState.Sitting:
-                    switch (characterRenderProperties.SitState)
-                    {
-                        case SitState.Chair:
-                            type = ArmorShieldSpriteType.SitChair;
-                            break;
-                        case SitState.Floor:
-                            type = ArmorShieldSpriteType.SitGround;
-                            break;
-                    }
-                    break;
+                        else
+                        {
+                            switch (characterRenderProperties.RenderAttackFrame)
+                            {
+                                case 1: type = ArmorShieldSpriteType.PunchFrame1; break;
+                                case 2: type = ArmorShieldSpriteType.PunchFrame2; break;
+                            }
+                        }
+                        break;
+                    case CharacterActionState.SpellCast:
+                        type = ArmorShieldSpriteType.SpellCast;
+                        break;
+                }
             }
 
             var gfxFile = characterRenderProperties.Gender == 0 ? GFXTypes.FemaleArmor : GFXTypes.MaleArmor;
@@ -304,7 +302,6 @@ namespace EndlessClient.Rendering.Sprites
 
         public ISpriteSheet GetSkinTexture(CharacterRenderProperties characterRenderProperties)
         {
-            const int SheetRows = 7;
             var sheetColumns = 4;
             var gfxNum = 1;
 
@@ -340,8 +337,14 @@ namespace EndlessClient.Rendering.Sprites
             var rotated = characterRenderProperties.Direction == EODirection.Left ||
                           characterRenderProperties.Direction == EODirection.Up;
 
-            var heightDelta = texture.Height / SheetRows;
-            var widthDelta = texture.Width / sheetColumns;
+            // Standing, walk, attack, and sit sheets all stack races vertically. Custom packs
+            // often keep 58px standing rows but add races — sit sheets may use a shorter
+            // cell height with the same race count, so derive rows from the standing pack.
+            var standingTexture = _gfxManager.TextureFromResource(GFXTypes.SkinSprites, 1, true);
+            var sheetRows = GetRaceRowCountForSheet(texture.Height, GetRaceRowCount(standingTexture.Height));
+
+            var heightDelta = System.Math.Max(1, texture.Height / sheetRows);
+            var widthDelta = System.Math.Max(1, texture.Width / sheetColumns);
             var sectionDelta = texture.Width / 4;
 
             var walkExtra = characterRenderProperties.RenderWalkFrame > 0 ? widthDelta * (characterRenderProperties.RenderWalkFrame - 1) : 0;
@@ -368,9 +371,12 @@ namespace EndlessClient.Rendering.Sprites
                 }
             }
 
+            var race = System.Math.Clamp(characterRenderProperties.Race, 0, sheetRows - 1);
+            var gender = System.Math.Clamp(characterRenderProperties.Gender, 0, 1);
+
             var sourceArea = new Rectangle(
-                characterRenderProperties.Gender * widthDelta * (sheetColumns / 2) + (rotated ? sectionDelta : 0) + walkExtra,
-                characterRenderProperties.Race * heightDelta,
+                gender * widthDelta * (sheetColumns / 2) + (rotated ? sectionDelta : 0) + walkExtra,
+                race * heightDelta,
                 widthDelta,
                 heightDelta);
 
@@ -402,21 +408,37 @@ namespace EndlessClient.Rendering.Sprites
                 return new EmptySpriteSheet();
             }
 
-            //14 rows (7 female - 7 male) / 11 columns
-            const int ROWS = 14;
+            // Face sheet layout: female races in the top half, male races in the bottom half,
+            // 11 emote columns. Vanilla has 7 races per gender (14px rows → 14 rows total).
+            const int VanillaRacesPerGender = 7;
+            const int PreferredFaceCellHeight = 14;
             const int COLS = 11;
 
             var texture = _gfxManager.TextureFromResource(GFXTypes.SkinSprites, 8, true);
+            var genderHalfHeight = System.Math.Max(1, texture.Height / 2);
 
-            var widthDelta = texture.Width / COLS;
-            var heightDelta = texture.Height / ROWS;
-            var genderOffset = texture.Height / 2 * characterRenderProperties.Gender;
-            //'playful' is the last face in the gfx (ndx 10), even though it has enum value of 14 (ndx 13)
-            var emote = characterRenderProperties.Emote == Emote.Playful ||
-                        characterRenderProperties.Emote == Emote.Drunk
-                        ? 10 : (int)characterRenderProperties.Emote - 1;
+            // Slice by the face cell height (14px), NOT by the body skin race count.
+            // Coupling faces to body races is wrong when the body pack adds races but the
+            // face sheet stays vanilla: e.g. half=98 and skinRaces=14 → 7px "cells" that
+            // sample body-looking scraps from neighboring face rows into the face slot.
+            var racesPerGender = VanillaRacesPerGender;
+            if (genderHalfHeight % PreferredFaceCellHeight == 0)
+            {
+                racesPerGender = System.Math.Max(1, genderHalfHeight / PreferredFaceCellHeight);
+            }
 
-            var sourceRectangle = new Rectangle(widthDelta * emote, heightDelta * characterRenderProperties.Race + genderOffset, widthDelta, heightDelta);
+            var widthDelta = System.Math.Max(1, texture.Width / COLS);
+            var heightDelta = System.Math.Max(1, genderHalfHeight / racesPerGender);
+            var gender = System.Math.Clamp(characterRenderProperties.Gender, 0, 1);
+            var race = System.Math.Clamp(characterRenderProperties.Race, 0, racesPerGender - 1);
+            var genderOffset = genderHalfHeight * gender;
+
+            // Face columns follow Emote values (Happy=col0 … Embarassed=col9), with
+            // Playful/Drunk sharing the last column. Do not use EmoteSpriteType order —
+            // that atlas is only for the overhead bubble.
+            var emote = GetFaceEmoteColumn(characterRenderProperties.Emote);
+
+            var sourceRectangle = new Rectangle(widthDelta * emote, heightDelta * race + genderOffset, widthDelta, heightDelta);
 
             return new SpriteSheet(texture, sourceRectangle);
         }
@@ -443,6 +465,55 @@ namespace EndlessClient.Rendering.Sprites
             var emoteRect = new Rectangle(startX, 0, eachFrame, emoteTexture.Height);
 
             return new SpriteSheet(emoteTexture, emoteRect);
+        }
+
+        // Vanilla EO uses 7 race rows. Custom packs often keep 58px rows but add races.
+        private const int VanillaSheetRows = 7;
+        private const int PreferredStandingCellHeight = 58;
+        // Sit cells are shorter than standing; reject "half-slice" sizes when a taller
+        // standing pack would otherwise divide an unexpanded sit sheet evenly.
+        private const int MinReasonableSkinCellHeight = 24;
+
+        private static int GetRaceRowCount(int textureHeight)
+        {
+            if (textureHeight % PreferredStandingCellHeight == 0)
+                return System.Math.Max(1, textureHeight / PreferredStandingCellHeight);
+
+            return VanillaSheetRows;
+        }
+
+        private static int GetRaceRowCountForSheet(int textureHeight, int standingRaceCount)
+        {
+            if (standingRaceCount > 0 && textureHeight % standingRaceCount == 0)
+            {
+                var cellHeight = textureHeight / standingRaceCount;
+                if (cellHeight >= MinReasonableSkinCellHeight)
+                    return standingRaceCount;
+            }
+
+            return GetRaceRowCount(textureHeight);
+        }
+
+        private static int GetFaceEmoteColumn(Emote emote)
+        {
+            // Mirror the historic Emote-1 mapping with an explicit table so new emote
+            // values cannot silently shift face columns.
+            switch (emote)
+            {
+                case Emote.Happy: return 0;
+                case Emote.Depressed: return 1;
+                case Emote.Sad: return 2;
+                case Emote.Angry: return 3;
+                case Emote.Confused: return 4;
+                case Emote.Surprised: return 5;
+                case Emote.Hearts: return 6;
+                case Emote.Moon: return 7;
+                case Emote.Suicidal: return 8;
+                case Emote.Embarassed: return 9;
+                case Emote.Drunk:
+                case Emote.Playful: return 10;
+                default: return 0;
+            }
         }
 
         private int GetBaseBootGraphic(int bootsGraphic)

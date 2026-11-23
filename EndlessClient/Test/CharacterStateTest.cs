@@ -234,9 +234,11 @@ namespace EndlessClient.Test
                 case DisplayState.Standing:
                     return _baseProperties;
                 case DisplayState.SitChair:
-                    return _baseProperties.WithSitState(SitState.Chair);
+                    return _baseProperties.WithSitState(SitState.Chair)
+                        .WithCurrentAction(CharacterActionState.Sitting);
                 case DisplayState.SitFloor:
-                    return _baseProperties.WithSitState(SitState.Floor);
+                    return _baseProperties.WithSitState(SitState.Floor)
+                        .WithCurrentAction(CharacterActionState.Sitting);
                 case DisplayState.Attack1:
                     return _baseProperties.WithNextAttackFrame(isRanged);
                 case DisplayState.Attack2:

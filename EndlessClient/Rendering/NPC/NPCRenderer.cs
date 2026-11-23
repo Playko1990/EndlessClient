@@ -111,11 +111,13 @@ namespace EndlessClient.Rendering.NPC
         {
             UpdateDrawAreas();
 
+            // AutoSize + TopLeft: text draws at DrawPosition. Do not set TextWidth /
+            // MiddleCenter — with AutoSize those only confuse layout and were never used
+            // for drawing; centering is done explicitly in GetNameLabelPosition.
             _nameLabel = new XNALabel(Constants.FontSize08pt5)
             {
                 Visible = false,
-                TextWidth = 89,
-                TextAlign = LabelAlignment.MiddleCenter,
+                TextAlign = LabelAlignment.TopLeft,
                 ForeColor = Color.White,
                 AutoSize = true,
                 Text = _enfFileProvider.ENFFile[NPC.ID].Name,

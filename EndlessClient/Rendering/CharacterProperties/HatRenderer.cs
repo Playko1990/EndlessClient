@@ -43,7 +43,8 @@ namespace EndlessClient.Rendering.CharacterProperties
                     _hairSheet.SourceRectangle,
                     _skinSheet.SourceRectangle,
                     skinLoc,
-                    SkinRenderLocationCalculator.FindOpaqueTopY(_skinSheet));
+                    SkinRenderLocationCalculator.FindOpaqueTopY(_skinSheet),
+                    SkinRenderLocationCalculator.FindOpaqueTopY(_hairSheet));
             }
             else
             {

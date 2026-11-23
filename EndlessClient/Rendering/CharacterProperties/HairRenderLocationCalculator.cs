@@ -53,7 +53,8 @@ namespace EndlessClient.Rendering.CharacterProperties
             Rectangle hairRectangle,
             Rectangle skinRectangle,
             Vector2 skinDrawLocation,
-            int skinOpaqueTopY = -1)
+            int skinOpaqueTopY = -1,
+            int hairOpaqueTopY = -1)
         {
             var isFlipped = _renderProperties.IsFacing(EODirection.Up, EODirection.Right);
 
@@ -67,13 +68,15 @@ namespace EndlessClient.Rendering.CharacterProperties
                 resX += _renderProperties.IsFacing(EODirection.Left) ? 2 : -2;
             }
 
-            // Prefer the first opaque row of the sit skin (true top of head). Fixed magic
-            // offsets float hair above shorter custom sit cells or leave a gap on taller ones.
             float headOffsetY;
             if (skinOpaqueTopY >= 0)
             {
-                // Hair gfx includes forehead overlap; sit a couple px above the opaque scalp.
-                headOffsetY = skinOpaqueTopY - 2 - _renderProperties.Gender;
+                // Align the hair gfx's first opaque row with the sit scalp. Hair sheets often
+                // have transparent padding above the spikes — placing the texture top at the
+                // scalp leaves the bald sit head exposed above the hair (~8-12px too low).
+                var hairPad = hairOpaqueTopY >= 0 ? hairOpaqueTopY : 0;
+                // Extra -4 so spikes cover the crown (sit skins bake a bald head underneath).
+                headOffsetY = skinOpaqueTopY - hairPad - 4 - _renderProperties.Gender;
             }
             else
             {

@@ -101,7 +101,16 @@ namespace EndlessClient.HUD.Inventory
             InventoryItem = inventoryItem;
             Data = data;
 
-            _itemGraphic = inventoryPanel.NativeGraphicsManager.TextureFromResource(GFXTypes.Items, 2 * data.Graphic, transparent: true);
+            // Graphic 0 / missing EGF bitmaps must not throw during inventory redraw on login.
+            var graphicId = Math.Max(0, 2 * data.Graphic);
+            try
+            {
+                _itemGraphic = inventoryPanel.NativeGraphicsManager.TextureFromResource(GFXTypes.Items, graphicId, transparent: true);
+            }
+            catch
+            {
+                _itemGraphic = new Texture2D(Game.GraphicsDevice, 1, 1);
+            }
             _highlightBackground = new Texture2D(Game.GraphicsDevice, 1, 1);
             _highlightBackground.SetData(new[] { Color.FromNonPremultiplied(200, 200, 200, 60) });
             _tooltipBackground = new Texture2D(Game.GraphicsDevice, 1, 1);

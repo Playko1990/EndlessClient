@@ -4,6 +4,7 @@ using AutomaticTypeMapper;
 using EOLib.Domain.Character;
 using EOLib.Domain.Map;
 using EOLib.IO;
+using EOLib.IO.Extensions;
 using EOLib.IO.Map;
 using EOLib.IO.Repositories;
 using Optional;
@@ -37,7 +38,8 @@ namespace EndlessClient.HUD.Inventory
 
         public bool ItemFits(int itemId)
         {
-            return _characterInventoryProvider.ItemInventory.Any(x => x.ItemID == itemId) || ItemFits(_eifFileProvider.EIFFile[itemId].Size);
+            return _characterInventoryProvider.ItemInventory.Any(x => x.ItemID == itemId)
+                || ItemFits(_eifFileProvider.EIFFile.GetItemOrUnknown(itemId).Size);
         }
 
         public bool ItemsFit(IReadOnlyList<InventoryItem> outItems, IReadOnlyList<InventoryItem> inItems)
@@ -46,7 +48,7 @@ namespace EndlessClient.HUD.Inventory
 
             foreach (var item in outItems)
             {
-                var itemData = _eifFileProvider.EIFFile[item.ItemID];
+                var itemData = _eifFileProvider.EIFFile.GetItemOrUnknown(item.ItemID);
                 _inventorySlotProvider.SlotMap.SingleOrNone(x => x.Value == item.ItemID)
                     .Map(x => x.Key)
                     .MatchSome(x => _inventoryService.ClearSlots(slotsCopy, x, itemData.Size));
@@ -54,7 +56,7 @@ namespace EndlessClient.HUD.Inventory
 
             foreach (var item in inItems)
             {
-                var itemData = _eifFileProvider.EIFFile[item.ItemID];
+                var itemData = _eifFileProvider.EIFFile.GetItemOrUnknown(item.ItemID);
                 var itemFits = _inventoryService
                     .GetNextOpenSlot(slotsCopy, itemData.Size, Option.None<int>())
                     .Match(some: slot =>

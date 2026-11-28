@@ -2,6 +2,7 @@
 using EOLib.Domain.Character;
 using EOLib.Domain.Login;
 using EOLib.Domain.Map;
+using EOLib.IO;
 using EOLib.IO.Extensions;
 using EOLib.IO.Repositories;
 using EOLib.PacketHandlers.Avatar;
@@ -41,17 +42,17 @@ namespace EOLib.PacketHandlers.Paperdoll
 
             var itemUnequipped = Action == PacketAction.Remove;
 
-            if (_paperdollRepository.VisibleCharacterPaperdolls.ContainsKey(change.PlayerId))
+            if (_paperdollRepository.VisibleCharacterPaperdolls.ContainsKey(change.PlayerId)
+                && _eifFileProvider.EIFFile.TryGetRecord(itemId, out var itemRec))
             {
-                var paperdollData = _paperdollRepository.VisibleCharacterPaperdolls[change.PlayerId];
-
-                var itemRec = _eifFileProvider.EIFFile[itemId];
                 var paperdollSlot = itemRec.GetEquipLocation() + subLoc;
-
-                var paperdollEquipData = paperdollData.Paperdoll.ToDictionary(k => k.Key, v => v.Value);
-                paperdollEquipData[paperdollSlot] = itemUnequipped ? 0 : itemId;
-
-                _paperdollRepository.VisibleCharacterPaperdolls[change.PlayerId] = paperdollData.WithPaperdoll(paperdollEquipData);
+                if (paperdollSlot < EquipLocation.PAPERDOLL_MAX)
+                {
+                    var paperdollData = _paperdollRepository.VisibleCharacterPaperdolls[change.PlayerId];
+                    var paperdollEquipData = paperdollData.Paperdoll.ToDictionary(k => k.Key, v => v.Value);
+                    paperdollEquipData[paperdollSlot] = itemUnequipped ? 0 : itemId;
+                    _paperdollRepository.VisibleCharacterPaperdolls[change.PlayerId] = paperdollData.WithPaperdoll(paperdollEquipData);
+                }
             }
 
             var update = _characterRepository.MainCharacter.ID == change.PlayerId

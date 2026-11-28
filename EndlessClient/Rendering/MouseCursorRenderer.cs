@@ -7,6 +7,7 @@ using EndlessClient.Input;
 using EOLib.Domain.Item;
 using EOLib.Domain.Map;
 using EOLib.Graphics;
+using EOLib.IO.Extensions;
 using EOLib.IO.Map;
 using EOLib.IO.Repositories;
 using EOLib.Shared;
@@ -177,7 +178,7 @@ namespace EndlessClient.Rendering
             item.Match(
                 some: i =>
                 {
-                    var data = _eifFileProvider.EIFFile[i.ItemID];
+                    var data = _eifFileProvider.EIFFile.GetItemOrUnknown(i.ItemID);
                     var text = _itemStringService.GetStringForMapDisplay(data, i.Amount);
 
                     if (!_mapItemText.Visible || _mapItemText.Text != text)

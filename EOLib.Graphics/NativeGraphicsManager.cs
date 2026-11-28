@@ -73,10 +73,17 @@ namespace EOLib.Graphics
                 }
             }
 
-            using var ms = rawData.AsStream();
-            var ret = Texture2D.FromStream(_graphicsDeviceProvider.GraphicsDevice, ms, processAction);
-
-            return ret;
+            try
+            {
+                using var ms = rawData.AsStream();
+                return Texture2D.FromStream(_graphicsDeviceProvider.GraphicsDevice, ms, processAction);
+            }
+            catch
+            {
+                // Corrupt / unexpected bitmap bytes (e.g. half-injected custom item icons)
+                // must not take down login when inventory redraws.
+                return new Texture2D(_graphicsDeviceProvider.GraphicsDevice, 1, 1);
+            }
         }
 
         private static unsafe void CrossPlatformMakeTransparent(byte[] data, bool isHat = false, bool checkClip = false)

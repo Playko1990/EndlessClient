@@ -14,6 +14,7 @@ using EndlessClient.HUD.Panels;
 using EOLib.Domain.Character;
 using EOLib.Graphics;
 using EOLib.IO;
+using EOLib.IO.Extensions;
 using EOLib.IO.Repositories;
 using EOLib.Localization;
 using Microsoft.Xna.Framework;
@@ -110,7 +111,7 @@ namespace EndlessClient.Dialogs
                     continue;
 
                 var id = paperdollData.Paperdoll[equipLocation];
-                var eifRecord = id.SomeWhen(i => i > 0).Map(i => _pubFileProvider.EIFFile[i]);
+                var eifRecord = id.SomeWhen(i => i > 0).Map(i => _pubFileProvider.EIFFile.GetItemOrUnknown(i));
                 var paperdollItem = new PaperdollDialogItem(GraphicsManager, _sfxPlayer, _inventoryPanel, this, _isMainCharacter, equipLocation, eifRecord)
                 {
                     DrawArea = HudUiMetrics.ScaleRectangle(equipLocation.GetEquipLocationRectangle(), _dialogScale)

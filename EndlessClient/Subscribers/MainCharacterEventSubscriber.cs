@@ -6,6 +6,7 @@ using EndlessClient.Rendering.Character;
 
 using EOLib.Domain.Chat;
 using EOLib.Domain.Notifiers;
+using EOLib.IO.Extensions;
 using EOLib.IO.Repositories;
 using EOLib.Localization;
 
@@ -58,35 +59,35 @@ namespace EndlessClient.Subscribers
 
         public void TakeItemFromMap(int id, int amountTaken)
         {
-            var rec = _pubFileProvider.EIFFile[id];
+            var name = _pubFileProvider.EIFFile.GetItemOrUnknown(id).Name;
 
-            var chatMessage = $"{_localizedStringFinder.GetString(EOResourceID.STATUS_LABEL_ITEM_PICKUP_YOU_PICKED_UP)} {amountTaken} {rec.Name}";
+            var chatMessage = $"{_localizedStringFinder.GetString(EOResourceID.STATUS_LABEL_ITEM_PICKUP_YOU_PICKED_UP)} {amountTaken} {name}";
             _chatRepository.AllChat[ChatTab.System].Add(new ChatData(ChatTab.System, string.Empty, chatMessage, ChatIcon.UpArrow));
 
             _statusLabelSetter.SetStatusLabel(EOResourceID.STATUS_LABEL_TYPE_INFORMATION, EOResourceID.STATUS_LABEL_ITEM_PICKUP_YOU_PICKED_UP,
-                $" {amountTaken} {rec.Name}");
+                $" {amountTaken} {name}");
         }
 
         public void DropItem(int id, int amountDropped)
         {
-            var rec = _pubFileProvider.EIFFile[id];
+            var name = _pubFileProvider.EIFFile.GetItemOrUnknown(id).Name;
 
-            var chatMessage = $"{_localizedStringFinder.GetString(EOResourceID.STATUS_LABEL_ITEM_DROP_YOU_DROPPED)} {amountDropped} {rec.Name}";
+            var chatMessage = $"{_localizedStringFinder.GetString(EOResourceID.STATUS_LABEL_ITEM_DROP_YOU_DROPPED)} {amountDropped} {name}";
             _chatRepository.AllChat[ChatTab.System].Add(new ChatData(ChatTab.System, string.Empty, chatMessage, ChatIcon.DownArrow));
 
             _statusLabelSetter.SetStatusLabel(EOResourceID.STATUS_LABEL_TYPE_INFORMATION, EOResourceID.STATUS_LABEL_ITEM_DROP_YOU_DROPPED,
-                $" {amountDropped} {rec.Name}");
+                $" {amountDropped} {name}");
         }
 
         public void JunkItem(int id, int amountRemoved)
         {
-            var rec = _pubFileProvider.EIFFile[id];
+            var name = _pubFileProvider.EIFFile.GetItemOrUnknown(id).Name;
 
-            var chatMessage = $"{_localizedStringFinder.GetString(EOResourceID.STATUS_LABEL_ITEM_JUNK_YOU_JUNKED)} {amountRemoved} {rec.Name}";
+            var chatMessage = $"{_localizedStringFinder.GetString(EOResourceID.STATUS_LABEL_ITEM_JUNK_YOU_JUNKED)} {amountRemoved} {name}";
             _chatRepository.AllChat[ChatTab.System].Add(new ChatData(ChatTab.System, string.Empty, chatMessage, ChatIcon.DownArrow));
 
             _statusLabelSetter.SetStatusLabel(EOResourceID.STATUS_LABEL_TYPE_INFORMATION, EOResourceID.STATUS_LABEL_ITEM_JUNK_YOU_JUNKED,
-                $" {amountRemoved} {rec.Name}");
+                $" {amountRemoved} {name}");
         }
 
         public void NotifyFrozen() => _sfxPlayer.PlaySfx(SoundEffectID.PlayerFrozen);

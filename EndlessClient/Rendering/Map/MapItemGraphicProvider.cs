@@ -1,6 +1,8 @@
+using System;
 using AutomaticTypeMapper;
 using EOLib.Graphics;
 using EOLib.IO;
+using EOLib.IO.Extensions;
 using EOLib.IO.Repositories;
 using Microsoft.Xna.Framework.Graphics;
 
@@ -20,7 +22,8 @@ namespace EndlessClient.Rendering.Map
 
         public Texture2D GetItemGraphic(int id, int amount)
         {
-            var item = _eifFileProvider.EIFFile[id];
+            if (!_eifFileProvider.EIFFile.TryGetRecord(id, out var item))
+                return _nativeGraphicsManager.TextureFromResource(GFXTypes.Items, 0, true);
 
             if (item.Type == ItemType.Money)
             {
@@ -31,7 +34,8 @@ namespace EndlessClient.Rendering.Map
                 return _nativeGraphicsManager.TextureFromResource(GFXTypes.Items, 269 + 2 * gfx, true);
             }
 
-            return _nativeGraphicsManager.TextureFromResource(GFXTypes.Items, 2 * item.Graphic - 1, true);
+            var graphicIndex = Math.Max(0, 2 * item.Graphic - 1);
+            return _nativeGraphicsManager.TextureFromResource(GFXTypes.Items, graphicIndex, true);
         }
     }
 }

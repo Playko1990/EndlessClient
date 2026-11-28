@@ -6,6 +6,7 @@ using EOLib.Graphics;
 using EOLib.IO;
 using EOLib.IO.Pub;
 using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Graphics;
 using MonoGame.Extended.Input;
 using MonoGame.Extended.Input.InputListeners;
 using Optional;
@@ -46,7 +47,17 @@ namespace EndlessClient.Dialogs
             EquipLocation = location;
             _itemInfo = itemInfo;
 
-            _itemInfo.MatchSome(r => Texture = nativeGraphicsManager.TextureFromResource(GFXTypes.Items, r.Graphic * 2, true));
+            _itemInfo.MatchSome(r =>
+            {
+                try
+                {
+                    Texture = nativeGraphicsManager.TextureFromResource(GFXTypes.Items, Math.Max(0, r.Graphic * 2), true);
+                }
+                catch
+                {
+                    Texture = new Texture2D(Game.GraphicsDevice, 1, 1);
+                }
+            });
             StretchMode = StretchMode.CenterInFrame;
         }
 

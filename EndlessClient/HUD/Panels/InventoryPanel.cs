@@ -221,14 +221,15 @@ namespace EndlessClient.HUD.Panels
                         childItem.Dispose();
                         _childItems.Remove(childItem);
 
-                        var itemData = _pubFileProvider.EIFFile[item.ItemID];
+                        // Placeholder if pub is missing this ID (keeps slot cleanup safe on login).
+                        var itemData = _pubFileProvider.EIFFile.GetItemOrUnknown(item.ItemID);
                         _inventoryService.ClearSlots(_inventorySlotRepository.FilledSlots, childItem.Slot, itemData.Size);
                     });
                 }
 
                 foreach (var item in updated)
                 {
-                    var itemData = _pubFileProvider.EIFFile[item.ItemID];
+                    var itemData = _pubFileProvider.EIFFile.GetItemOrUnknown(item.ItemID);
 
                     var matchedItem = _childItems.SingleOrNone(x => x.InventoryItem.ItemID == item.ItemID);
                     matchedItem.MatchSome(childItem =>
@@ -240,7 +241,9 @@ namespace EndlessClient.HUD.Panels
 
                 foreach (var item in added)
                 {
-                    var itemData = _pubFileProvider.EIFFile[item.ItemID];
+                    // Server inventory can include IDs not yet in the client's dat001.eif.
+                    // Use a placeholder record so login / inventory sync never throws.
+                    var itemData = _pubFileProvider.EIFFile.GetItemOrUnknown(item.ItemID);
 
                     var preferredSlot = _inventorySlotRepository.SlotMap.SingleOrNone(x => x.Value == item.ItemID).Map(x => x.Key);
                     var actualSlot = _inventoryService.GetNextOpenSlot(_inventorySlotRepository.FilledSlots, itemData.Size, preferredSlot);

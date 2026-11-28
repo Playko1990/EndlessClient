@@ -14,6 +14,7 @@ using EndlessClient.Rendering.Map;
 using EOLib.Config;
 using EOLib.Domain.Character;
 using EOLib.Domain.Chat;
+using EOLib.Domain.Item;
 using EOLib.Domain.Login;
 using EOLib.Domain.Map;
 using EOLib.IO.Actions;
@@ -49,6 +50,7 @@ namespace EndlessClient.Controllers
         private readonly ICurrentMapStateProvider _currentMapStateProvider;
         private readonly IFirstTimePlayerActions _firstTimePlayerActions;
         private readonly IMapChangedActions _mapChangedActions;
+        private readonly IInventoryRecoveryActions _inventoryRecoveryActions;
 
         public LoginController(ILoginActions loginActions,
                                IMapFileLoadActions mapFileLoadActions,
@@ -68,7 +70,8 @@ namespace EndlessClient.Controllers
                                IUserInputTimeRepository userInputTimeRepository,
                                IClientWindowSizeRepository clientWindowSizeRepository,
                                IConfigurationProvider configurationProvider,
-                               IPlayerInfoRepository playerInfoRepository)
+                               IPlayerInfoRepository playerInfoRepository,
+                               IInventoryRecoveryActions inventoryRecoveryActions)
         {
             _loginActions = loginActions;
             _mapFileLoadActions = mapFileLoadActions;
@@ -89,6 +92,7 @@ namespace EndlessClient.Controllers
             _clientWindowSizeRepository = clientWindowSizeRepository;
             _configurationProvider = configurationProvider;
             _playerInfoRepository = playerInfoRepository;
+            _inventoryRecoveryActions = inventoryRecoveryActions;
         }
 
         public async Task LoginToAccount(ILoginParameters loginParameters)
@@ -241,6 +245,8 @@ namespace EndlessClient.Controllers
                                                   EOResourceID.LOADING_GAME_HINT_FIRST);
                 _firstTimePlayerActions.WarnFirstTimePlayers();
                 _mapChangedActions.ActiveCharacterEnterMapForLogin();
+                // Junk quarantined custom items (e.g. 664) now that we are in-game.
+                _inventoryRecoveryActions.FlushPendingJunk();
             });
 
             if (useResizable)

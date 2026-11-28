@@ -48,6 +48,11 @@
         public static string SpellsFile { get; } = PathResolver.GetModifiablePath("config/spells.ini");
         public static string SkillTreeFile { get; } = PathResolver.GetModifiablePath("config/skilltree.ini");
         public static string PanelLayoutFile { get; } = PathResolver.GetModifiablePath("config/layout.ini");
+        /// <summary>
+        /// Optional list of item IDs (one per line) to auto-junk on login.
+        /// Used to unlock characters stuck with bad custom items.
+        /// </summary>
+        public static string StripItemsFile { get; } = PathResolver.GetModifiablePath("config/strip_items.txt");
         public static string ChatLogFile { get; } = PathResolver.GetModifiablePath("chatlog.txt");
 
         //Should be easily customizable between different clients (based on graphics)

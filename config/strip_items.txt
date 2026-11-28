@@ -1,0 +1,4 @@
+# Item IDs listed here are removed from inventory on login and junked on the server.
+# Use this to unlock a character that can't log in because of a bad custom item.
+# One ID per line.
+664

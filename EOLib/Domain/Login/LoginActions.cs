@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using AutomaticTypeMapper;
 using EOLib.Domain.Character;
 using EOLib.Domain.Extensions;
+using EOLib.Domain.Item;
 using EOLib.Domain.Map;
 using EOLib.Extensions;
 using EOLib.IO;
@@ -30,6 +31,7 @@ namespace EOLib.Domain.Login
         private readonly ICharacterInventoryRepository _characterInventoryRepository;
         private readonly IPaperdollRepository _paperdollRepository;
         private readonly ICharacterSessionRepository _characterSessionRepository;
+        private readonly IInventoryRecoveryActions _inventoryRecoveryActions;
 
         public LoginActions(IPacketSendService packetSendService,
                             ICharacterSelectorRepository characterSelectorRepository,
@@ -40,7 +42,8 @@ namespace EOLib.Domain.Login
                             INewsRepository newsRepository,
                             ICharacterInventoryRepository characterInventoryRepository,
                             IPaperdollRepository paperdollRepository,
-                            ICharacterSessionRepository characterSessionRepository)
+                            ICharacterSessionRepository characterSessionRepository,
+                            IInventoryRecoveryActions inventoryRecoveryActions)
         {
             _packetSendService = packetSendService;
             _characterSelectorRepository = characterSelectorRepository;
@@ -52,6 +55,7 @@ namespace EOLib.Domain.Login
             _characterInventoryRepository = characterInventoryRepository;
             _paperdollRepository = paperdollRepository;
             _characterSessionRepository = characterSessionRepository;
+            _inventoryRecoveryActions = inventoryRecoveryActions;
         }
 
         public bool LoginParametersAreValid(ILoginParameters parameters)
@@ -181,6 +185,10 @@ namespace EOLib.Domain.Login
             _characterInventoryRepository.ItemInventory = new HashSet<InventoryItem>(data.Items.Select(InventoryItem.FromNet));
             if (!_characterInventoryRepository.ItemInventory.Any(x => x.ItemID == 1))
                 _characterInventoryRepository.ItemInventory.Add(new InventoryItem(1, 0));
+
+            // Remove stuck/unknown custom items before the HUD builds inventory UI,
+            // then junk them on the server after enter-game (see LoginController).
+            _inventoryRecoveryActions.QuarantineBrokenItems();
 
             _characterInventoryRepository.SpellInventory = new HashSet<InventorySpell>(data.Spells.Select(InventorySpell.FromNet));
 

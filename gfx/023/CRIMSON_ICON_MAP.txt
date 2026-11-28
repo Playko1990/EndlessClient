@@ -1,0 +1,49 @@
+Crimson set -> gfx023 bitmap mapping (GFX folder 23)
+IconID = Gfx column in EO Pub Studio
+PE ID = Resource Hacker Bitmap number in gfx023.egf
+
+Icon  Name              View     PE  File
+ 621  plate_m           drop   1341  1341.bmp
+ 621  plate_m           inv    1342  1342.bmp
+ 622  plate_f           drop   1343  1343.bmp
+ 622  plate_f           inv    1344  1344.bmp
+ 623  helm              drop   1345  1345.bmp
+ 623  helm              inv    1346  1346.bmp
+ 624  boots             drop   1347  1347.bmp
+ 624  boots             inv    1348  1348.bmp
+ 625  blade             drop   1349  1349.bmp
+ 625  blade             inv    1350  1350.bmp
+ 626  gloves            drop   1351  1351.bmp
+ 626  gloves            inv    1352  1352.bmp
+ 627  belt              drop   1353  1353.bmp
+ 627  belt              inv    1354  1354.bmp
+ 628  necklace          drop   1355  1355.bmp
+ 628  necklace          inv    1356  1356.bmp
+ 629  ring_a            drop   1357  1357.bmp
+ 629  ring_a            inv    1358  1358.bmp
+ 630  bracelet          drop   1359  1359.bmp
+ 630  bracelet          inv    1360  1360.bmp
+ 631  ring_b            drop   1361  1361.bmp
+ 631  ring_b            inv    1362  1362.bmp
+ 632  bracer            drop   1363  1363.bmp
+ 632  bracer            inv    1364  1364.bmp
+ 633  charm             drop   1365  1365.bmp
+ 633  charm             inv    1366  1366.bmp
+ 635  shield            drop   1369  1369.bmp
+ 635  shield            inv    1370  1370.bmp
+ 636  quiver            drop   1371  1371.bmp
+ 636  quiver            inv    1372  1372.bmp
+ 637  dual_swords       drop   1373  1373.bmp
+ 637  dual_swords       inv    1374  1374.bmp
+ 638  wings             drop   1375  1375.bmp
+ 638  wings             inv    1376  1376.bmp
+
+HOW TO INSTALL ON YOUR PC
+1. Copy these .bmp files somewhere easy to find.
+2. Open your EO client file gfx\\gfx023.egf in Resource Hacker.
+3. For each PE number: Action -> Replace Resource (or Add) with that .bmp
+4. Save gfx023.egf back into your EO gfx folder.
+5. Reopen EO Pub Studio — Crimson item previews should show.
+
+NOTE: Shield Resource ID 26 is NOT gfx023 — that is paperdoll art in gfx019/gfx020.
+Inventory icons use the Gfx/Icon column (e.g. Shield Gfx 635).

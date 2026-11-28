@@ -22,19 +22,14 @@ namespace EOLib.Graphics
             }
             catch (ArgumentException)
             {
-#if DEBUG
-                throw;
-#endif
+                // Missing custom item/NPC/etc. art is common while pubs are ahead of gfx.
+                // Return empty so the manager can show a 1x1 placeholder instead of crashing
+                // Debug builds (spawn-to-inventory used to hard-crash here).
+                return Array.Empty<byte>();
             }
 
             if (fileBytes.Length == 0)
-            {
-#if DEBUG
-                throw new GFXLoadException(resourceValue, file);
-#else
                 return Array.Empty<byte>();
-#endif
-            }
 
             return fileBytes;
         }

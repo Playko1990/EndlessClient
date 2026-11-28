@@ -45,17 +45,27 @@ namespace EOLib.Graphics.Test
         }
 
         [Test]
-        public void WhenLoadGFX_EmptyDataArray_ThrowsInDebug_EmptyInRelease()
+        public void WhenLoadGFX_EmptyDataArray_ReturnsEmpty()
         {
             const int requestedResourceID = 1;
 
             SetupPEFileForGFXType(GFXTypes.PreLoginUI, new byte[] { });
 
-#if DEBUG
-            Assert.Throws<GFXLoadException>(() => _nativeGraphicsLoader.LoadGFX(GFXTypes.PreLoginUI, requestedResourceID));
-#else
             Assert.That(_nativeGraphicsLoader.LoadGFX(GFXTypes.PreLoginUI, requestedResourceID), Has.Length.EqualTo(0));
-#endif
+        }
+
+        [Test]
+        public void WhenLoadGFX_MissingBitmap_ReturnsEmpty()
+        {
+            const int requestedResourceID = 1;
+
+            var collectionMock = Mock.Get(_modules);
+            var peFile = new Mock<IPEFile>();
+            collectionMock.Setup(x => x[GFXTypes.PreLoginUI]).Returns(peFile.Object);
+            peFile.Setup(x => x.GetEmbeddedBitmapResourceByID(It.IsAny<int>(), ExpectedCulture))
+                  .Throws(new ArgumentException("missing"));
+
+            Assert.That(_nativeGraphicsLoader.LoadGFX(GFXTypes.PreLoginUI, requestedResourceID), Has.Length.EqualTo(0));
         }
 
         private byte[] CreateDataArrayForBitmap()

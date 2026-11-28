@@ -15,23 +15,20 @@ namespace EOLib.Graphics
 
         public ReadOnlyMemory<byte> LoadGFX(GFXTypes file, int resourceValue)
         {
-            var fileBytes = ReadOnlyMemory<byte>.Empty;
             try
             {
-                fileBytes = _modules[file].GetEmbeddedBitmapResourceByID(resourceValue + 100);
+                if (resourceValue < 0)
+                    return Array.Empty<byte>();
+
+                var fileBytes = _modules[file].GetEmbeddedBitmapResourceByID(resourceValue + 100);
+                return fileBytes.Length == 0 ? Array.Empty<byte>() : fileBytes;
             }
-            catch (ArgumentException)
+            catch
             {
-                // Missing custom item/NPC/etc. art is common while pubs are ahead of gfx.
-                // Return empty so the manager can show a 1x1 placeholder instead of crashing
-                // Debug builds (spawn-to-inventory used to hard-crash here).
+                // Missing / corrupt custom art must never take down login or inventory redraw.
+                // Catch everything (not only ArgumentException) — PELoader can throw other types.
                 return Array.Empty<byte>();
             }
-
-            if (fileBytes.Length == 0)
-                return Array.Empty<byte>();
-
-            return fileBytes;
         }
     }
 }

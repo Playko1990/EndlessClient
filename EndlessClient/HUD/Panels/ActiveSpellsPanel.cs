@@ -15,6 +15,7 @@ using EOLib.Config;
 using EOLib.Domain.Character;
 using EOLib.Domain.Login;
 using EOLib.Graphics;
+using EOLib.IO.Extensions;
 using EOLib.IO.Pub;
 using EOLib.IO.Repositories;
 using EOLib.Localization;
@@ -214,34 +215,44 @@ namespace EndlessClient.HUD.Panels
 
                 foreach (var spell in added)
                 {
-                    var spellData = _esfFileProvider.ESFFile[spell.ID];
-
-                    var preferredSlot = _spellSlotMap.SingleOrNone(x => x.Value == spell.ID).Map(x => x.Key);
-                    var actualSlot = preferredSlot.Match(
-                        some: x =>
-                        {
-                            return _childItems.OfType<SpellPanelItem>().Any(ci => ci.Slot == x)
-                                ? GetNextOpenSlot(_childItems)
-                                : Option.Some(x);
-                        },
-                        none: () => GetNextOpenSlot(_childItems));
-
-                    actualSlot.MatchSome(slot =>
+                    try
                     {
-                        var newChild = new SpellPanelItem(this, _sfxPlayer, slot, spell, spellData);
-                        newChild.Initialize();
-                        newChild.SetParentControl(this);
+                        if (!_esfFileProvider.ESFFile.ContainsId(spell.ID))
+                            continue;
 
-                        // this is required so scroll works while click+dragging when the control becomes unparented
-                        newChild.SetScrollWheelHandler(_scrollBar);
+                        var spellData = _esfFileProvider.ESFFile[spell.ID];
 
-                        newChild.Click += (sender, _) => _spellSlotDataRepository.SelectedSpellSlot = Option.Some(((SpellPanelItem)sender).Slot);
-                        newChild.OnMouseOver += SetSpellStatusLabelHover;
-                        newChild.DraggingFinishing += HandleItemDoneDragging;
+                        var preferredSlot = _spellSlotMap.FirstOrNone(x => x.Value == spell.ID).Map(x => x.Key);
+                        var actualSlot = preferredSlot.Match(
+                            some: x =>
+                            {
+                                return _childItems.OfType<SpellPanelItem>().Any(ci => ci.Slot == x)
+                                    ? GetNextOpenSlot(_childItems)
+                                    : Option.Some(x);
+                            },
+                            none: () => GetNextOpenSlot(_childItems));
 
-                        _childItems.Add(newChild);
-                        _spellSlotDataRepository.SpellSlots[slot] = Option.Some(spell);
-                    });
+                        actualSlot.MatchSome(slot =>
+                        {
+                            var newChild = new SpellPanelItem(this, _sfxPlayer, slot, spell, spellData);
+                            newChild.Initialize();
+                            newChild.SetParentControl(this);
+
+                            // this is required so scroll works while click+dragging when the control becomes unparented
+                            newChild.SetScrollWheelHandler(_scrollBar);
+
+                            newChild.Click += (sender, _) => _spellSlotDataRepository.SelectedSpellSlot = Option.Some(((SpellPanelItem)sender).Slot);
+                            newChild.OnMouseOver += SetSpellStatusLabelHover;
+                            newChild.DraggingFinishing += HandleItemDoneDragging;
+
+                            _childItems.Add(newChild);
+                            _spellSlotDataRepository.SpellSlots[slot] = Option.Some(spell);
+                        });
+                    }
+                    catch
+                    {
+                        // Skip unknown/broken spell entries so login can continue.
+                    }
                 }
 
                 if (added.Any())

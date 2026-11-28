@@ -207,74 +207,14 @@ namespace EndlessClient.HUD.Panels
 
             if (!_cachedInventory.SetEquals(_characterInventoryProvider.ItemInventory))
             {
-                var added = _characterInventoryProvider.ItemInventory.Where(i => !_cachedInventory.Any(j => i.ItemID == j.ItemID));
-                var removed = _cachedInventory.Where(i => !_characterInventoryProvider.ItemInventory.Any(j => i.ItemID == j.ItemID));
-                var updated = _characterInventoryProvider.ItemInventory.Except(added)
-                    .Where(i => _cachedInventory.Any(j => i.ItemID == j.ItemID && i.Amount != j.Amount));
-
-                foreach (var item in removed)
+                try
                 {
-                    var matchedItem = _childItems.SingleOrNone(x => x.InventoryItem.ItemID == item.ItemID);
-                    matchedItem.MatchSome(childItem =>
-                    {
-                        childItem.SetControlUnparented();
-                        childItem.Dispose();
-                        _childItems.Remove(childItem);
-
-                        // Placeholder if pub is missing this ID (keeps slot cleanup safe on login).
-                        var itemData = _pubFileProvider.EIFFile.GetItemOrUnknown(item.ItemID);
-                        _inventoryService.ClearSlots(_inventorySlotRepository.FilledSlots, childItem.Slot, itemData.Size);
-                    });
+                    SyncInventoryItems();
                 }
-
-                foreach (var item in updated)
+                catch
                 {
-                    var itemData = _pubFileProvider.EIFFile.GetItemOrUnknown(item.ItemID);
-
-                    var matchedItem = _childItems.SingleOrNone(x => x.InventoryItem.ItemID == item.ItemID);
-                    matchedItem.MatchSome(childItem =>
-                    {
-                        childItem.InventoryItem = item;
-                        childItem.Text = _itemStringService.GetStringForInventoryDisplay(itemData, item.Amount);
-                    });
-                }
-
-                foreach (var item in added)
-                {
-                    // Server inventory can include IDs not yet in the client's dat001.eif.
-                    // Use a placeholder record so login / inventory sync never throws.
-                    var itemData = _pubFileProvider.EIFFile.GetItemOrUnknown(item.ItemID);
-
-                    var preferredSlot = _inventorySlotRepository.SlotMap.SingleOrNone(x => x.Value == item.ItemID).Map(x => x.Key);
-                    var actualSlot = _inventoryService.GetNextOpenSlot(_inventorySlotRepository.FilledSlots, itemData.Size, preferredSlot);
-
-                    actualSlot.MatchSome(slot =>
-                    {
-                        _inventoryService.SetSlots(_inventorySlotRepository.FilledSlots, slot, itemData.Size);
-
-                        var newItem = new InventoryPanelItem(_itemNameColorService, this, _activeDialogProvider, _sfxPlayer, _itemStatCompareService, slot, item, itemData);
-                        newItem.Initialize();
-                        newItem.SetParentControl(this);
-                        newItem.Text = _itemStringService.GetStringForInventoryDisplay(itemData, item.Amount);
-
-                        newItem.OnMouseEnter += (_, _) => _statusLabelSetter.SetStatusLabel(EOResourceID.STATUS_LABEL_TYPE_ITEM, newItem.Text);
-                        newItem.DoubleClick += HandleItemDoubleClick;
-                        newItem.DraggingFinishing += HandleItemDoneDragging;
-                        newItem.DraggingFinished += (_, _) => ResetSlotMap(_childItems.Where(x => !x.IsDragging));
-
-                        // side-effect of calling newItem.SetParentControl(this) is that the draw order gets reset
-                        // setting the slot manually here resets it so the item labels render appropriately
-                        newItem.Slot = slot;
-
-                        _childItems.Add(newItem);
-                    });
-                }
-
-                _cachedInventory = _characterInventoryProvider.ItemInventory.ToHashSet();
-
-                if (removed.Any())
-                {
-                    RemoveHiddenItemsFromCachedInventory();
+                    // Never let a bad custom item take down the whole client on login.
+                    // Partial inventory is better than a hard crash / locked account.
                 }
             }
 
@@ -523,6 +463,97 @@ namespace EndlessClient.HUD.Panels
                     RemoveHiddenItemsFromCachedInventory();
                 }
             }
+        }
+
+        private void SyncInventoryItems()
+        {
+            var added = _characterInventoryProvider.ItemInventory.Where(i => !_cachedInventory.Any(j => i.ItemID == j.ItemID)).ToList();
+            var removed = _cachedInventory.Where(i => !_characterInventoryProvider.ItemInventory.Any(j => i.ItemID == j.ItemID)).ToList();
+            var updated = _characterInventoryProvider.ItemInventory.Except(added)
+                .Where(i => _cachedInventory.Any(j => i.ItemID == j.ItemID && i.Amount != j.Amount))
+                .ToList();
+
+            foreach (var item in removed)
+            {
+                try
+                {
+                    var matchedItem = _childItems.FirstOrNone(x => x.InventoryItem.ItemID == item.ItemID);
+                    matchedItem.MatchSome(childItem =>
+                    {
+                        childItem.SetControlUnparented();
+                        childItem.Dispose();
+                        _childItems.Remove(childItem);
+
+                        var itemData = _pubFileProvider.EIFFile.GetItemOrUnknown(item.ItemID);
+                        _inventoryService.ClearSlots(_inventorySlotRepository.FilledSlots, childItem.Slot, itemData.Size);
+                    });
+                }
+                catch
+                {
+                    // skip this remove if the child control is already broken
+                }
+            }
+
+            foreach (var item in updated)
+            {
+                try
+                {
+                    var itemData = _pubFileProvider.EIFFile.GetItemOrUnknown(item.ItemID);
+                    var matchedItem = _childItems.FirstOrNone(x => x.InventoryItem.ItemID == item.ItemID);
+                    matchedItem.MatchSome(childItem =>
+                    {
+                        childItem.InventoryItem = item;
+                        childItem.Text = _itemStringService.GetStringForInventoryDisplay(itemData, item.Amount);
+                    });
+                }
+                catch
+                {
+                    // skip this update
+                }
+            }
+
+            foreach (var item in added)
+            {
+                try
+                {
+                    // Server inventory can include IDs not yet in the client's dat001.eif.
+                    var itemData = _pubFileProvider.EIFFile.GetItemOrUnknown(item.ItemID);
+
+                    // FirstOrNone: duplicate inventory.ini slot entries for the same item
+                    // must not throw (SingleOrNone returns None, but First is clearer intent).
+                    var preferredSlot = _inventorySlotRepository.SlotMap
+                        .FirstOrNone(x => x.Value == item.ItemID)
+                        .Map(x => x.Key);
+                    var actualSlot = _inventoryService.GetNextOpenSlot(_inventorySlotRepository.FilledSlots, itemData.Size, preferredSlot);
+
+                    actualSlot.MatchSome(slot =>
+                    {
+                        _inventoryService.SetSlots(_inventorySlotRepository.FilledSlots, slot, itemData.Size);
+
+                        var newItem = new InventoryPanelItem(_itemNameColorService, this, _activeDialogProvider, _sfxPlayer, _itemStatCompareService, slot, item, itemData);
+                        newItem.Initialize();
+                        newItem.SetParentControl(this);
+                        newItem.Text = _itemStringService.GetStringForInventoryDisplay(itemData, item.Amount);
+
+                        newItem.OnMouseEnter += (_, _) => _statusLabelSetter.SetStatusLabel(EOResourceID.STATUS_LABEL_TYPE_ITEM, newItem.Text);
+                        newItem.DoubleClick += HandleItemDoubleClick;
+                        newItem.DraggingFinishing += HandleItemDoneDragging;
+                        newItem.DraggingFinished += (_, _) => ResetSlotMap(_childItems.Where(x => !x.IsDragging));
+
+                        newItem.Slot = slot;
+                        _childItems.Add(newItem);
+                    });
+                }
+                catch
+                {
+                    // Skip this one item — do not abort the rest of inventory sync / login.
+                }
+            }
+
+            _cachedInventory = _characterInventoryProvider.ItemInventory.ToHashSet();
+
+            if (removed.Any())
+                RemoveHiddenItemsFromCachedInventory();
         }
 
         private void ResetSlotMap(IEnumerable<InventoryPanelItem> childItems)

@@ -49,7 +49,7 @@ namespace EndlessClient.HUD.Inventory
             foreach (var item in outItems)
             {
                 var itemData = _eifFileProvider.EIFFile.GetItemOrUnknown(item.ItemID);
-                _inventorySlotProvider.SlotMap.SingleOrNone(x => x.Value == item.ItemID)
+                _inventorySlotProvider.SlotMap.FirstOrNone(x => x.Value == item.ItemID)
                     .Map(x => x.Key)
                     .MatchSome(x => _inventoryService.ClearSlots(slotsCopy, x, itemData.Size));
             }

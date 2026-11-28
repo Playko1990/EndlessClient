@@ -245,7 +245,7 @@ namespace EndlessClient.HUD.Inventory
             if (equippedId == hoveredItem.ID)
                 return hoveredItem;
 
-            return _pubFileProvider.EIFFile[equippedId];
+            return _pubFileProvider.EIFFile.GetItemOrUnknown(equippedId);
         }
 
         private static void AddStat(List<ItemStatCompareLine> lines, string label, int hovered, int equipped, bool canCompare)

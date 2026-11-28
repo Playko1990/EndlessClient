@@ -9,8 +9,11 @@ namespace EOLib.Domain.Item
     {
         public string GetStringForMapDisplay(EIFRecord record, int amount)
         {
+            if (record == null)
+                return string.Empty;
+
             if (amount <= 0)
-                throw new ArgumentException("Amount must not be zero!", nameof(amount));
+                return record.Name;
 
             return GetStringForInventoryDisplay(record, amount);
         }

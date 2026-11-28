@@ -26,7 +26,57 @@ namespace EOLib.IO.Pub
         public int TotalLength { get; private set; }
 
         /// <inheritdoc />
-        public TRecord this[int id] => _data[id - 1];
+        /// <remarks>
+        /// Out-of-range IDs return a blank placeholder instead of throwing.
+        /// Custom servers often send inventory/NPC/spell IDs before the client's
+        /// pub files have been updated; throwing here used to hard-crash login.
+        /// </remarks>
+        public TRecord this[int id]
+        {
+            get
+            {
+                if (id >= 1 && id <= _data.Count)
+                    return _data[id - 1];
+
+                return CreatePlaceholder(id);
+            }
+        }
+
+        private static TRecord CreatePlaceholder(int id)
+        {
+            var safeId = id < 1 ? 1 : id;
+            var placeholder = new TRecord();
+
+            try
+            {
+                placeholder = (TRecord)placeholder.WithID(safeId);
+            }
+            catch
+            {
+                // leave default id
+            }
+
+            try
+            {
+                if (placeholder.NumberOfNames <= 1)
+                {
+                    placeholder = (TRecord)placeholder.WithName($"Unknown #{safeId}");
+                }
+                else
+                {
+                    var names = new List<string>(placeholder.NumberOfNames);
+                    for (int i = 0; i < placeholder.NumberOfNames; i++)
+                        names.Add(i == 0 ? $"Unknown #{safeId}" : string.Empty);
+                    placeholder = (TRecord)placeholder.WithNames(names);
+                }
+            }
+            catch
+            {
+                // name is best-effort
+            }
+
+            return placeholder;
+        }
 
         protected BasePubFile()
         {

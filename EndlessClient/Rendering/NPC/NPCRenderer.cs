@@ -10,6 +10,7 @@ using EOLib.Domain.Extensions;
 using EOLib.Domain.NPC;
 using EOLib.Domain.Spells;
 using EOLib.Graphics;
+using EOLib.IO.Extensions;
 using EOLib.IO.Repositories;
 using EOLib.Shared;
 using Microsoft.Xna.Framework;
@@ -118,7 +119,9 @@ namespace EndlessClient.Rendering.NPC
                 TextAlign = LabelAlignment.MiddleCenter,
                 ForeColor = Color.White,
                 AutoSize = true,
-                Text = _enfFileProvider.ENFFile[NPC.ID].Name,
+                Text = _enfFileProvider.ENFFile.ContainsId(NPC.ID)
+                    ? _enfFileProvider.ENFFile[NPC.ID].Name
+                    : $"Unknown #{NPC.ID}",
                 DrawOrder = 30,
                 KeepInClientWindowBounds = false,
             };
@@ -134,9 +137,18 @@ namespace EndlessClient.Rendering.NPC
 
             _spriteBatch = new SpriteBatch(Game.GraphicsDevice);
 
-            var graphic = _enfFileProvider.ENFFile[NPC.ID].Graphic;
-            _npcSpriteDataCache.Populate(graphic);
-            _isBlankSprite = _npcSpriteDataCache.IsBlankSprite(graphic);
+            var graphic = _enfFileProvider.ENFFile.ContainsId(NPC.ID)
+                ? _enfFileProvider.ENFFile[NPC.ID].Graphic
+                : 0;
+            try
+            {
+                _npcSpriteDataCache.Populate(graphic);
+                _isBlankSprite = _npcSpriteDataCache.IsBlankSprite(graphic);
+            }
+            catch
+            {
+                _isBlankSprite = true;
+            }
 
             Game.Components.Add(_healthBarRenderer);
 
